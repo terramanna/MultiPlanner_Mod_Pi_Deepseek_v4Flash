@@ -16,7 +16,9 @@ Current scaffold:
 
 The current download endpoint saves matching source tiles to the local cache.
 With `export_profile: "ellipse_mapinfo_tab"`, it also attempts a per-dataset
-GeoTIFF merge and writes a MapInfo `.TAB` sidecar for Ellipse/MapInfo import.
+GeoTIFF merge, reprojects it to WGS 84 / UTM zone 32N (`EPSG:32632`), and
+writes the GeoTIFF plus MapInfo `.TAB` sidecar to `<selection>/utm32/` for
+Ellipse/MapInfo import.
 This requires GDAL tools from the local Ellipse installation.
 
 The search endpoint accepts direct coordinates locally and otherwise forwards

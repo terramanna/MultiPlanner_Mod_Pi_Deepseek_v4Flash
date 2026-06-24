@@ -17,6 +17,9 @@ from multiplanner_api.models import (
 )
 from multiplanner_api.subsets import locate_subsets
 
+WGS84_UTM32 = "EPSG:32632"
+MAPINFO_WGS84_UTM32 = '  CoordSys Earth Projection 8, 104, "m", 9, 0, 0.9996, 500000, 0'
+
 
 def download_subset(request: DownloadSubsetRequest) -> DownloadSubsetResponse:
     locate_request = LocateSubsetRequest(
@@ -112,7 +115,7 @@ def _export_for_ellipse(
             "Set MULTIPLANNER_ELLIPSE_GDAL_DIR to the Ellipse GDAL folder."
         )
 
-    export_dir = output_dir / "ellipse_export"
+    export_dir = output_dir / "utm32"
     export_dir.mkdir(parents=True, exist_ok=True)
     exports: list[str] = []
 
@@ -144,6 +147,8 @@ def _translate_vrt(gdal_translate: Path, vrt_path: Path, tif_path: Path) -> None
             str(gdal_translate),
             "-of",
             "GTiff",
+            "-t_srs",
+            WGS84_UTM32,
             "-co",
             "COMPRESS=LZW",
             "-co",
@@ -189,7 +194,7 @@ def _write_mapinfo_tab(gdalinfo: Path, tif_path: Path, tab_path: Path) -> None:
             f'  ({upper_right[0]},{upper_right[1]}) ({width},0) Label "Pt 2",',
             f'  ({lower_right[0]},{lower_right[1]}) ({width},{height}) Label "Pt 3",',
             f'  ({lower_left[0]},{lower_left[1]}) (0,{height}) Label "Pt 4"',
-            '  CoordSys Earth Projection 8, 115, "m", 9, 0, 0.9996, 500000, 0',
+            MAPINFO_WGS84_UTM32,
             '  Units "m"',
             "  RasterStyle 4 1",
             "  RasterStyle 9 1",
