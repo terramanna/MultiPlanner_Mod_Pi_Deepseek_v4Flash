@@ -8,6 +8,9 @@ from pyproj import Transformer
 from shapely.geometry import LineString
 from shapely.ops import transform
 
+from multiplanner_api.nrw import locate_tiles as locate_nrw_tiles
+from multiplanner_api.nrw import summarize_tiles as summarize_nrw_tiles
+
 SERVICE_PROVIDERS = {
     "lgln-ni": {
         "label": "LGLN Lower Saxony",
@@ -28,7 +31,23 @@ SERVICE_PROVIDERS = {
                 "url_fields": ("rgb", "rgb_metadata", "rgbi", "rgbi_metadata"),
             },
         },
-    }
+    },
+    "geobasis-nrw": {
+        "label": "Geobasis NRW",
+        "adapter": "nrw_grid",
+        "datasets": {
+            "dgm1": {
+                "base_url": "https://www.opengeodata.nrw.de/produkte/geobasis/hm/dgm1_tiff/dgm1_tiff/",
+                "catalog_url": "https://www.opengeodata.nrw.de/produkte/geobasis/hm/dgm1_tiff/dgm1_tiff/",
+                "filename_prefix": "dgm1",
+            },
+            "dom1": {
+                "base_url": "https://www.opengeodata.nrw.de/produkte/geobasis/hm/dom1_tiff/dom1_tiff/",
+                "catalog_url": "https://www.opengeodata.nrw.de/produkte/geobasis/hm/dom1_tiff/dom1_tiff/",
+                "filename_prefix": "dom1",
+            },
+        },
+    },
 }
 
 WGS84 = "EPSG:4326"
@@ -100,6 +119,15 @@ def bbox_geometry(west: float, south: float, east: float, north: float) -> tuple
     return json.dumps(geom), "esriGeometryEnvelope"
 
 
+def polygon_geometry(coordinates: list[tuple[float, float]]) -> tuple[str, str]:
+    if len(coordinates) < 3:
+        raise ValueError("A polygon selection needs at least three coordinates.")
+    ring = [[float(lon), float(lat)] for lon, lat in coordinates]
+    if ring[0] != ring[-1]:
+        ring.append(ring[0])
+    return json.dumps({"rings": [ring], "spatialReference": {"wkid": 4326}}), "esriGeometryPolygon"
+
+
 def locate_remote_tiles(
     provider: str,
     dataset: str,
@@ -108,6 +136,9 @@ def locate_remote_tiles(
     geometry_type: str,
     timeout: int = 60,
 ) -> list[dict[str, Any]]:
+    if SERVICE_PROVIDERS[provider].get("adapter") == "nrw_grid":
+        return locate_nrw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
+
     config = _dataset_config(provider, dataset)
     response = requests.get(
         config["query_url"],
@@ -128,6 +159,9 @@ def summarize_remote_tiles(
     geometry_type: str,
     timeout: int = 60,
 ) -> list[dict[str, Any]]:
+    if SERVICE_PROVIDERS[provider].get("adapter") == "nrw_grid":
+        return summarize_nrw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
+
     config = _dataset_config(provider, dataset)
     summaries: list[dict[str, Any]] = []
     for attrs in locate_remote_tiles(

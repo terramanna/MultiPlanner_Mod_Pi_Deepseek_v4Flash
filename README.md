@@ -78,6 +78,24 @@ Or use the helper script:
 .\scripts\bootstrap_local.ps1
 ```
 
+Windows one-click launcher:
+
+```powershell
+.\Start MultiPlanner.bat
+```
+
+Windows stop script:
+
+```powershell
+.\Stop MultiPlanner.bat
+```
+
+Windows restart script:
+
+```powershell
+.\Restart MultiPlanner.bat
+```
+
 VS Code is configured to use `.\.venv` automatically for this workspace.
 
 ## Local run
@@ -103,12 +121,6 @@ Default local URLs:
 - web: `http://127.0.0.1:5173`
 - api: `http://127.0.0.1:8000`
 
-## Current repo state
-
-- The repository currently has no Git remote configured in `.git/config`.
-- On this drive, Git also needs a `safe.directory` entry before normal `git status`
-  and `git remote` commands will work.
-
 Optional Windows-first Ellipse export setting:
 
 ```powershell
@@ -122,6 +134,21 @@ $env:MULTIPLANNER_GEOCODER_URL = "https://nominatim.openstreetmap.org/search"
 $env:MULTIPLANNER_GEOCODER_COUNTRYCODES = "de"
 $env:MULTIPLANNER_GEOCODER_EMAIL = "you@example.com"
 ```
+
+Optional frontend performance settings:
+
+```powershell
+$env:VITE_USE_WORLD_TERRAIN = "false"
+```
+
+The default frontend shell now uses a faster local ellipsoid map mode. This is
+usually much more responsive than global streamed terrain while the product is
+still using provider subsets and downloads rather than rendering local 1 m data
+in the scene itself.
+
+The Windows launcher waits for both backend and frontend before opening the
+browser, and the frontend retries API bootstrap during startup to reduce false
+`offline` states.
 
 ## Commit audit
 

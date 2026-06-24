@@ -21,5 +21,6 @@ apps/api/.ruff_cache/
 apps/api/.venv/
 apps/api/src/*.egg-info/
 data/cache/
+apps/api/data/cache/
 data/tmp/
 .tmp_fcb_remote/

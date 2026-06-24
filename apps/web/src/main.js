@@ -6,6 +6,7 @@ window.CESIUM_BASE_URL = "/node_modules/cesium/Build/Cesium";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").trim();
 const cesiumIonToken = (import.meta.env.VITE_CESIUM_ION_TOKEN || "").trim();
+const useWorldTerrain = (import.meta.env.VITE_USE_WORLD_TERRAIN || "false").trim().toLowerCase() === "true";
 
 if (cesiumIonToken) {
   Cesium.Ion.defaultAccessToken = cesiumIonToken;
@@ -25,6 +26,7 @@ app.innerHTML = `
       <div class="actions">
         <button id="btnSiteA">Mark Site A</button>
         <button id="btnSiteB">Mark Site B</button>
+        <button id="btnCenter" class="button-ghost">Center active site</button>
         <button id="btnClear" class="button-ghost">Clear</button>
       </div>
       <div class="search-panel">
@@ -48,6 +50,10 @@ app.innerHTML = `
         <div>
           <dt>Selection</dt>
           <dd id="selectionMode">Site A</dd>
+        </div>
+        <div>
+          <dt>Terrain mode</dt>
+          <dd id="terrainMode">${useWorldTerrain ? "world terrain" : "fast local"}</dd>
         </div>
       </dl>
       <div class="site-readout">
@@ -82,21 +88,47 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
   timeline: false,
   sceneModePicker: false,
   baseLayerPicker: true,
-  terrain: Cesium.Terrain.fromWorldTerrain()
+  scene3DOnly: true,
+  orderIndependentTranslucency: false,
+  requestRenderMode: true,
+  maximumRenderTimeChange: Infinity,
+  msaaSamples: 1,
+  ...(useWorldTerrain
+    ? { terrain: Cesium.Terrain.fromWorldTerrain() }
+    : { terrainProvider: new Cesium.EllipsoidTerrainProvider() })
 });
 
-viewer.scene.globe.enableLighting = true;
-viewer.camera.flyTo({
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    viewer.destroy();
+  });
+}
+
+viewer.scene.globe.enableLighting = false;
+viewer.scene.skyAtmosphere.show = false;
+viewer.scene.globe.showGroundAtmosphere = false;
+viewer.scene.fog.enabled = false;
+viewer.scene.globe.preloadAncestors = false;
+viewer.scene.globe.tileCacheSize = 25;
+viewer.resolutionScale = 1;
+viewer.scene.globe.maximumScreenSpaceError = 6;
+viewer.scene.globe.loadingDescendantLimit = 5;
+viewer.scene.screenSpaceCameraController.inertiaSpin = 0.75;
+viewer.scene.screenSpaceCameraController.inertiaTranslate = 0.75;
+viewer.scene.screenSpaceCameraController.inertiaZoom = 0.6;
+viewer.camera.setView({
   destination: Cesium.Cartesian3.fromDegrees(10.45, 51.16, 650000)
 });
 
 const btnSiteA = document.getElementById("btnSiteA");
 const btnSiteB = document.getElementById("btnSiteB");
+const btnCenter = document.getElementById("btnCenter");
 const btnClear = document.getElementById("btnClear");
 const btnSearch = document.getElementById("btnSearch");
 const apiStatus = document.getElementById("apiStatus");
 const providerMode = document.getElementById("providerMode");
 const selectionModeEl = document.getElementById("selectionMode");
+const terrainModeEl = document.getElementById("terrainMode");
 const searchInput = document.getElementById("searchInput");
 const searchStatus = document.getElementById("searchStatus");
 const searchResults = document.getElementById("searchResults");
@@ -122,11 +154,14 @@ const state = {
   siteB: null,
   siteAEntity: null,
   siteBEntity: null,
-  linkEntity: null
+  linkEntity: null,
+  apiReady: false,
+  lastSelectedSearchLabel: null
 };
 
 btnSiteA.addEventListener("click", () => setSelectionMode("A"));
 btnSiteB.addEventListener("click", () => setSelectionMode("B"));
+btnCenter.addEventListener("click", centerActiveSite);
 btnClear.addEventListener("click", clearSelections);
 btnSearch.addEventListener("click", runSearch);
 btnLocate.addEventListener("click", locateCorridorSubsets);
@@ -140,17 +175,10 @@ searchInput.addEventListener("keydown", (event) => {
 
 const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
 handler.setInputAction((movement) => {
-  const cartesian = viewer.scene.pickPosition(movement.position);
-  if (!Cesium.defined(cartesian)) {
+  const sample = pickSampleFromScreen(movement.position);
+  if (!sample) {
     return;
   }
-
-  const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
-  const sample = {
-    lon: Cesium.Math.toDegrees(cartographic.longitude),
-    lat: Cesium.Math.toDegrees(cartographic.latitude),
-    height: cartographic.height
-  };
 
   assignSampleToActiveSite(sample);
 }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
@@ -162,6 +190,7 @@ bootstrapApiState();
 function setSelectionMode(mode) {
   state.selectionMode = mode;
   selectionModeEl.textContent = mode === "A" ? "Site A" : "Site B";
+  searchStatus.textContent = `search will place Site ${mode}`;
 }
 
 function clearSelections() {
@@ -180,8 +209,11 @@ function clearSelections() {
   state.siteAEntity = null;
   state.siteBEntity = null;
   state.linkEntity = null;
+  state.lastSelectedSearchLabel = null;
   setSelectionMode("A");
+  searchResults.innerHTML = "";
   updateReadout();
+  viewer.scene.requestRender();
 }
 
 function assignSampleToActiveSite(sample) {
@@ -193,15 +225,45 @@ function assignSampleToActiveSite(sample) {
     upsertSite("B", sample);
   }
 
-  viewer.camera.flyTo({
-    destination: Cesium.Cartesian3.fromDegrees(
-      sample.lon,
-      sample.lat,
-      Math.max(sample.height + 1500, 2500)
-    )
-  });
   renderLink();
   updateReadout();
+  viewer.scene.requestRender();
+}
+
+function centerActiveSite() {
+  const sample = state.selectionMode === "A" ? state.siteA : state.siteB;
+  if (!sample) {
+    searchStatus.textContent = `set Site ${state.selectionMode} first`;
+    return;
+  }
+
+  viewer.camera.setView({
+    destination: Cesium.Cartesian3.fromDegrees(sample.lon, sample.lat, 1000)
+  });
+  viewer.scene.requestRender();
+}
+
+function pickSampleFromScreen(screenPosition) {
+  let cartesian = null;
+
+  if (useWorldTerrain && viewer.scene.pickPositionSupported) {
+    cartesian = viewer.scene.pickPosition(screenPosition);
+  }
+
+  if (!Cesium.defined(cartesian)) {
+    cartesian = viewer.camera.pickEllipsoid(screenPosition, viewer.scene.globe.ellipsoid);
+  }
+
+  if (!Cesium.defined(cartesian)) {
+    return null;
+  }
+
+  const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+  return {
+    lon: Cesium.Math.toDegrees(cartographic.longitude),
+    lat: Cesium.Math.toDegrees(cartographic.latitude),
+    height: cartographic.height || 0
+  };
 }
 
 function upsertSite(kind, sample) {
@@ -285,44 +347,84 @@ function formatSample(sample) {
 }
 
 async function bootstrapApiState() {
-  try {
-    const [healthResponse, configResponse] = await Promise.all([
-      fetch(`${apiBaseUrl}/healthz`),
-      fetch(`${apiBaseUrl}/api/v1/config`)
-    ]);
+  terrainModeEl.textContent = useWorldTerrain ? "world terrain" : "fast local";
+  apiStatus.textContent = "starting";
+  providerMode.textContent = "waiting for backend";
+  for (let attempt = 1; attempt <= 12; attempt += 1) {
+    try {
+      const [healthResponse, configResponse] = await Promise.all([
+        fetchWithTimeout(`${apiBaseUrl}/healthz`, { timeoutMs: 2000 }),
+        fetchWithTimeout(`${apiBaseUrl}/api/v1/config`, { timeoutMs: 2000 })
+      ]);
 
-    if (!healthResponse.ok || !configResponse.ok) {
-      throw new Error("API bootstrap failed");
+      if (!healthResponse.ok || !configResponse.ok) {
+        throw new Error("API bootstrap failed");
+      }
+
+      const health = await healthResponse.json();
+      const config = await configResponse.json();
+      apiStatus.textContent = health.status;
+      providerMode.textContent = config.provider_mode;
+      state.apiReady = true;
+      return;
+    } catch (_error) {
+      apiStatus.textContent = attempt < 12 ? "starting" : "offline";
+      providerMode.textContent = attempt < 12 ? "waiting for backend" : "unavailable";
+      await delay(1000);
     }
+  }
+}
 
-    const health = await healthResponse.json();
-    const config = await configResponse.json();
-    apiStatus.textContent = health.status;
-    providerMode.textContent = config.provider_mode;
-  } catch (_error) {
-    apiStatus.textContent = "offline";
-    providerMode.textContent = "unavailable";
+function delay(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+async function fetchWithTimeout(url, { timeoutMs = 2000, ...options } = {}) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }
 
 async function runSearch() {
+  if (!state.apiReady) {
+    searchStatus.textContent = "backend still starting";
+    return;
+  }
+
   const query = searchInput.value.trim();
   if (!query) {
     searchStatus.textContent = "enter coordinates or an address";
     return;
   }
 
-  searchStatus.textContent = "searching";
-  searchResults.innerHTML = "";
+    searchStatus.textContent = "searching";
+    searchResults.innerHTML = "";
   try {
-    const response = await fetch(`${apiBaseUrl}/api/v1/search/places?q=${encodeURIComponent(query)}`);
+    const response = await fetchWithTimeout(
+      `${apiBaseUrl}/api/v1/search/places?q=${encodeURIComponent(query)}`,
+      { timeoutMs: 5000 }
+    );
     if (!response.ok) {
       throw new Error("search failed");
     }
 
     const payload = await response.json();
-    renderSearchResults(payload.candidates || []);
-    searchStatus.textContent = payload.candidates.length
+    const candidates = payload.candidates || [];
+    renderSearchResults(candidates);
+    if (candidates.length === 1 && candidates[0].source === "coordinates") {
+      await placeSearchCandidate(candidates[0]);
+      return;
+    }
+    searchStatus.textContent = candidates.length
       ? `select a result for Site ${state.selectionMode}`
       : "no matches found";
   } catch (_error) {
@@ -337,21 +439,36 @@ function renderSearchResults(candidates) {
     button.type = "button";
     button.className = "search-result";
     button.textContent = candidate.label;
+    if (candidate.label === state.lastSelectedSearchLabel) {
+      button.classList.add("is-selected");
+    }
     button.addEventListener("click", async () => {
-      const sample = {
-        lon: candidate.lon,
-        lat: candidate.lat,
-        height: await sampleTerrainHeight(candidate.lon, candidate.lat)
-      };
-      const targetSite = state.selectionMode;
-      assignSampleToActiveSite(sample);
-      searchStatus.textContent = `placed Site ${targetSite} from ${candidate.source}`;
+      button.classList.add("is-pending");
+      await placeSearchCandidate(candidate, candidates);
     });
     searchResults.appendChild(button);
   }
 }
 
+async function placeSearchCandidate(candidate, candidates = [candidate]) {
+  searchStatus.textContent = `placing Site ${state.selectionMode}...`;
+  const sample = {
+    lon: candidate.lon,
+    lat: candidate.lat,
+    height: await sampleTerrainHeight(candidate.lon, candidate.lat)
+  };
+  const targetSite = state.selectionMode;
+  state.lastSelectedSearchLabel = candidate.label;
+  assignSampleToActiveSite(sample);
+  renderSearchResults(candidates);
+  searchStatus.textContent = `placed Site ${targetSite} from ${candidate.source}`;
+}
+
 async function sampleTerrainHeight(lon, lat) {
+  if (!useWorldTerrain) {
+    return 0;
+  }
+
   try {
     const [sample] = await Cesium.sampleTerrainMostDetailed(
       viewer.terrainProvider,
@@ -364,6 +481,11 @@ async function sampleTerrainHeight(lon, lat) {
 }
 
 async function locateCorridorSubsets() {
+  if (!state.apiReady) {
+    lookupStatus.textContent = "backend still starting";
+    return;
+  }
+
   if (!(state.siteA && state.siteB)) {
     lookupStatus.textContent = "set both sites first";
     return;
@@ -371,8 +493,9 @@ async function locateCorridorSubsets() {
 
   lookupStatus.textContent = "querying provider";
   try {
-    const response = await fetch(`${apiBaseUrl}/api/v1/subsets/locate`, {
+    const response = await fetchWithTimeout(`${apiBaseUrl}/api/v1/subsets/locate`, {
       method: "POST",
+      timeoutMs: 10000,
       headers: {
         "Content-Type": "application/json"
       },
@@ -405,6 +528,11 @@ async function locateCorridorSubsets() {
 }
 
 async function downloadCorridorSubsets() {
+  if (!state.apiReady) {
+    lookupStatus.textContent = "backend still starting";
+    return;
+  }
+
   if (!(state.siteA && state.siteB)) {
     lookupStatus.textContent = "set both sites first";
     return;
@@ -412,8 +540,9 @@ async function downloadCorridorSubsets() {
 
   lookupStatus.textContent = "downloading selected subset tiles";
   try {
-    const response = await fetch(`${apiBaseUrl}/api/v1/subsets/download`, {
+    const response = await fetchWithTimeout(`${apiBaseUrl}/api/v1/subsets/download`, {
       method: "POST",
+      timeoutMs: 30000,
       headers: {
         "Content-Type": "application/json"
       },

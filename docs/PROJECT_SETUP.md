@@ -7,7 +7,7 @@ Before feature work:
 3. Fill out `CONTEXT.md`, including canonical domain terms and invariants.
 4. Replace the placeholder identities in `config/commit-actors.json`.
 5. Run `./scripts/install_git_hooks.ps1` on Windows or `./scripts/install_git_hooks.sh` on Linux/macOS in every contributor clone.
-6. Review the 1,200-line default in `scripts/check_file_size_policy.py`.
+6. Review the 600-line source-file limit in `scripts/check_file_size_policy.py`.
 7. Replace `LICENSE`, `SECURITY.md`, and `CODEOWNERS` with project-specific values before publishing.
 8. Create a repo-level `.venv` and install backend/frontend dependencies.
 

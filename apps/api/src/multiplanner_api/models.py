@@ -40,6 +40,11 @@ class BboxGeometryInput(BaseModel):
     north: float
 
 
+class PolygonGeometryInput(BaseModel):
+    kind: Literal["polygon"]
+    coordinates: list[tuple[float, float]]
+
+
 class CorridorGeometryInput(BaseModel):
     kind: Literal["corridor"]
     from_lon: float
@@ -52,7 +57,7 @@ class CorridorGeometryInput(BaseModel):
 class LocateSubsetRequest(BaseModel):
     provider: str = "lgln-ni"
     datasets: list[str] = ["dgm1", "dom1", "dop20"]
-    geometry: PointGeometryInput | BboxGeometryInput | CorridorGeometryInput
+    geometry: PointGeometryInput | BboxGeometryInput | PolygonGeometryInput | CorridorGeometryInput
 
 
 class TileSummary(BaseModel):

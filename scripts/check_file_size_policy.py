@@ -8,8 +8,9 @@ import sys
 from pathlib import PurePosixPath
 
 
-MAX_LINES = 1200
+MAX_LINES = 600
 EXCLUDED_SUFFIXES = {".lock", ".min.js", ".map"}
+EXCLUDED_FILENAMES = {"package-lock.json", "npm-shrinkwrap.json"}
 EXCLUDED_PATH_PARTS = {"node_modules", "vendor", "dist", "build"}
 
 
@@ -25,7 +26,11 @@ def staged_files() -> list[str]:
 
 def should_check(path: str) -> bool:
     candidate = PurePosixPath(path)
-    return candidate.suffix not in EXCLUDED_SUFFIXES and not any(part in EXCLUDED_PATH_PARTS for part in candidate.parts)
+    return (
+        candidate.name not in EXCLUDED_FILENAMES
+        and candidate.suffix not in EXCLUDED_SUFFIXES
+        and not any(part in EXCLUDED_PATH_PARTS for part in candidate.parts)
+    )
 
 
 def staged_line_count(path: str) -> int:

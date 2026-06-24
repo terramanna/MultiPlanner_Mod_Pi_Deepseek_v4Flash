@@ -6,6 +6,7 @@ from multiplanner_api.models import (
     DatasetSubsetResult,
     LocateSubsetRequest,
     LocateSubsetResponse,
+    PolygonGeometryInput,
     PointGeometryInput,
     TileSummary,
 )
@@ -15,6 +16,7 @@ from multiplanner_api.providers import (
     corridor_geometry,
     provider_dataset_names,
     point_geometry,
+    polygon_geometry,
     summarize_remote_tiles,
 )
 
@@ -70,7 +72,9 @@ def locate_subsets(request: LocateSubsetRequest) -> LocateSubsetResponse:
     )
 
 
-def _build_geometry(geometry_input: PointGeometryInput | BboxGeometryInput | CorridorGeometryInput) -> tuple[str, str]:
+def _build_geometry(
+    geometry_input: PointGeometryInput | BboxGeometryInput | PolygonGeometryInput | CorridorGeometryInput,
+) -> tuple[str, str]:
     if isinstance(geometry_input, PointGeometryInput):
         return point_geometry(geometry_input.lon, geometry_input.lat)
     if isinstance(geometry_input, BboxGeometryInput):
@@ -80,6 +84,8 @@ def _build_geometry(geometry_input: PointGeometryInput | BboxGeometryInput | Cor
             geometry_input.east,
             geometry_input.north,
         )
+    if isinstance(geometry_input, PolygonGeometryInput):
+        return polygon_geometry(geometry_input.coordinates)
     if isinstance(geometry_input, CorridorGeometryInput):
         return corridor_geometry(
             geometry_input.from_lon,
