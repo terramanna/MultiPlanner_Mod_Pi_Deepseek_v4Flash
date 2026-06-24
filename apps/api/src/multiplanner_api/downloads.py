@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -106,10 +107,10 @@ def _export_for_ellipse(
 ) -> list[str]:
     gdal_dir = Path(ellipse_gdal_dir)
     gdalbuildvrt = gdal_dir / "gdalbuildvrt.exe"
-    gdal_translate = gdal_dir / "gdal_translate.exe"
+    gdalwarp = gdal_dir / "gdalwarp.exe"
     gdalinfo = gdal_dir / "gdalinfo.exe"
 
-    if not (gdalbuildvrt.exists() and gdal_translate.exists() and gdalinfo.exists()):
+    if not (gdalbuildvrt.exists() and gdalwarp.exists() and gdalinfo.exists()):
         raise ValueError(
             "Ellipse export requested, but GDAL tools were not found. "
             "Set MULTIPLANNER_ELLIPSE_GDAL_DIR to the Ellipse GDAL folder."
@@ -125,26 +126,45 @@ def _export_for_ellipse(
         vrt_path = export_dir / f"{dataset}.vrt"
         tif_path = export_dir / f"{dataset}.tif"
         tab_path = export_dir / f"{dataset}.TAB"
-        _build_vrt(gdalbuildvrt, vrt_path, tile_paths)
-        _translate_vrt(gdal_translate, vrt_path, tif_path)
-        _write_mapinfo_tab(gdalinfo, tif_path, tab_path)
+        environment = _gdal_environment(gdal_dir)
+        _build_vrt(gdalbuildvrt, vrt_path, tile_paths, environment)
+        _warp_vrt(gdalwarp, vrt_path, tif_path, environment)
+        _write_mapinfo_tab(gdalinfo, tif_path, tab_path, environment)
         exports.append(str(tif_path))
         exports.append(str(tab_path))
 
     return exports
 
 
-def _build_vrt(gdalbuildvrt: Path, vrt_path: Path, tile_paths: list[Path]) -> None:
+def _gdal_environment(gdal_dir: Path) -> dict[str, str]:
+    environment = os.environ.copy()
+    environment["PROJ_LIB"] = str(gdal_dir / "projlib")
+    environment["GDAL_DATA"] = str(gdal_dir / "gdal-data")
+    return environment
+
+
+def _build_vrt(
+    gdalbuildvrt: Path,
+    vrt_path: Path,
+    tile_paths: list[Path],
+    environment: dict[str, str],
+) -> None:
     subprocess.run(
         [str(gdalbuildvrt), str(vrt_path), *[str(path) for path in tile_paths]],
         check=True,
+        env=environment,
     )
 
 
-def _translate_vrt(gdal_translate: Path, vrt_path: Path, tif_path: Path) -> None:
+def _warp_vrt(
+    gdalwarp: Path,
+    vrt_path: Path,
+    tif_path: Path,
+    environment: dict[str, str],
+) -> None:
     subprocess.run(
         [
-            str(gdal_translate),
+            str(gdalwarp),
             "-of",
             "GTiff",
             "-t_srs",
@@ -163,15 +183,22 @@ def _translate_vrt(gdal_translate: Path, vrt_path: Path, tif_path: Path) -> None
             str(tif_path),
         ],
         check=True,
+        env=environment,
     )
 
 
-def _write_mapinfo_tab(gdalinfo: Path, tif_path: Path, tab_path: Path) -> None:
+def _write_mapinfo_tab(
+    gdalinfo: Path,
+    tif_path: Path,
+    tab_path: Path,
+    environment: dict[str, str],
+) -> None:
     info = subprocess.run(
         [str(gdalinfo), "-json", str(tif_path)],
         check=True,
         capture_output=True,
         text=True,
+        env=environment,
     )
     payload = json.loads(info.stdout)
     width, height = payload["size"]
