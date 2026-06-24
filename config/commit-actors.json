@@ -1,0 +1,20 @@
+{
+  "actors": {
+    "Terra": {
+      "git_name": "Terra",
+      "git_email": "terramanna@users.noreply.github.com"
+    },
+    "Brian Codex": {
+      "git_name": "Brian Codex",
+      "git_email": "brian.codex@terramanna.local"
+    },
+    "Claude Appleton": {
+      "git_name": "Claude Appleton",
+      "git_email": "claude.appleton@terramanna.local"
+    },
+    "Hermes Relay": {
+      "git_name": "Hermes Relay",
+      "git_email": "hermes.relay@terramanna.local"
+    }
+  }
+}

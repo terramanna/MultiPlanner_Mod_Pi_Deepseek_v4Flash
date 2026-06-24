@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+if command -v python3 >/dev/null 2>&1; then
+  python3 scripts/check_commit_audit.py "$1"
+else
+  python scripts/check_commit_audit.py "$1"
+fi

@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+if command -v python3 >/dev/null 2>&1; then
+  python3 scripts/check_file_size_policy.py --staged
+else
+  python scripts/check_file_size_policy.py --staged
+fi

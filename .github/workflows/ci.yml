@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate file size policy
+        run: python scripts/check_file_size_policy.py --all
+
+      - name: Run Python project checks
+        if: ${{ hashFiles('pyproject.toml') != '' }}
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -e . --no-build-isolation
+          python -m pip install pytest
+          pytest -q
+
+      - uses: actions/setup-node@v4
+        if: ${{ hashFiles('package.json') != '' }}
+        with:
+          node-version: "20"
+
+      - name: Run Node project checks
+        if: ${{ hashFiles('package.json') != '' }}
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+          npm test --if-present

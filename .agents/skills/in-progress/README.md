@@ -1,0 +1,9 @@
+﻿# In-Progress Skills
+
+Bucket: drafts not yet ready to ship.
+
+- [review](./review/SKILL.md): Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes --- Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/PRD asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X".
+- [teach](./teach/SKILL.md): Teach the user a new skill or concept, within this workspace.
+- [writing-beats](./writing-beats/SKILL.md): Shape an article as a journey of beats, choose-your-own-adventure style. The user picks a starting beat from the raw material, you write only that beat, then offer options for where to pivot next, beat by beat, until the article reaches a natural end. Use when the user has raw material and wants to assemble it as a narrative rather than an argument.
+- [writing-fragments](./writing-fragments/SKILL.md): Grilling session that mines the user for fragments --- heterogeneous nuggets of writing (claims, vignettes, sharp sentences, half-thoughts) --- and appends them to a single document as raw material for a future article. Use when the user wants to develop ideas before imposing structure, or mentions "fragments", "ideate", or "raw material" for writing.
+- [writing-shape](./writing-shape/SKILL.md): Take a markdown file of raw material and shape it into an article through a conversational session --- drafting candidate openings, growing the piece paragraph by paragraph, arguing about format (lists, tables, callouts, quotes) at each step. Use when the user has a pile of notes, fragments, or a rough draft and wants help turning it into something publishable.

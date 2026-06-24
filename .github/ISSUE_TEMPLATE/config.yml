@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Usage question
+    url: https://github.com/OWNER/REPOSITORY/discussions
+    about: Replace this link or remove it if Discussions are not enabled.
