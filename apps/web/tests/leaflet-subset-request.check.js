@@ -14,11 +14,18 @@ function baseContext(response) {
   const doc = fakeDocument();
   return {
     apiBaseUrl: "http://api.invalid",
+    confirm: () => true,
     currentGeometry: () => ({ kind: "point", lon: 7.46, lat: 52.32 }),
     document: doc,
     downloadStatus: { textContent: "" },
     fetch: async () => response,
-    state: { provider: "geobasis-nrw" },
+    jobNameInput: { value: "" },
+    map: {},
+    openDownloadFolderButton: { hidden: true },
+    openFolderAfterDownload: { checked: false },
+    providerCoverage: {},
+    selectedExportProfile: () => "ellipse_grd",
+    state: { provider: "geobasis-nrw", coverageFeatures: {}, lastDownloadedOutputDir: null },
   };
 }
 
@@ -47,3 +54,50 @@ boundContext.fetch = async function () {
 };
 await requestLeafletSubset(boundContext, false);
 assert.match(boundContext.downloadStatus.textContent, /geobasis-nrw\/dgm1: 1 tiles/);
+
+function recordingDownloadContext(responses) {
+  const context = baseContext(null);
+  const statusMessages = [];
+  context.fetch = async () => responses.shift();
+  Object.defineProperty(context.downloadStatus, "textContent", {
+    get: () => statusMessages.at(-1) || "",
+    set: (value) => statusMessages.push(value),
+  });
+  return { context, statusMessages };
+}
+
+function downloadPayload() {
+  return {
+    provider: "geobasis-nrw",
+    selection_name: "point_n52_3200_e7_4600_1m_merge",
+    output_dir: "cache/saved_subsets/point_n52_3200_e7_4600_1m_merge",
+    files: [],
+    exports: [],
+    warnings: [],
+  };
+}
+
+function fakeDirectoryHandle(name = "downloads") {
+  return {
+    name,
+    getDirectoryHandle: async (childName) => fakeDirectoryHandle(childName),
+  };
+}
+
+const originalWindow = globalThis.window;
+globalThis.window = {
+  showDirectoryPicker: async () => fakeDirectoryHandle(),
+};
+const { context: downloadContext, statusMessages } = recordingDownloadContext([
+  { ok: true, json: async () => previewPayload() },
+  { ok: true, json: async () => downloadPayload() },
+]);
+await requestLeafletSubset(downloadContext, true);
+assert.deepEqual(statusMessages, [
+  "Checking selected 1 m tiles...",
+  "Choose an output folder to start the download/export.",
+  "Downloading source tiles and building export...",
+  "Saving downloaded files to the selected folder...",
+  "Saved 0 source files and 0 GRD exports to downloads\\point_n52_3200_e7_4600_1m_merge.",
+]);
+globalThis.window = originalWindow;

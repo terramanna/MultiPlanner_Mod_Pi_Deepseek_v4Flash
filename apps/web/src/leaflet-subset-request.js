@@ -15,7 +15,7 @@ export async function requestLeafletSubset(context, download) {
   if (!datasets.length) return setStatus(context, "Choose at least one dataset.");
 
   const body = buildSubsetRequestBody(context, download, geometry, datasets);
-  setStatus(context, download ? "Preparing download/export..." : "Resolving available 1 m tiles...");
+  setStatus(context, download ? "Checking selected 1 m tiles..." : "Resolving available 1 m tiles...");
   try {
     const rootDirectoryHandle = download ? await prepareSubsetDownload(context, body) : null;
     if (download && !rootDirectoryHandle) return;
@@ -47,6 +47,7 @@ async function prepareSubsetDownload(context, body) {
   const preview = await fetchSubsetPreview(context, body);
   const warning = largeDownloadWarning(preview);
   if (warning && !context.confirm(warning)) return setCancelled(context);
+  setStatus(context, "Choose an output folder to start the download/export.");
   try {
     return await chooseDownloadDirectory();
   } catch (_error) {
@@ -67,6 +68,7 @@ async function fetchSubsetPreview(context, body) {
 
 async function submitSubsetRequest(context, download, body, rootDirectoryHandle) {
   const endpoint = download ? "/api/v1/subsets/download" : "/api/v1/subsets/locate";
+  if (download) setStatus(context, "Downloading source tiles and building export...");
   const response = await postJson(context, endpoint, body);
   if (!response.ok) throw new Error(await errorDetail(response, "Subset request failed"));
   const payload = await response.json();
@@ -91,6 +93,7 @@ function postJson(context, endpoint, body) {
 }
 
 async function handleDownloadSubset(context, body, payload, rootDirectoryHandle) {
+  setStatus(context, "Saving downloaded files to the selected folder...");
   const saved = await saveSubsetPayloadToDirectory(context.apiBaseUrl, payload, rootDirectoryHandle);
   context.state.lastDownloadedOutputDir = payload.output_dir || null;
   context.openDownloadFolderButton.hidden = !context.state.lastDownloadedOutputDir;
