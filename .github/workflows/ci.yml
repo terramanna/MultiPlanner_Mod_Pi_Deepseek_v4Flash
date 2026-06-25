@@ -49,11 +49,14 @@ jobs:
         run: npx --yes eslint@9 .
 
       - name: Run Node project checks
-        if: ${{ hashFiles('package.json') != '' }}
+        # Runs the apps/web node test suite (tests/*.check.js). Gated on and run
+        # from apps/web; node is already provisioned by the setup-node step above.
+        if: ${{ hashFiles('apps/web/package.json') != '' }}
+        working-directory: apps/web
         run: |
           if [ -f package-lock.json ]; then
             npm ci
           else
             npm install
           fi
-          npm test --if-present
+          npm test
