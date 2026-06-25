@@ -76,3 +76,11 @@ Current entries:
 - Do not start large downloads or Ellipse merges without showing an estimated source size and merged-export size first.
 - Cross-contamination note: ambiguous filenames make it hard to identify which customer/site/link a saved terrain bundle belongs to later. Missing size warnings also make whole-region merges look safe when they can be tens or hundreds of GB.
 - Recovery: expose a user-entered job/file name, default blank names by geometry (`siteA_siteB_link_Xkm_150m_corridor_1m_merge`, `circle_Xkm_diameter_1m_merge`, `rectangle_Xkm_Ykm_1m_merge`), return estimate fields from preview/download APIs, and require confirmation for large estimated downloads/exports.
+
+## 2026-06-26 - Leaflet data provider picklist
+
+- Do not rewrite, simplify, or refactor the Leaflet data provider picklist unless the change is essential for adding a new provider/region or fixing a proven provider-selection bug.
+- Do not remove the `input` plus `change` event handling or the provider value monitor; browser/select event behavior already regressed once and the monitor is intentional.
+- Do not let provider selection drift from coverage overlay filtering or dataset checkbox filtering. Selecting NRW must hide LGLN coverage and remove datasets NRW does not support.
+- Cross-contamination note: unrelated UI/cache/export changes repeatedly broke provider selection even when the dropdown still looked visually correct.
+- Recovery: keep provider selection behind the tested `provider-selection.js` seam and extend `provider-selection.check.js` before changing provider behavior.
