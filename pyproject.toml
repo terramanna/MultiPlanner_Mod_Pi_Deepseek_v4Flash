@@ -1,0 +1,29 @@
+# Repo-root Python project.
+#
+# This file exists so the CI "Run Python project checks" step (gated on a root
+# pyproject.toml) comes alive and runs the pytest suite for the repo's tooling
+# scripts -- chiefly scripts/check_file_size_policy.py, whose hand-rolled JS
+# tokenizer and Python/JS logical-line counters are the subtlest logic in the
+# repo and previously had zero automated tests.
+#
+# It deliberately installs no importable package: `pip install -e .` succeeds as
+# a near no-op so the CI step's editable install works, while the per-component
+# apps (apps/api) keep their own pyproject.toml and dependency sets. No
+# [tool.pytest.ini_options] is set here on purpose -- a global `testpaths` would
+# silently redirect a bare `pytest` run inside apps/api; CI and docs target
+# `scripts/tests` explicitly instead.
+[project]
+name = "multiplanner-repo-tools"
+version = "0"
+description = "Repo-root config that enables pytest for the tooling scripts."
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# No importable top-level package at the repo root; declaring an empty list
+# keeps setuptools' flat-layout auto-discovery from trying (and failing on) the
+# many top-level directories.
+packages = []

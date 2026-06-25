@@ -52,9 +52,11 @@ def staged_files() -> list[str]:
 
 def should_check(path: str) -> bool:
     candidate = PurePosixPath(path)
+    # Match against the full filename, not ``.suffix``: ``.min.js`` has suffix
+    # ``.js`` (a source suffix), so a plain suffix check would never exclude it.
     return (
         candidate.name not in EXCLUDED_FILENAMES
-        and candidate.suffix not in EXCLUDED_SUFFIXES
+        and not candidate.name.endswith(tuple(EXCLUDED_SUFFIXES))
         and not any(part in EXCLUDED_PATH_PARTS for part in candidate.parts)
         and candidate.suffix in SOURCE_SUFFIXES
     )
