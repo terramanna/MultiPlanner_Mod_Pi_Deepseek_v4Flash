@@ -9,6 +9,7 @@ import { retryUntilReady } from "./bootstrap-retry.js";
 import { chooseDownloadDirectory, saveSubsetPayloadToDirectory } from "./download-save.js";
 import { renderPrototypeShell } from "./leaflet-prototype-shell.js";
 import { loadProviderCoverageCache, saveProviderCoverageCache } from "./provider-coverage-cache.js";
+import { applyProviderSelection, coverageShouldShow } from "./provider-selection.js";
 import {
   apiGeometry,
   buildSelectionName,
@@ -144,13 +145,8 @@ document.getElementById("clearButton").addEventListener("click", clearSelection)
 openDownloadFolderButton.addEventListener("click", openLastDownloadedFolder);
 document.getElementById("previousVariant").addEventListener("click", () => switchVariant(-1));
 document.getElementById("nextVariant").addEventListener("click", () => switchVariant(1));
-providerSelect.addEventListener("change", () => {
-  state.provider = providerSelect.value;
-  const provider = state.providers.find((entry) => entry.name === state.provider);
-  renderDatasetChoices(provider?.datasets || []);
-  updateCoverageOverlay();
-  tileList.innerHTML = "";
-});
+providerSelect.addEventListener("input", handleProviderSelection);
+providerSelect.addEventListener("change", handleProviderSelection);
 coverageToggle.addEventListener("change", updateCoverageOverlay);
 
 function configureVariant() {
@@ -312,9 +308,22 @@ function populateProviderSelect(providers) {
   if (!providers.some((provider) => provider.name === state.provider)) {
     state.provider = providers[0]?.name || "";
   }
-  providerSelect.value = state.provider;
-  renderDatasetChoices(providers.find((provider) => provider.name === state.provider)?.datasets || []);
-  updateCoverageOverlay();
+  syncProviderSelection(false);
+}
+
+function handleProviderSelection() {
+  syncProviderSelection(true);
+}
+
+function syncProviderSelection(clearTiles) {
+  applyProviderSelection({
+    state,
+    providerSelect,
+    providers: state.providers,
+    renderDatasetChoices,
+    updateCoverageOverlay,
+    clearTiles: clearTiles ? () => { tileList.innerHTML = ""; } : null,
+  });
 }
 
 async function searchPlaces() {
@@ -563,7 +572,7 @@ function applyProviderCoverage(featuresByProvider) {
 
 function updateCoverageOverlay() {
   for (const [provider, layer] of Object.entries(state.coverageLayers)) {
-    const shouldShow = coverageToggle.checked && (state.provider === "auto" || provider === state.provider);
+    const shouldShow = coverageShouldShow(state.provider, provider, coverageToggle.checked);
     if (shouldShow && !map.hasLayer(layer)) layer.addTo(map);
     if (!shouldShow && map.hasLayer(layer)) map.removeLayer(layer);
   }
