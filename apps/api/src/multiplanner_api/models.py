@@ -51,7 +51,7 @@ class CorridorGeometryInput(BaseModel):
     from_lat: float
     to_lon: float
     to_lat: float
-    buffer_m: float = 50.0
+    buffer_m: float = 150.0
 
 
 class LocateSubsetRequest(BaseModel):
@@ -70,15 +70,21 @@ class TileSummary(BaseModel):
 
 
 class DatasetSubsetResult(BaseModel):
+    provider: str | None = None
     dataset: str
     match_count: int
     tiles: list[TileSummary]
+    estimated_source_bytes: int = 0
+    estimated_ellipse_bytes: int = 0
 
 
 class LocateSubsetResponse(BaseModel):
     provider: str
     geometry_kind: str
     results: list[DatasetSubsetResult]
+    warnings: list[str] = []
+    total_estimated_source_bytes: int = 0
+    total_estimated_ellipse_bytes: int = 0
 
 
 class DownloadSubsetRequest(LocateSubsetRequest):
@@ -87,6 +93,7 @@ class DownloadSubsetRequest(LocateSubsetRequest):
 
 
 class DownloadedFile(BaseModel):
+    provider: str
     dataset: str
     tile_id: str | None = None
     source_url: str
@@ -101,3 +108,10 @@ class DownloadSubsetResponse(BaseModel):
     file_count: int
     files: list[DownloadedFile]
     exports: list[str] = []
+    warnings: list[str] = []
+    total_estimated_source_bytes: int = 0
+    total_estimated_ellipse_bytes: int = 0
+
+
+class OpenFolderRequest(BaseModel):
+    path: str

@@ -140,9 +140,9 @@ def locate_remote_tiles(
         return locate_nrw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
 
     config = _dataset_config(provider, dataset)
-    response = requests.get(
+    response = requests.post(
         config["query_url"],
-        params=_query_params(geometry=geometry, geometry_type=geometry_type),
+        data=_query_params(geometry=geometry, geometry_type=geometry_type),
         timeout=timeout,
     )
     response.raise_for_status()
@@ -171,15 +171,19 @@ def summarize_remote_tiles(
         geometry_type=geometry_type,
         timeout=timeout,
     ):
-        summary = {
-            "provider": provider,
-            "dataset": dataset,
-            "tile_id": attrs.get("tile_id"),
-            "updated": attrs.get("Aktualitaet"),
-            "primary_url": attrs.get(config["primary_url_field"]),
-        }
-        for field in config["url_fields"]:
-            if field in attrs:
-                summary[field] = attrs[field]
-        summaries.append(summary)
+        summaries.append(_tile_summary(provider, dataset, attrs, config))
     return summaries
+
+
+def _tile_summary(provider: str, dataset: str, attrs: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
+    summary = {
+        "provider": provider,
+        "dataset": dataset,
+        "tile_id": attrs.get("tile_id"),
+        "updated": attrs.get("Aktualitaet"),
+        "primary_url": attrs.get(config["primary_url_field"]),
+    }
+    for field in config["url_fields"]:
+        if field in attrs:
+            summary[field] = attrs[field]
+    return summary

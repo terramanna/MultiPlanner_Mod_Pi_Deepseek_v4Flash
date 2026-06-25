@@ -15,10 +15,19 @@ Current scaffold:
 - `POST /api/v1/subsets/download`
 
 The current download endpoint saves matching source tiles to the local cache.
+With `export_profile: "ellipse_grd"`, it writes DEM layers as Northwood Numeric
+Grid `.grd` files plus MapInfo `.TAB` sidecars, and imagery layers as GeoTIFF
+`.tif` files plus MapInfo `.TAB` sidecars under `<selection>/utm32_grd/`.
 With `export_profile: "ellipse_mapinfo_tab"`, it also attempts a per-dataset
 GeoTIFF merge, reprojects it to WGS 84 / UTM zone 32N (`EPSG:32632`), and
 writes the GeoTIFF plus MapInfo `.TAB` sidecar to `<selection>/utm32/` for
 Ellipse/MapInfo import.
+The `ellipse_grd` path uses GDAL's `NWT_GRD` driver for the `DGM1` and `DOM1`
+`.grd` outputs. Ellipse rejected the ASCII `.grd` variant in manual import
+tests.
+The UTM 32N target is intentional for Ellipse compatibility: Ellipse projects
+used by this workflow expect one projection, and UTM 33N exports are not loaded
+properly even when they would be geographically reasonable.
 This requires GDAL tools from the local Ellipse installation.
 
 The search endpoint accepts direct coordinates locally and otherwise forwards
