@@ -5,5 +5,30 @@
   "python.testing.pytestArgs": [
     "apps/api/tests"
   ],
-  "terminal.integrated.cwd": "${workspaceFolder}"
+  "terminal.integrated.cwd": "${workspaceFolder}",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "args": [
+        "-NoExit",
+        "-Command",
+        "& '${workspaceFolder}\\.venv\\Scripts\\Activate.ps1'"
+      ]
+    },
+    "Command Prompt": {
+      "path": "cmd.exe",
+      "args": [
+        "/K",
+        "${workspaceFolder}\\.venv\\Scripts\\activate.bat"
+      ]
+    },
+    "Bash": {
+      "path": "H:\\Portable_Apps\\VSCodePortable-x64\\PortableGit\\bin\\bash.exe",
+      "args": [
+        "--init-file",
+        ".venv/Scripts/activate"
+      ]
+    }
+  },
+  "terminal.integrated.defaultProfile.windows": "PowerShell"
 }
