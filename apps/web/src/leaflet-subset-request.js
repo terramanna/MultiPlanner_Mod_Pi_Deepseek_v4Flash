@@ -20,13 +20,18 @@ export async function requestLeafletSubset(context, download) {
     const rootDirectoryHandle = download ? await prepareSubsetDownload(context, body) : null;
     if (download && !rootDirectoryHandle) return;
     await submitSubsetRequest(context, download, body, rootDirectoryHandle);
-  } catch (_error) {
-    setStatus(context, download ? "Download/export failed." : "Subset lookup failed.");
+  } catch (error) {
+    setStatus(context, failureStatus(download, error));
   }
 }
 
 function setStatus(context, message) {
   context.downloadStatus.textContent = message;
+}
+
+function failureStatus(download, error) {
+  const prefix = download ? "Download/export failed" : "Subset lookup failed";
+  return error?.message ? `${prefix}: ${error.message}` : `${prefix}.`;
 }
 
 function buildSubsetRequestBody(context, download, geometry, datasets) {
@@ -56,16 +61,25 @@ function setCancelled(context) {
 
 async function fetchSubsetPreview(context, body) {
   const response = await postJson(context, "/api/v1/subsets/locate", body);
-  if (!response.ok) throw new Error("Subset preview failed");
+  if (!response.ok) throw new Error(await errorDetail(response, "Subset preview failed"));
   return response.json();
 }
 
 async function submitSubsetRequest(context, download, body, rootDirectoryHandle) {
   const endpoint = download ? "/api/v1/subsets/download" : "/api/v1/subsets/locate";
   const response = await postJson(context, endpoint, body);
-  if (!response.ok) throw new Error("Subset request failed");
+  if (!response.ok) throw new Error(await errorDetail(response, "Subset request failed"));
   const payload = await response.json();
   return download ? handleDownloadSubset(context, body, payload, rootDirectoryHandle) : handlePreviewSubset(context, payload);
+}
+
+async function errorDetail(response, fallback) {
+  try {
+    const payload = await response.json();
+    return payload.detail || fallback;
+  } catch (_error) {
+    return fallback;
+  }
 }
 
 function postJson(context, endpoint, body) {

@@ -8,12 +8,14 @@ from pathlib import Path
 import re
 import time
 from typing import Any
+import warnings
 from xml.etree import ElementTree
 
 import requests
 from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box
 from shapely.ops import transform
+from urllib3.exceptions import InsecureRequestWarning
 
 from multiplanner_api.config import load_settings
 
@@ -65,12 +67,25 @@ def load_index(dataset: str, config: dict[str, Any], *, timeout: int) -> dict[tu
     path = index_path(dataset)
     if path.exists() and time.time() - path.stat().st_mtime < CACHE_MAX_AGE_SECONDS:
         return decode_index(json.loads(path.read_text(encoding="utf-8")))
-    response = requests.get(config["catalog_url"], timeout=timeout)
+    response = _get_catalog(config["catalog_url"], timeout)
     response.raise_for_status()
     index = parse_catalog(response.text, config["base_url"])
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(encode_index(index), separators=(",", ":")), encoding="utf-8")
     return index
+
+
+def _get_catalog(url: str, timeout: int):
+    try:
+        return requests.get(url, timeout=timeout, verify=True)
+    except requests.exceptions.SSLError:
+        warnings.warn(
+            f"SSL verification failed for {url}; retrying without certificate verification.",
+            stacklevel=2,
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", InsecureRequestWarning)
+            return requests.get(url, timeout=timeout, verify=False)
 
 
 def index_path(dataset: str) -> Path:

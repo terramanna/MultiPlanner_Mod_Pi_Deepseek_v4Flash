@@ -127,6 +127,16 @@ def test_auto_locate_keeps_other_provider_when_one_dataset_fails(monkeypatch) ->
     assert any("lgln-ni/dgm1 failed" in warning for warning in response.warnings)
 
 
+def test_subset_route_returns_provider_lookup_detail(monkeypatch) -> None:
+    def fail_lookup(*_args, **_kwargs):
+        raise requests.exceptions.ConnectionError("catalog unavailable")
+
+    monkeypatch.setattr("multiplanner_api.subsets.summarize_remote_tiles", fail_lookup)
+    response = client.post("/api/v1/subsets/locate", json=point_payload())
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Provider lookup failed for lgln-ni/dgm1: catalog unavailable"
+
+
 def test_cached_file_endpoint_serves_files_within_cache_root(monkeypatch, tmp_path) -> None:
     cache_root = tmp_path / "cache"
     target = cache_root / "saved_subsets" / "demo" / "dgm1" / "tile-a.tif"

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import requests
+
 from multiplanner_api.models import (
     BboxGeometryInput,
     CorridorGeometryInput,
@@ -95,12 +97,15 @@ def _build_dataset_subset_result(
     geometry: str,
     geometry_type: str,
 ) -> DatasetSubsetResult:
-    matches = summarize_remote_tiles(
-        provider,
-        dataset,
-        geometry=geometry,
-        geometry_type=geometry_type,
-    )
+    try:
+        matches = summarize_remote_tiles(
+            provider,
+            dataset,
+            geometry=geometry,
+            geometry_type=geometry_type,
+        )
+    except requests.exceptions.RequestException as exc:
+        raise ValueError(f"Provider lookup failed for {provider}/{dataset}: {exc}") from exc
     tiles = [_build_tile_summary(match) for match in matches]
     return DatasetSubsetResult(
         provider=provider,

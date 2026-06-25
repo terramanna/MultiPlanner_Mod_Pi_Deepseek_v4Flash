@@ -36,6 +36,6 @@ await requestLeafletSubset(okContext, false);
 assert.match(okContext.downloadStatus.textContent, /geobasis-nrw\/dgm1: 1 tiles/);
 assert.match(okContext.document.tileList.innerHTML, /tile-a/);
 
-const failContext = baseContext({ ok: false, json: async () => ({}) });
+const failContext = baseContext({ ok: false, json: async () => ({ detail: "Provider lookup failed for geobasis-nrw/dgm1: catalog unavailable" }) });
 await requestLeafletSubset(failContext, false);
-assert.equal(failContext.downloadStatus.textContent, "Subset lookup failed.");
+assert.equal(failContext.downloadStatus.textContent, "Subset lookup failed: Provider lookup failed for geobasis-nrw/dgm1: catalog unavailable");

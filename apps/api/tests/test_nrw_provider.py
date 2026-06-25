@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+import requests
 from shapely.geometry import Point
 
 from multiplanner_api.nrw import load_index, parse_catalog, tile_coordinates
@@ -47,3 +48,22 @@ def test_catalogue_index_is_cached_until_its_refresh_is_due(monkeypatch, tmp_pat
 
     assert first == second
     assert len(requests) == 1
+
+
+def test_catalogue_index_retries_without_ssl_verification(monkeypatch, tmp_path) -> None:
+    verify_values = []
+
+    def get_catalog(*_args, **kwargs):
+        verify_values.append(kwargs["verify"])
+        if kwargs["verify"]:
+            raise requests.exceptions.SSLError("certificate verify failed")
+        return SimpleNamespace(text=CATALOG, raise_for_status=lambda: None)
+
+    monkeypatch.setenv("MULTIPLANNER_CACHE_ROOT", str(tmp_path))
+    monkeypatch.setattr("multiplanner_api.nrw.requests.get", get_catalog)
+    config = SERVICE_PROVIDERS["geobasis-nrw"]["datasets"]["dgm1"]
+
+    index = load_index("dgm1", config, timeout=1)
+
+    assert verify_values == [True, False]
+    assert index[(395, 5798)]["version"] == "2024"
