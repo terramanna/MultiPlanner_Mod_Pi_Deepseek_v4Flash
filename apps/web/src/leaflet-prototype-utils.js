@@ -66,28 +66,46 @@ export function detectProviderTokens(geometry, state, providerCoverage) {
 export function buildSelectionName(geometry, state, map, jobNameInput, providerCoverage) {
   const typedName = jobNameInput.value.trim();
   if (typedName) return slugName(typedName);
+  const region = regionToken(geometry, state, providerCoverage);
+  return slugName(selectionNameBody(geometry, state, map, region));
+}
+
+export function regionToken(geometry, state, providerCoverage) {
   const tokens = detectProviderTokens(geometry, state, providerCoverage);
-  const region = tokens.length ? `_${tokens.join("_")}` : "";
+  return tokens.length ? `_${tokens.join("_")}` : "";
+}
+
+export function selectionNameBody(geometry, state, map, region) {
   if (geometry.kind === "corridor" && state.siteA && state.siteB) {
-    const lengthKm = map.distance([state.siteA.lat, state.siteA.lon], [state.siteB.lat, state.siteB.lon]) / 1000;
-    const totalWidthToken = formatDimensionToken((geometry.buffer_m || 150) * 2);
-    return slugName(`siteA_siteB_link_${formatKmToken(lengthKm)}_${totalWidthToken}_corridor${region}_1m_merge`);
+    return corridorNameBody(geometry, state, map, region);
   }
   if (geometry.kind === "point") {
-    return slugName(`point_${coordinateToken(geometry.lat, geometry.lon)}${region}_1m_merge`);
+    return `point_${coordinateToken(geometry.lat, geometry.lon)}${region}_1m_merge`;
   }
   if (geometry.kind === "bbox") {
-    const widthM = distanceMeters(map, geometry.north, geometry.west, geometry.north, geometry.east);
-    const heightM = distanceMeters(map, geometry.north, geometry.west, geometry.south, geometry.west);
-    return slugName(`rectangle_${formatDimensionToken(widthM)}_${formatDimensionToken(heightM)}${region}_1m_merge`);
-  }
-  if (geometry.kind === "polygon" && geometry.name_hint) {
-    return slugName(`${geometry.name_hint}${region}_1m_merge`);
+    return bboxNameBody(geometry, map, region);
   }
   if (geometry.kind === "polygon") {
-    return slugName(`polygon_${formatDimensionToken(estimatedPolygonDiameterM(map, geometry.coordinates))}${region}_diameter_1m_merge`);
+    return polygonNameBody(geometry, map, region);
   }
-  return slugName(`${geometry.kind}${region}_1m_merge`);
+  return `${geometry.kind}${region}_1m_merge`;
+}
+
+export function corridorNameBody(geometry, state, map, region) {
+  const lengthKm = map.distance([state.siteA.lat, state.siteA.lon], [state.siteB.lat, state.siteB.lon]) / 1000;
+  const totalWidthToken = formatDimensionToken((geometry.buffer_m || 150) * 2);
+  return `siteA_siteB_link_${formatKmToken(lengthKm)}_${totalWidthToken}_corridor${region}_1m_merge`;
+}
+
+export function bboxNameBody(geometry, map, region) {
+  const widthM = distanceMeters(map, geometry.north, geometry.west, geometry.north, geometry.east);
+  const heightM = distanceMeters(map, geometry.north, geometry.west, geometry.south, geometry.west);
+  return `rectangle_${formatDimensionToken(widthM)}_${formatDimensionToken(heightM)}${region}_1m_merge`;
+}
+
+export function polygonNameBody(geometry, map, region) {
+  if (geometry.name_hint) return `${geometry.name_hint}${region}_1m_merge`;
+  return `polygon_${formatDimensionToken(estimatedPolygonDiameterM(map, geometry.coordinates))}${region}_diameter_1m_merge`;
 }
 
 export function apiGeometry(geometry) {
