@@ -7,6 +7,7 @@ import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
 import "./leaflet-prototype.css";
 import { retryUntilReady } from "./bootstrap-retry.js";
 import { chooseDownloadDirectory, saveSubsetPayloadToDirectory } from "./download-save.js";
+import { clearLeafletSelection } from "./leaflet-selection.js";
 import { renderPrototypeShell } from "./leaflet-prototype-shell.js";
 import { loadProviderCoverageCache, saveProviderCoverageCache } from "./provider-coverage-cache.js";
 import { applyProviderSelection, coverageShouldShow } from "./provider-selection.js";
@@ -143,7 +144,7 @@ searchInput.addEventListener("keydown", (event) => {
 });
 document.getElementById("locateButton").addEventListener("click", () => requestSubset(false));
 document.getElementById("downloadButton").addEventListener("click", () => requestSubset(true));
-document.getElementById("clearButton").addEventListener("click", clearSelection);
+document.getElementById("clearButton").addEventListener("click", () => clearLeafletSelection({ state, map, redrawGeometry, refreshReadout, downloadStatus, tileList }));
 openDownloadFolderButton.addEventListener("click", openLastDownloadedFolder);
 document.getElementById("previousVariant").addEventListener("click", () => switchVariant(-1));
 document.getElementById("nextVariant").addEventListener("click", () => switchVariant(1));
