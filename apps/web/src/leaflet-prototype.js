@@ -84,6 +84,7 @@ const state = {
 };
 
 const bootstrapAbortController = new AbortController();
+const providerSelectionMonitor = window.setInterval(monitorProviderSelection, 250);
 
 const placementActions = document.getElementById("placementActions");
 const searchInput = document.getElementById("searchInput");
@@ -108,6 +109,7 @@ loadProviderCoverage();
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     bootstrapAbortController.abort();
+    window.clearInterval(providerSelectionMonitor);
   });
 }
 
@@ -148,6 +150,12 @@ document.getElementById("nextVariant").addEventListener("click", () => switchVar
 providerSelect.addEventListener("input", handleProviderSelection);
 providerSelect.addEventListener("change", handleProviderSelection);
 coverageToggle.addEventListener("change", updateCoverageOverlay);
+
+function monitorProviderSelection() {
+  if (state.providers.length && providerSelect.value !== state.provider) {
+    syncProviderSelection(true);
+  }
+}
 
 function configureVariant() {
   const help = document.getElementById("modeHelp");
@@ -312,6 +320,7 @@ function populateProviderSelect(providers) {
 }
 
 function handleProviderSelection() {
+  if (!state.providers.length) return;
   syncProviderSelection(true);
 }
 
