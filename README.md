@@ -81,19 +81,23 @@ Or use the helper script:
 Windows one-click launcher:
 
 ```powershell
-.\Start MultiPlanner.bat
+.\Start_MultiPlanner.bat
 ```
+
+This opens a small service widget instead of raw command windows. Green means
+the backend or frontend is responding, yellow means the service is starting,
+orange means the process is alive but unhealthy, and red means it is stopped.
 
 Windows stop script:
 
 ```powershell
-.\Stop MultiPlanner.bat
+.\Stop_MultiPlanner.bat
 ```
 
 Windows restart script:
 
 ```powershell
-.\Restart MultiPlanner.bat
+.\Restart_MultiPlanner.bat
 ```
 
 VS Code is configured to use `.\.venv` automatically for this workspace.

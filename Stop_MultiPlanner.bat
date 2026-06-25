@@ -1,31 +1,16 @@
 @echo off
 setlocal
 
-call :kill_port 5173 "frontend"
-call :kill_port 8000 "backend"
+set "REPO_ROOT=%~dp0"
+set "PYTHON=%REPO_ROOT%.venv\Scripts\python.exe"
+set "PYTHONW=%REPO_ROOT%.venv\Scripts\pythonw.exe"
 
+if not exist "%PYTHONW%" (
+  echo Missing virtual environment: "%REPO_ROOT%\.venv"
+  echo Run scripts\bootstrap_local.ps1 first.
+  exit /b 1
+)
+
+call "%PYTHONW%" "%REPO_ROOT%scripts\multiplanner_status_widget.py" --stop-services
 echo MultiPlanner stop sequence finished.
-exit /b 0
-
-:kill_port
-set "PORT=%~1"
-set "LABEL=%~2"
-set "PID="
-
-for /f "tokens=5" %%P in ('netstat -ano ^| findstr ":%PORT%" ^| findstr "LISTENING"') do (
-  set "PID=%%P"
-  goto :kill_found
-)
-
-echo No %LABEL% listener found on port %PORT%.
-exit /b 0
-
-:kill_found
-echo Stopping %LABEL% on port %PORT% ^(PID %PID%^)^...
-taskkill /PID %PID% /T /F >nul 2>&1
-if errorlevel 1 (
-  echo Failed to stop PID %PID% on port %PORT%.
-) else (
-  echo Stopped %LABEL% on port %PORT%.
-)
-exit /b 0
+exit /b %ERRORLEVEL%
