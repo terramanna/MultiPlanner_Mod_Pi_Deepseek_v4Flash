@@ -128,6 +128,7 @@ class Service:
         self.cwd = cwd
         self.process: subprocess.Popen[str] | None = None
         self.last_error = ""
+        self.display_state: str | None = None
         self.port = self._parse_port(url)
         self.commandline_marker = self._commandline_marker(name)
 
@@ -146,6 +147,7 @@ class Service:
         self.remember_pid(self.process.pid)
 
     def stop(self) -> bool:
+        self.display_state = "stopping"
         for _ in range(8):
             pids = self.pids_to_stop()
             if not pids:
@@ -158,8 +160,14 @@ class Service:
             return False
         self.last_error = ""
         self.process = None
+        self.display_state = None
         self.forget_pid()
         return True
+
+    def effective_state(self) -> str:
+        if self.display_state:
+            return self.display_state
+        return self.health()
 
     def pids_to_stop(self) -> list[int]:
         pids = []
@@ -371,6 +379,7 @@ class StatusWidget(tk.Tk):
     colors = {
         "running": "#16a34a",
         "starting": "#eab308",
+        "stopping": "#f59e0b",
         "problem": "#f97316",
         "stopped": "#dc2626",
     }
@@ -378,6 +387,7 @@ class StatusWidget(tk.Tk):
     labels = {
         "running": "Running",
         "starting": "Starting",
+        "stopping": "Stopping",
         "problem": "Problem",
         "stopped": "Stopped",
     }
@@ -458,11 +468,15 @@ class StatusWidget(tk.Tk):
     def start_all(self) -> None:
         if not self.validate_environment():
             return
+        for service in self.services:
+            service.display_state = None
         self._stop_requested = False
         self._run_background(self._start_services_worker, "Services are starting.")
 
     def stop_all(self) -> None:
         self._stop_requested = True
+        for service in self.services:
+            service.display_state = "stopping"
         self.message.configure(text="Stopping services...")
         threading.Thread(target=self._stop_services_worker_with_refresh, daemon=True).start()
 
@@ -503,11 +517,15 @@ class StatusWidget(tk.Tk):
 
     def _stop_services_worker_with_refresh(self) -> None:
         self._stop_services_worker()
+        for service in self.services:
+            service.display_state = None
         self.after(0, self.refresh_status)
 
     def _restart_services_worker(self) -> None:
         self._stop_services_worker()
         wait_for_services_to_stop(self.services, timeout=12.0)
+        for service in self.services:
+            service.display_state = None
         self._stop_requested = False
         self._start_services_worker()
 
@@ -521,7 +539,7 @@ class StatusWidget(tk.Tk):
     def _refresh_status_worker(self) -> None:
         snapshot = []
         for service in self.services:
-            snapshot.append((service.name, service.health(), service.last_error))
+            snapshot.append((service.name, service.effective_state(), service.last_error))
         self.after(0, lambda: self._apply_refresh_snapshot(snapshot))
 
     def _apply_refresh_snapshot(self, snapshot: list[tuple[str, str, str]]) -> None:
@@ -537,6 +555,9 @@ class StatusWidget(tk.Tk):
 
         if problems:
             self.message.configure(text="; ".join(problems))
+        elif any(state == "stopping" for state in states):
+            stopping = ", ".join(service_name for service_name, state, _ in snapshot if state == "stopping")
+            self.message.configure(text=f"{stopping} stopping...")
         elif any(state == "starting" for state in states):
             starting = ", ".join(service_name for service_name, state, _ in snapshot if state == "starting")
             self.message.configure(text=f"{starting} starting...")

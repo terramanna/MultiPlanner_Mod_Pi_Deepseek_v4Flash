@@ -109,18 +109,34 @@ def test_stop_terminates_own_launcher_handle_first(monkeypatch):
     assert terminated == [True]
 
 
+def test_effective_state_uses_display_override(monkeypatch):
+    module = load_widget_module()
+    service = module.Service(
+        name="Frontend",
+        url="http://127.0.0.1:5173",
+        command=["npm.cmd", "run", "dev"],
+        cwd=Path("."),
+    )
+    service.display_state = "stopping"
+    monkeypatch.setattr(service, "health", lambda: "running")
+
+    assert service.effective_state() == "stopping"
+
+
 def test_status_lamp_mapping_is_stable():
     module = load_widget_module()
 
     assert module.StatusWidget.colors == {
         "running": "#16a34a",
         "starting": "#eab308",
+        "stopping": "#f59e0b",
         "problem": "#f97316",
         "stopped": "#dc2626",
     }
     assert module.StatusWidget.labels == {
         "running": "Running",
         "starting": "Starting",
+        "stopping": "Stopping",
         "problem": "Problem",
         "stopped": "Stopped",
     }
