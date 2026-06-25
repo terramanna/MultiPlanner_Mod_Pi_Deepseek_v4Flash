@@ -8,6 +8,7 @@ import "./leaflet-prototype.css";
 import { retryUntilReady } from "./bootstrap-retry.js";
 import { chooseDownloadDirectory, saveSubsetPayloadToDirectory } from "./download-save.js";
 import { clearLeafletSelection } from "./leaflet-selection.js";
+import { bindPersistedInput } from "./persisted-input.js";
 import { renderPrototypeShell } from "./leaflet-prototype-shell.js";
 import { loadProviderCoverageCache, saveProviderCoverageCache } from "./provider-coverage-cache.js";
 import { applyProviderSelection, coverageShouldShow } from "./provider-selection.js";
@@ -101,6 +102,7 @@ const measurementReadout = document.getElementById("measurementReadout");
 const coverageToggle = document.getElementById("coverageToggle");
 const openFolderAfterDownload = document.getElementById("openFolderAfterDownload");
 const openDownloadFolderButton = document.getElementById("btnOpenDownloadFolder");
+bindPersistedInput(searchInput, "multiplanner.leaflet.searchInput");
 
 configureVariant();
 refreshReadout();
