@@ -83,7 +83,7 @@ async function errorDetail(response, fallback) {
 }
 
 function postJson(context, endpoint, body) {
-  return context.fetch(`${context.apiBaseUrl}${endpoint}`, {
+  return context.fetch.call(globalThis, `${context.apiBaseUrl}${endpoint}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -118,7 +118,7 @@ function handlePreviewSubset(context, payload) {
 }
 
 function openDownloadedOutputFolder(apiBaseUrl, outputDir, fetchFn) {
-  return fetchFn(`${apiBaseUrl}/api/v1/subsets/open-folder`, {
+  return fetchFn.call(globalThis, `${apiBaseUrl}/api/v1/subsets/open-folder`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: outputDir }),

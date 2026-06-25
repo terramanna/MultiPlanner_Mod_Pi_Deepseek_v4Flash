@@ -39,3 +39,11 @@ assert.match(okContext.document.tileList.innerHTML, /tile-a/);
 const failContext = baseContext({ ok: false, json: async () => ({ detail: "Provider lookup failed for geobasis-nrw/dgm1: catalog unavailable" }) });
 await requestLeafletSubset(failContext, false);
 assert.equal(failContext.downloadStatus.textContent, "Subset lookup failed: Provider lookup failed for geobasis-nrw/dgm1: catalog unavailable");
+
+const boundContext = baseContext({ ok: true, json: async () => previewPayload() });
+boundContext.fetch = async function () {
+  assert.equal(this, globalThis);
+  return { ok: true, json: async () => previewPayload() };
+};
+await requestLeafletSubset(boundContext, false);
+assert.match(boundContext.downloadStatus.textContent, /geobasis-nrw\/dgm1: 1 tiles/);
