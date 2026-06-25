@@ -4,8 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1 --port 5173",
-    "build": "vite build",
+    "test": "node tests/bootstrap-retry.check.js && node tests/provider-coverage-cache.check.js",
+    "dev": "vite --host 127.0.0.1 --port 5173 --configLoader native",
+    "build": "vite build --configLoader native",
     "preview": "vite preview --host 127.0.0.1 --port 4173"
   },
   "dependencies": {
