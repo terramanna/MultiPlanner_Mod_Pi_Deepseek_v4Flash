@@ -1,0 +1,18 @@
+# Repo-wide ruff config.
+#
+# The complexity gate below is the real "reviewability" metric behind the
+# function-size rule in AGENTS.md. The 50-line function cap in
+# scripts/check_file_size_policy.py is the coarse backstop; cyclomatic
+# complexity is what actually predicts how hard a function is to review.
+#
+# Scope is intentionally narrow: only C901 is selected, so this gates
+# complexity without turning into a full lint sweep. Broaden later if wanted.
+
+target-version = "py311"
+extend-exclude = [".tmp_fcb_remote"]
+
+[lint]
+select = ["C901"]
+
+[lint.mccabe]
+max-complexity = 10

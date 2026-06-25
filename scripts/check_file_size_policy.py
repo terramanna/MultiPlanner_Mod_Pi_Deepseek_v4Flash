@@ -1,4 +1,14 @@
-"""Reject oversized source files before they become maintenance hazards."""
+"""Reject oversized source files before they become maintenance hazards.
+
+Two refinements over a naive line cap:
+
+- Python functions are measured in *logical* lines: blank lines, comment-only
+  lines, and the docstring are excluded, so documenting a function the way the
+  engineering rules ask for never pushes it over budget.
+- A pre-warning fires in the last ``WARN_RATIO`` band of either budget, so you
+  see "approaching budget" while you can still act, not only the post-hoc
+  "already over budget" at commit time.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +21,11 @@ from pathlib import Path, PurePosixPath
 
 
 MAX_LINES = 600
-MAX_FUNCTION_LINES = 30
+MAX_FUNCTION_LINES = 50
+# Warn before the budget is blown, not after. 0.8 => warn across the last 20%.
+WARN_RATIO = 0.8
+FILE_WARN_LINES = int(MAX_LINES * WARN_RATIO)
+FUNCTION_WARN_LINES = int(MAX_FUNCTION_LINES * WARN_RATIO)
 SOURCE_SUFFIXES = {".js", ".py", ".ps1"}
 EXCLUDED_SUFFIXES = {".lock", ".min.js", ".map"}
 EXCLUDED_FILENAMES = {"package-lock.json", "npm-shrinkwrap.json"}
@@ -73,15 +87,40 @@ def working_tree_source_text(path: str) -> str:
     return Path(path).read_text(encoding="utf-8", errors="ignore")
 
 
-def python_function_spans(source: str) -> list[tuple[str, int, int]]:
-    spans: list[tuple[str, int, int]] = []
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
+def python_function_measures(source: str) -> list[tuple[str, int]]:
+    """Measure each Python function in logical lines (see module docstring)."""
+    lines = source.splitlines()
+    measures: list[tuple[str, int]] = []
+    for node in ast.walk(ast.parse(source)):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             end_lineno = getattr(node, "end_lineno", None)
             if end_lineno is not None:
-                spans.append((node.name, node.lineno, end_lineno))
-    return spans
+                measures.append((node.name, _python_logical_lines(node, lines, end_lineno)))
+    return measures
+
+
+def _python_logical_lines(node: ast.AST, lines: list[str], end_lineno: int) -> int:
+    doc_start, doc_end = _docstring_span(node)
+    count = 0
+    for lineno in range(node.lineno, end_lineno + 1):
+        if doc_start is not None and doc_start <= lineno <= doc_end:
+            continue
+        stripped = lines[lineno - 1].strip()
+        if stripped and not stripped.startswith("#"):
+            count += 1
+    return count
+
+
+def _docstring_span(node: ast.AST) -> tuple[int | None, int | None]:
+    body = getattr(node, "body", [])
+    first = body[0] if body else None
+    if (
+        isinstance(first, ast.Expr)
+        and isinstance(first.value, ast.Constant)
+        and isinstance(first.value.value, str)
+    ):
+        return first.lineno, getattr(first, "end_lineno", first.lineno)
+    return None, None
 
 
 def js_function_spans(source: str) -> list[tuple[str, int, int]]:
@@ -103,6 +142,11 @@ def js_function_spans(source: str) -> list[tuple[str, int, int]]:
             continue
         line_index += 1
     return spans
+
+
+def js_function_measures(source: str) -> list[tuple[str, int]]:
+    """Measure each JS function by raw span (blank/comment stripping is TODO)."""
+    return [(name, end - start + 1) for name, start, end in js_function_spans(source)]
 
 
 def _js_function_start(line: str):
@@ -135,7 +179,8 @@ def _js_function_end(lines: list[str], start_index: int) -> int | None:
     return None
 
 
-def _strip_js_comments_and_strings(line: str, state: dict[str, bool]) -> str:
+# Inherently branchy single-pass tokenizer; clearer as one function than split.
+def _strip_js_comments_and_strings(line: str, state: dict[str, bool]) -> str:  # noqa: C901
     cleaned: list[str] = []
     index = 0
     while index < len(line):
@@ -206,61 +251,102 @@ def _strip_js_comments_and_strings(line: str, state: dict[str, bool]) -> str:
     return "".join(cleaned)
 
 
-def function_violations(path: str, source: str) -> list[tuple[str, int]]:
+def function_findings(path: str, source: str) -> tuple[list[tuple[str, int]], list[tuple[str, int]]]:
+    """Return (violations, warnings) for the functions in *path*."""
     if path in FUNCTION_LENGTH_EXCLUDED_PATHS:
-        return []
+        return [], []
 
     suffix = PurePosixPath(path).suffix
     if suffix == ".py":
-        spans = python_function_spans(source)
+        measures = python_function_measures(source)
     elif suffix == ".js":
-        spans = js_function_spans(source)
+        measures = js_function_measures(source)
     else:
-        spans = []
+        measures = []
 
     violations: list[tuple[str, int]] = []
-    for name, start_line, end_line in spans:
-        line_count = end_line - start_line + 1
-        if line_count > MAX_FUNCTION_LINES:
-            violations.append((f"{path}:{name}", line_count))
-    return violations
+    warnings: list[tuple[str, int]] = []
+    for name, count in measures:
+        if count > MAX_FUNCTION_LINES:
+            violations.append((f"{path}:{name}", count))
+        elif count > FUNCTION_WARN_LINES:
+            warnings.append((f"{path}:{name}", count))
+    return violations, warnings
 
 
-def main() -> int:
+def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--staged", action="store_true")
     mode.add_argument("--all", action="store_true")
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+def collect(candidates: list[str], staged: bool):
+    """Bucket candidates into oversized/near-budget files and functions."""
     oversized: list[tuple[str, int]] = []
-    long_functions: list[tuple[str, int]] = []
-    candidates = staged_files() if args.staged else tracked_files()
+    file_warnings: list[tuple[str, int]] = []
+    func_violations: list[tuple[str, int]] = []
+    func_warnings: list[tuple[str, int]] = []
     for path in candidates:
-        if should_check(path):
-            lines = staged_line_count(path) if args.staged else working_tree_line_count(path)
-            if lines > MAX_LINES:
-                oversized.append((path, lines))
-            source = staged_source_text(path) if args.staged else working_tree_source_text(path)
-            long_functions.extend(function_violations(path, source))
-    if oversized:
-        print(f"Source files may not exceed {MAX_LINES} lines:", file=sys.stderr)
-        for path, lines in oversized:
-            print(f"  {path}: {lines}", file=sys.stderr)
-        print("Split the file or document and approve a narrowly scoped exception.", file=sys.stderr)
-        return 1
+        if not should_check(path):
+            continue
+        lines = staged_line_count(path) if staged else working_tree_line_count(path)
+        if lines > MAX_LINES:
+            oversized.append((path, lines))
+        elif lines > FILE_WARN_LINES:
+            file_warnings.append((path, lines))
+        source = staged_source_text(path) if staged else working_tree_source_text(path)
+        violations, warnings = function_findings(path, source)
+        func_violations.extend(violations)
+        func_warnings.extend(warnings)
+    return oversized, file_warnings, func_violations, func_warnings
 
-    if long_functions:
-        print(f"Functions may not exceed {MAX_FUNCTION_LINES} lines:", file=sys.stderr)
-        for path, lines in long_functions:
-            print(f"  {path}: {lines}", file=sys.stderr)
-        print("Extract helpers until each function fits under the limit.", file=sys.stderr)
+
+def _print_block(header: str, rows: list[tuple[str, int]], hint: str) -> None:
+    print(header, file=sys.stderr)
+    for label, value in rows:
+        print(f"  {label}: {value}", file=sys.stderr)
+    print(hint, file=sys.stderr)
+
+
+def main() -> int:
+    args = _parse_args()
+    candidates = staged_files() if args.staged else tracked_files()
+    oversized, file_warnings, func_violations, func_warnings = collect(candidates, args.staged)
+
+    if file_warnings:
+        _print_block(
+            f"Approaching the {MAX_LINES}-line file budget (warns at {FILE_WARN_LINES}):",
+            file_warnings,
+            "Plan the split now, before the next edit pushes it over.",
+        )
+    if func_warnings:
+        _print_block(
+            f"Approaching the {MAX_FUNCTION_LINES}-line function budget (warns at {FUNCTION_WARN_LINES}):",
+            func_warnings,
+            "Extract a helper soon to stay under budget.",
+        )
+    if oversized:
+        _print_block(
+            f"Source files may not exceed {MAX_LINES} lines:",
+            oversized,
+            "Split the file or document and approve a narrowly scoped exception.",
+        )
+    if func_violations:
+        _print_block(
+            f"Functions may not exceed {MAX_FUNCTION_LINES} lines:",
+            func_violations,
+            "Extract helpers until each function fits under the limit.",
+        )
+    if oversized or func_violations:
         return 1
 
     scope = "staged files" if args.staged else "tracked files"
-    print(
-        f"Checked {scope}. No file exceeds {MAX_LINES} lines and no function exceeds {MAX_FUNCTION_LINES} lines."
-    )
+    summary = f"Checked {scope}. No file exceeds {MAX_LINES} lines and no function exceeds {MAX_FUNCTION_LINES} lines."
+    if file_warnings or func_warnings:
+        summary += f" ({len(file_warnings) + len(func_warnings)} near budget — see warnings above.)"
+    print(summary)
     return 0
 
 

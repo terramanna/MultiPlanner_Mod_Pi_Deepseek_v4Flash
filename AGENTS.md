@@ -58,10 +58,24 @@ to avoid drift.
 
 ## Hard limits
 
-- No source file may exceed 600 lines.
-- No function may exceed 30 lines.
-- These limits are enforced by the staged-file pre-commit check, not by memory or review discipline.
-- If a change would exceed a limit, split the work before committing instead of asking for an exception.
+- **Complexity is the primary reviewability gate.** No function may exceed
+  cyclomatic complexity 10 (ruff `C901`, configured in `ruff.toml`). A genuinely
+  irreducible function may carry a documented `# noqa: C901`. This is the metric
+  that actually predicts review difficulty; the line caps below are coarse backstops.
+- No source file may exceed 600 lines (hard fail).
+- No function may exceed 50 lines (hard fail). Python functions are measured in
+  *logical* lines: blank lines, comment-only lines, and the docstring are
+  excluded, so documenting a function never pushes it over budget. (JS is still
+  measured by raw span; tightening that is a follow-up.)
+- A pre-warning fires across the last 20% of either line budget (480 lines / 40
+  function lines). It prints "approaching budget" but does not block, so you can
+  split early instead of discovering you are over budget at commit time.
+- Enforcement: CI runs `scripts/check_file_size_policy.py --all` and `ruff check .`
+  on every push. The size check also runs as a local pre-commit hook only after
+  you install it with `scripts/install_git_hooks.ps1` (or `.sh`); a fresh clone
+  has no hook until then.
+- If a change would exceed a hard limit, split the work before committing instead
+  of asking for an exception.
 
 ## Commit audit identity
 
