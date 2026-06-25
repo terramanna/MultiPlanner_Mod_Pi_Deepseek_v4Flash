@@ -208,6 +208,39 @@ export function geometryFromLayer(layer, L, formatDimensionTokenFn = formatDimen
   return null;
 }
 
+// Pure seam for leaflet-prototype.js currentGeometry(): turns the placement
+// state + active variant into the API geometry payload. Extracted here so the
+// branching is unit-testable without the Leaflet/DOM module side effects.
+export function resolveCorridorBuffer(rawValue) {
+  return Math.max(50, Math.min(2000, Number(rawValue) || 150));
+}
+
+export function corridorGeometry(state, bufferRawValue) {
+  if (state.siteA && state.siteB) {
+    return {
+      kind: "corridor",
+      from_lon: state.siteA.lon,
+      from_lat: state.siteA.lat,
+      to_lon: state.siteB.lon,
+      to_lat: state.siteB.lat,
+      buffer_m: resolveCorridorBuffer(bufferRawValue),
+    };
+  }
+  const site = state.siteA || state.siteB;
+  return site ? { kind: "point", lon: site.lon, lat: site.lat } : null;
+}
+
+export function bboxFromBounds(bounds) {
+  return { kind: "bbox", west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() };
+}
+
+export function currentGeometryFrom(state, variant, bufferRawValue) {
+  if (state.manualGeometry) return state.manualGeometry;
+  if (variant === "corridor") return corridorGeometry(state, bufferRawValue);
+  if (variant === "area") return state.rectangle ? bboxFromBounds(state.rectangle.getBounds()) : null;
+  return state.point ? { kind: "point", lon: state.point.lon, lat: state.point.lat } : null;
+}
+
 export function selectedDatasets(doc = globalThis.document) {
   return [...doc.querySelectorAll('input[name="dataset"]:checked')].map((input) => input.value);
 }

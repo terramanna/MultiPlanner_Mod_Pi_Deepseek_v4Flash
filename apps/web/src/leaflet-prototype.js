@@ -13,6 +13,7 @@ import { renderPrototypeShell } from "./leaflet-prototype-shell.js";
 import { loadProviderCoverageCache, saveProviderCoverageCache } from "./provider-coverage-cache.js";
 import { applyProviderSelection, coverageShouldShow } from "./provider-selection.js";
 import {
+  currentGeometryFrom,
   flattenLatLngs,
   formatArea,
   formatMeters,
@@ -224,23 +225,8 @@ function drawArea(first, second) {
 }
 
 function currentGeometry() {
-  if (state.manualGeometry) return state.manualGeometry;
-  if (variant === "corridor") {
-    if (state.siteA && state.siteB) {
-      const bufferInput = document.getElementById("bufferInput");
-      const buffer_m = bufferInput ? Math.max(50, Math.min(2000, Number(bufferInput.value) || 150)) : 150;
-      return { kind: "corridor", from_lon: state.siteA.lon, from_lat: state.siteA.lat, to_lon: state.siteB.lon, to_lat: state.siteB.lat, buffer_m };
-    }
-    const site = state.siteA || state.siteB;
-    return site ? { kind: "point", lon: site.lon, lat: site.lat } : null;
-  }
-  if (variant === "area") {
-    if (!state.rectangle) return null;
-    const bounds = state.rectangle.getBounds();
-    return { kind: "bbox", west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() };
-  }
-  if (!state.point) return null;
-  return { kind: "point", lon: state.point.lon, lat: state.point.lat };
+  const bufferInput = document.getElementById("bufferInput");
+  return currentGeometryFrom(state, variant, bufferInput ? bufferInput.value : null);
 }
 
 function refreshReadout() {
