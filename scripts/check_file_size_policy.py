@@ -2,8 +2,10 @@
 
 Two refinements over a naive line cap:
 
-- Python functions are measured in *logical* lines: blank lines, comment-only
-  lines, and the docstring are excluded, so documenting a function the way the
+- Functions are measured in *logical* lines. For Python, blank lines,
+  comment-only lines, and the docstring are excluded; for JS, blank and
+  comment-only lines are excluded (string contents are stripped too, so a
+  multi-line literal counts once). Documenting a function the way the
   engineering rules ask for never pushes it over budget.
 - A pre-warning fires in the last ``WARN_RATIO`` band of either budget, so you
   see "approaching budget" while you can still act, not only the post-hoc
@@ -145,8 +147,25 @@ def js_function_spans(source: str) -> list[tuple[str, int, int]]:
 
 
 def js_function_measures(source: str) -> list[tuple[str, int]]:
-    """Measure each JS function by raw span (blank/comment stripping is TODO)."""
-    return [(name, end - start + 1) for name, start, end in js_function_spans(source)]
+    """Measure each JS function in logical lines (see module docstring)."""
+    lines = source.splitlines()
+    return [
+        (name, _js_logical_lines(lines, start - 1, end - 1))
+        for name, start, end in js_function_spans(source)
+    ]
+
+
+def _js_logical_lines(lines: list[str], start_index: int, end_index: int) -> int:
+    """Count lines in [start_index, end_index] that still carry code once
+    comments and string contents are stripped. Shares the brace-matcher's
+    tokenizer state so multi-line strings and block comments are handled the
+    same way span-finding handles them."""
+    state = _fresh_js_state()
+    count = 0
+    for line_index in range(start_index, end_index + 1):
+        if _strip_js_comments_and_strings(lines[line_index], state).strip():
+            count += 1
+    return count
 
 
 def _js_function_start(line: str):
@@ -157,14 +176,18 @@ def _js_function_start(line: str):
     return None
 
 
-def _js_function_end(lines: list[str], start_index: int) -> int | None:
-    state = {
+def _fresh_js_state() -> dict[str, bool]:
+    return {
         "single": False,
         "double": False,
         "template": False,
         "block_comment": False,
         "escape": False,
     }
+
+
+def _js_function_end(lines: list[str], start_index: int) -> int | None:
+    state = _fresh_js_state()
     depth = 0
     found_body = False
     for line_index in range(start_index, len(lines)):

@@ -33,9 +33,17 @@ jobs:
           pytest -q
 
       - uses: actions/setup-node@v4
-        if: ${{ hashFiles('package.json') != '' }}
+        if: ${{ hashFiles('apps/web/package.json') != '' }}
         with:
           node-version: "20"
+
+      - name: Complexity gate (eslint)
+        # JS twin of the ruff C901 gate above: hard cyclomatic-complexity cap (10)
+        # from apps/web/eslint.config.js. eslint is installed inline rather than
+        # added as a project dependency, exactly like ruff is for Python.
+        if: ${{ hashFiles('apps/web/eslint.config.js') != '' }}
+        working-directory: apps/web
+        run: npx --yes eslint@9 .
 
       - name: Run Node project checks
         if: ${{ hashFiles('package.json') != '' }}
