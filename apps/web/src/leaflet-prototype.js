@@ -6,25 +6,19 @@ import "@geoman-io/leaflet-geoman-free";
 import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
 import "./leaflet-prototype.css";
 import { retryUntilReady } from "./bootstrap-retry.js";
-import { chooseDownloadDirectory, saveSubsetPayloadToDirectory } from "./download-save.js";
 import { clearLeafletSelection } from "./leaflet-selection.js";
+import { requestLeafletSubset } from "./leaflet-subset-request.js";
 import { bindPersistedInput } from "./persisted-input.js";
 import { renderPrototypeShell } from "./leaflet-prototype-shell.js";
 import { loadProviderCoverageCache, saveProviderCoverageCache } from "./provider-coverage-cache.js";
 import { applyProviderSelection, coverageShouldShow } from "./provider-selection.js";
 import {
-  apiGeometry,
-  buildSelectionName,
-  estimateText,
   flattenLatLngs,
   formatArea,
   formatMeters,
   geometryFromLayer,
-  largeDownloadWarning,
   polygonAreaM2,
   renderDatasetChoices,
-  renderTiles,
-  selectedDatasets,
 } from "./leaflet-prototype-utils.js";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").trim();
@@ -144,8 +138,8 @@ searchInput.addEventListener("keydown", (event) => {
     searchPlaces();
   }
 });
-document.getElementById("locateButton").addEventListener("click", () => requestSubset(false));
-document.getElementById("downloadButton").addEventListener("click", () => requestSubset(true));
+document.getElementById("locateButton").addEventListener("click", () => requestLeafletSubset(subsetRequestContext(), false));
+document.getElementById("downloadButton").addEventListener("click", () => requestLeafletSubset(subsetRequestContext(), true));
 document.getElementById("clearButton").addEventListener("click", () => clearLeafletSelection({ state, map, redrawGeometry, refreshReadout, downloadStatus, tileList }));
 openDownloadFolderButton.addEventListener("click", openLastDownloadedFolder);
 document.getElementById("previousVariant").addEventListener("click", () => switchVariant(-1));
@@ -371,100 +365,22 @@ function chooseCandidate(candidate) {
   searchResults.innerHTML = "";
 }
 
-async function requestSubset(download) {
-  const geometry = currentGeometry();
-  if (!geometry) {
-    downloadStatus.textContent = "Complete the selection first.";
-    return;
-  }
-  const datasets = selectedDatasets();
-  if (!datasets.length) {
-    downloadStatus.textContent = "Choose at least one dataset.";
-    return;
-  }
-  const body = buildSubsetRequestBody(download, geometry, datasets);
-  const rootDirectoryHandle = download ? await prepareSubsetDownload(body) : null;
-  if (download && !rootDirectoryHandle) {
-    return;
-  }
-  await submitSubsetRequest(download, body, rootDirectoryHandle);
-}
-
-function buildSubsetRequestBody(download, geometry, datasets) {
-  const body = { provider: state.provider, datasets, geometry: apiGeometry(geometry) };
-  if (download) {
-    body.selection_name = buildSelectionName(geometry, state, map, jobNameInput, providerCoverage);
-    body.export_profile = selectedExportProfile();
-  }
-  return body;
-}
-
-async function prepareSubsetDownload(body) {
-  const preview = await fetchSubsetPreview(body);
-  const warning = largeDownloadWarning(preview);
-  if (warning && !window.confirm(warning)) {
-    downloadStatus.textContent = "Download cancelled.";
-    return null;
-  }
-  try {
-    return await chooseDownloadDirectory();
-  } catch (_error) {
-    downloadStatus.textContent = "Download cancelled.";
-    return null;
-  }
-}
-
-async function fetchSubsetPreview(body) {
-  const response = await fetch(`${apiBaseUrl}/api/v1/subsets/locate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  if (!response.ok) throw new Error("Subset preview failed");
-  return response.json();
-}
-
-async function submitSubsetRequest(download, body, rootDirectoryHandle) {
-  const endpoint = download ? "/api/v1/subsets/download" : "/api/v1/subsets/locate";
-  const response = await fetch(`${apiBaseUrl}${endpoint}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  if (!response.ok) throw new Error("Subset request failed");
-  const payload = await response.json();
-  if (download) {
-    await handleDownloadSubset(body, payload, rootDirectoryHandle);
-    return;
-  }
-  handlePreviewSubset(payload);
-}
-
-async function handleDownloadSubset(body, payload, rootDirectoryHandle) {
-  const saved = await saveSubsetPayloadToDirectory(apiBaseUrl, payload, rootDirectoryHandle);
-  state.lastDownloadedOutputDir = payload.output_dir || null;
-  openDownloadFolderButton.hidden = !state.lastDownloadedOutputDir;
-  if (state.lastDownloadedOutputDir) {
-    openDownloadFolderButton.textContent = "Open last output folder";
-  }
-  const warningHint = payload.warnings?.length ? ` Warnings: ${payload.warnings.join("; ")}.` : "";
-  const exportLabel = body.export_profile === "ellipse_mapinfo_tab" ? "UTM32N GeoTIFF + TAB exports" : "GRD exports";
-  downloadStatus.textContent = `Saved ${saved.sourceFileCount} source files and ${saved.exportFileCount} ${exportLabel} to ${saved.rootName}\\${saved.selectionName}.${warningHint}`;
-  renderTiles(payload.files.map((file) => ({ provider: file.provider, dataset: file.dataset, tileId: file.tile_id, path: file.saved_path })));
-  if (openFolderAfterDownload.checked && state.lastDownloadedOutputDir) {
-    try {
-      await openDownloadedOutputFolder(state.lastDownloadedOutputDir);
-    } catch (_error) {
-      downloadStatus.textContent += " Could not open the output folder automatically.";
-    }
-  }
-}
-
-function handlePreviewSubset(payload) {
-  const summary = payload.results.map((result) => `${result.provider || payload.provider}/${result.dataset}: ${result.match_count} tiles`).join(" - ");
-  const warningHint = payload.warnings?.length ? ` Warnings: ${payload.warnings.join("; ")}.` : "";
-  downloadStatus.textContent = `${summary}. ${estimateText(payload)}${warningHint}`;
-  renderTiles(payload.results.flatMap((result) => result.tiles.map((tile) => ({ provider: tile.provider, dataset: result.dataset, tileId: tile.tile_id, path: tile.primary_url }))));
+function subsetRequestContext() {
+  return {
+    apiBaseUrl,
+    confirm: (message) => window.confirm(message),
+    currentGeometry,
+    document,
+    downloadStatus,
+    fetch,
+    jobNameInput,
+    map,
+    openDownloadFolderButton,
+    openFolderAfterDownload,
+    providerCoverage,
+    selectedExportProfile,
+    state,
+  };
 }
 
 function selectedExportProfile() {
