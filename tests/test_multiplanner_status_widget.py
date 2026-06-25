@@ -107,3 +107,20 @@ def test_stop_terminates_own_launcher_handle_first(monkeypatch):
 
     assert service.stop() is True
     assert terminated == [True]
+
+
+def test_status_lamp_mapping_is_stable():
+    module = load_widget_module()
+
+    assert module.StatusWidget.colors == {
+        "running": "#16a34a",
+        "starting": "#eab308",
+        "problem": "#f97316",
+        "stopped": "#dc2626",
+    }
+    assert module.StatusWidget.labels == {
+        "running": "Running",
+        "starting": "Starting",
+        "problem": "Problem",
+        "stopped": "Stopped",
+    }
