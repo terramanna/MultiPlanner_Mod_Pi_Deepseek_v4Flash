@@ -1,6 +1,8 @@
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import "./style.css";
 import * as Cesium from "cesium";
+import { retryUntilReady } from "./bootstrap-retry.js";
+import { createCorridorFlow } from "./corridor-flow.js";
 
 window.CESIUM_BASE_URL = "/node_modules/cesium/Build/Cesium";
 
@@ -140,13 +142,22 @@ lookupPanel.className = "lookup-panel";
 lookupPanel.innerHTML = `
   <button id="btnLocate" class="button-ghost">Preview corridor subsets</button>
   <button id="btnDownload" class="button-ghost">Keep subset tiles</button>
+  <fieldset class="download-options">
+    <legend>Export format</legend>
+    <label><input type="radio" name="downloadExportProfile" value="ellipse_grd" checked /> GRD</label>
+    <label><input type="radio" name="downloadExportProfile" value="ellipse_mapinfo_tab" /> UTM32N GeoTIFF + TAB</label>
+  </fieldset>
+  <label class="download-open-toggle"><input id="openFolderAfterDownload" type="checkbox" checked /> Open output folder after download</label>
+  <button id="btnOpenDownloadFolder" class="button-ghost download-open-link" type="button" hidden>Open last output folder</button>
   <div id="lookupStatus" class="lookup-status">waiting for two sites</div>
 `;
 document.querySelector(".panel-left").appendChild(lookupPanel);
 
 const btnLocate = document.getElementById("btnLocate");
 const btnDownload = document.getElementById("btnDownload");
+const btnOpenDownloadFolder = document.getElementById("btnOpenDownloadFolder");
 const lookupStatus = document.getElementById("lookupStatus");
+const openFolderAfterDownload = document.getElementById("openFolderAfterDownload");
 
 const state = {
   selectionMode: "A",
@@ -156,16 +167,31 @@ const state = {
   siteBEntity: null,
   linkEntity: null,
   apiReady: false,
-  lastSelectedSearchLabel: null
+  lastSelectedSearchLabel: null,
+  lastDownloadedOutputDir: null
 };
+
+const bootstrapAbortController = new AbortController();
+const corridorFlow = createCorridorFlow({
+  apiBaseUrl,
+  state,
+  lookupStatus,
+  btnOpenDownloadFolder,
+  openFolderAfterDownload,
+  fetchWithTimeout,
+});
 
 btnSiteA.addEventListener("click", () => setSelectionMode("A"));
 btnSiteB.addEventListener("click", () => setSelectionMode("B"));
 btnCenter.addEventListener("click", centerActiveSite);
 btnClear.addEventListener("click", clearSelections);
 btnSearch.addEventListener("click", runSearch);
-btnLocate.addEventListener("click", locateCorridorSubsets);
-btnDownload.addEventListener("click", downloadCorridorSubsets);
+btnLocate.addEventListener("click", corridorFlow.locate);
+btnDownload.addEventListener("click", corridorFlow.download);
+btnOpenDownloadFolder.addEventListener("click", corridorFlow.openLastDownloadedFolder);
+openFolderAfterDownload.addEventListener("change", () => {
+  btnOpenDownloadFolder.hidden = !(openFolderAfterDownload.checked && state.lastDownloadedOutputDir);
+});
 searchInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
@@ -186,6 +212,20 @@ handler.setInputAction((movement) => {
 setSelectionMode("A");
 updateReadout();
 bootstrapApiState();
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    bootstrapAbortController.abort();
+  });
+}
+
+window.addEventListener(
+  "beforeunload",
+  () => {
+    bootstrapAbortController.abort();
+  },
+  { once: true }
+);
 
 function setSelectionMode(mode) {
   state.selectionMode = mode;
@@ -267,17 +307,26 @@ function pickSampleFromScreen(screenPosition) {
 }
 
 function upsertSite(kind, sample) {
-  const id = kind === "A" ? "site-a" : "site-b";
-  const color = kind === "A" ? Cesium.Color.CYAN : Cesium.Color.ORANGE;
   const existing = kind === "A" ? state.siteAEntity : state.siteBEntity;
-
   if (existing) {
-    existing.position = Cesium.Cartesian3.fromDegrees(sample.lon, sample.lat, sample.height);
-    existing.label.text = siteLabel(kind, sample);
+    updateSiteEntity(existing, kind, sample);
     return;
   }
 
-  const entity = viewer.entities.add({
+  const entity = createSiteEntity(kind, sample);
+  if (kind === "A") state.siteAEntity = entity;
+  else state.siteBEntity = entity;
+}
+
+function updateSiteEntity(entity, kind, sample) {
+  entity.position = Cesium.Cartesian3.fromDegrees(sample.lon, sample.lat, sample.height);
+  entity.label.text = siteLabel(kind, sample);
+}
+
+function createSiteEntity(kind, sample) {
+  const id = kind === "A" ? "site-a" : "site-b";
+  const color = kind === "A" ? Cesium.Color.CYAN : Cesium.Color.ORANGE;
+  return viewer.entities.add({
     id,
     position: Cesium.Cartesian3.fromDegrees(sample.lon, sample.lat, sample.height),
     point: {
@@ -294,12 +343,6 @@ function upsertSite(kind, sample) {
       font: "14px IBM Plex Sans"
     }
   });
-
-  if (kind === "A") {
-    state.siteAEntity = entity;
-  } else {
-    state.siteBEntity = entity;
-  }
 }
 
 function renderLink() {
@@ -350,34 +393,30 @@ async function bootstrapApiState() {
   terrainModeEl.textContent = useWorldTerrain ? "world terrain" : "fast local";
   apiStatus.textContent = "starting";
   providerMode.textContent = "waiting for backend";
-  for (let attempt = 1; attempt <= 12; attempt += 1) {
-    try {
-      const [healthResponse, configResponse] = await Promise.all([
-        fetchWithTimeout(`${apiBaseUrl}/healthz`, { timeoutMs: 2000 }),
-        fetchWithTimeout(`${apiBaseUrl}/api/v1/config`, { timeoutMs: 2000 })
-      ]);
+  await retryUntilReady(async () => {
+    const [healthResponse, configResponse] = await Promise.all([
+      fetchWithTimeout(`${apiBaseUrl}/healthz`, { timeoutMs: 2000 }),
+      fetchWithTimeout(`${apiBaseUrl}/api/v1/config`, { timeoutMs: 2000 })
+    ]);
 
-      if (!healthResponse.ok || !configResponse.ok) {
-        throw new Error("API bootstrap failed");
-      }
-
-      const health = await healthResponse.json();
-      const config = await configResponse.json();
-      apiStatus.textContent = health.status;
-      providerMode.textContent = config.provider_mode;
-      state.apiReady = true;
-      return;
-    } catch (_error) {
-      apiStatus.textContent = attempt < 12 ? "starting" : "offline";
-      providerMode.textContent = attempt < 12 ? "waiting for backend" : "unavailable";
-      await delay(1000);
+    if (!healthResponse.ok || !configResponse.ok) {
+      throw new Error("API bootstrap failed");
     }
-  }
-}
 
-function delay(ms) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
+    const health = await healthResponse.json();
+    const config = await configResponse.json();
+    apiStatus.textContent = health.status;
+    providerMode.textContent = config.provider_mode;
+    state.apiReady = true;
+  }, {
+    signal: bootstrapAbortController.signal,
+    delayMs: 1000,
+    onRetry: () => {
+      if (!state.apiReady) {
+        apiStatus.textContent = "starting";
+        providerMode.textContent = "waiting for backend";
+      }
+    },
   });
 }
 
@@ -406,18 +445,10 @@ async function runSearch() {
     return;
   }
 
-    searchStatus.textContent = "searching";
-    searchResults.innerHTML = "";
+  searchStatus.textContent = "searching";
+  searchResults.innerHTML = "";
   try {
-    const response = await fetchWithTimeout(
-      `${apiBaseUrl}/api/v1/search/places?q=${encodeURIComponent(query)}`,
-      { timeoutMs: 5000 }
-    );
-    if (!response.ok) {
-      throw new Error("search failed");
-    }
-
-    const payload = await response.json();
+    const payload = await searchPlaces(query);
     const candidates = payload.candidates || [];
     renderSearchResults(candidates);
     if (candidates.length === 1 && candidates[0].source === "coordinates") {
@@ -430,6 +461,17 @@ async function runSearch() {
   } catch (_error) {
     searchStatus.textContent = "search failed";
   }
+}
+
+async function searchPlaces(query) {
+  const response = await fetchWithTimeout(
+    `${apiBaseUrl}/api/v1/search/places?q=${encodeURIComponent(query)}`,
+    { timeoutMs: 5000 }
+  );
+  if (!response.ok) {
+    throw new Error("search failed");
+  }
+  return response.json();
 }
 
 function renderSearchResults(candidates) {
@@ -478,105 +520,4 @@ async function sampleTerrainHeight(lon, lat) {
   } catch (_error) {
     return 0;
   }
-}
-
-async function locateCorridorSubsets() {
-  if (!state.apiReady) {
-    lookupStatus.textContent = "backend still starting";
-    return;
-  }
-
-  if (!(state.siteA && state.siteB)) {
-    lookupStatus.textContent = "set both sites first";
-    return;
-  }
-
-  lookupStatus.textContent = "querying provider";
-  try {
-    const response = await fetchWithTimeout(`${apiBaseUrl}/api/v1/subsets/locate`, {
-      method: "POST",
-      timeoutMs: 10000,
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        provider: "lgln-ni",
-        datasets: ["dgm1", "dom1", "dop20"],
-        geometry: {
-          kind: "corridor",
-          from_lon: state.siteA.lon,
-          from_lat: state.siteA.lat,
-          to_lon: state.siteB.lon,
-          to_lat: state.siteB.lat,
-          buffer_m: 75
-        }
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error("subset lookup failed");
-    }
-
-    const payload = await response.json();
-    const summary = payload.results
-      .map((entry) => `${entry.dataset}: ${entry.match_count}`)
-      .join(" | ");
-    lookupStatus.textContent = summary || "no subset matches";
-  } catch (_error) {
-    lookupStatus.textContent = "subset lookup failed";
-  }
-}
-
-async function downloadCorridorSubsets() {
-  if (!state.apiReady) {
-    lookupStatus.textContent = "backend still starting";
-    return;
-  }
-
-  if (!(state.siteA && state.siteB)) {
-    lookupStatus.textContent = "set both sites first";
-    return;
-  }
-
-  lookupStatus.textContent = "downloading selected subset tiles";
-  try {
-    const response = await fetchWithTimeout(`${apiBaseUrl}/api/v1/subsets/download`, {
-      method: "POST",
-      timeoutMs: 30000,
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        provider: "lgln-ni",
-        datasets: ["dgm1", "dom1", "dop20"],
-        selection_name: buildSelectionName(),
-        export_profile: "ellipse_mapinfo_tab",
-        geometry: {
-          kind: "corridor",
-          from_lon: state.siteA.lon,
-          from_lat: state.siteA.lat,
-          to_lon: state.siteB.lon,
-          to_lat: state.siteB.lat,
-          buffer_m: 75
-        }
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error("subset download failed");
-    }
-
-    const payload = await response.json();
-    const exportHint = payload.exports.length ? ` | ellipse exports: ${payload.exports.length}` : "";
-    lookupStatus.textContent = `saved ${payload.file_count} files to ${payload.output_dir}${exportHint}`;
-  } catch (_error) {
-    lookupStatus.textContent = "subset download failed";
-  }
-}
-
-function buildSelectionName() {
-  if (!(state.siteA && state.siteB)) {
-    return "subset";
-  }
-  return `corridor_${state.siteA.lon.toFixed(3)}_${state.siteA.lat.toFixed(3)}_${state.siteB.lon.toFixed(3)}_${state.siteB.lat.toFixed(3)}`;
 }
