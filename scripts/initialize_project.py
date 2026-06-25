@@ -7,6 +7,26 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+PITFALLS_TEMPLATE = """# Pitfalls
+
+Append-only log of skill-specific regressions and anti-patterns.
+
+Rules:
+- do not delete past entries
+- do not rewrite history to make entries look cleaner
+- append a new entry when a skill causes a regression, forces a redo, or contaminates another workflow
+
+Entry shape:
+
+```markdown
+## 2026-01-01 - <skill-name>
+
+- Do not <action> because it regressed <symptom>.
+- Do not <action> because it forced a redo of <work>.
+- Cross-contamination note: <what leaked into where>.
+- Recovery: <what had to be redone>.
+```
+"""
 
 
 def slugify(name: str) -> str:
@@ -36,6 +56,15 @@ def write_new_file(relative_path: str, content: str) -> None:
 def init_python_cli(project_name: str) -> None:
     package_name = project_name.replace("-", "_")
     ensure_directory(f"src/{package_name}")
+    write_python_pyproject(project_name)
+    write_python_package_files(package_name)
+    write_new_file(
+        "tests/test_smoke.py",
+        "def test_smoke() -> None:\n    assert True\n",
+    )
+
+
+def write_python_pyproject(project_name: str) -> None:
     write_new_file(
         "pyproject.toml",
         "\n".join(
@@ -57,14 +86,13 @@ def init_python_cli(project_name: str) -> None:
             ]
         ),
     )
+
+
+def write_python_package_files(package_name: str) -> None:
     write_new_file(REPO_ROOT.joinpath(f"src/{package_name}/__init__.py").relative_to(REPO_ROOT).as_posix(), "")
     write_new_file(
         REPO_ROOT.joinpath(f"src/{package_name}/__main__.py").relative_to(REPO_ROOT).as_posix(),
         "def main() -> None:\n    print('Replace this entrypoint with real behavior.')\n\n\nif __name__ == '__main__':\n    main()\n",
-    )
-    write_new_file(
-        "tests/test_smoke.py",
-        "def test_smoke() -> None:\n    assert True\n",
     )
 
 
@@ -104,8 +132,10 @@ def main() -> int:
     args = parser.parse_args()
 
     project_name = slugify(REPO_ROOT.name)
-    for path in ["src", "tests", "config", "data", "assets", "examples", "docs/adr"]:
+    for path in ["src", "tests", "config", "data", "assets", "examples", "docs/adr", ".agents"]:
         ensure_directory(path)
+
+    write_new_file(".agents/pitfalls.md", PITFALLS_TEMPLATE)
 
     if args.profile == "python-cli":
         init_python_cli(project_name)

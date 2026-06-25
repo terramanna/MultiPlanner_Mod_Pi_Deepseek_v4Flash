@@ -2,6 +2,8 @@
 
 Bucket: drafts not yet ready to ship.
 
+Before using any in-progress skill, check `.agents/pitfalls.md` for known regressions or cross-contamination tied to that skill.
+
 - [review](./review/SKILL.md): Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes --- Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/PRD asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X".
 - [teach](./teach/SKILL.md): Teach the user a new skill or concept, within this workspace.
 - [writing-beats](./writing-beats/SKILL.md): Shape an article as a journey of beats, choose-your-own-adventure style. The user picks a starting beat from the raw material, you write only that beat, then offer options for where to pivot next, beat by beat, until the article reaches a natural end. Use when the user has raw material and wants to assemble it as a narrative rather than an argument.

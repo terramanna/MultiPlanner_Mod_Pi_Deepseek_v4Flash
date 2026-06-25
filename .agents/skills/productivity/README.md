@@ -2,6 +2,8 @@
 
 Bucket: daily non-code workflow tools.
 
+Before using any productivity skill, check `.agents/pitfalls.md` for known regressions or cross-contamination tied to that skill.
+
 - [caveman](./caveman/SKILL.md): Ultra-compressed communication mode. Cuts token usage ~75% by dropping filler, articles, and pleasantries while keeping full technical accuracy. Use when user says "caveman mode", "talk like caveman", "use caveman", "less tokens", "be brief", or invokes /caveman.
 - [grill-me](./grill-me/SKILL.md): Challenge assumptions, surface hidden constraints, and sharpen a proposed design before implementation.
 - [handoff](./handoff/SKILL.md): Compact the current conversation into a handoff document for another agent to pick up.

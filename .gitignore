@@ -23,4 +23,5 @@ apps/api/src/*.egg-info/
 data/cache/
 apps/api/data/cache/
 data/tmp/
+.tmp/
 .tmp_fcb_remote/

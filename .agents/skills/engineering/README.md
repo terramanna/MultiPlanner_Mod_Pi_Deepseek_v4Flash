@@ -2,6 +2,8 @@
 
 Bucket: daily code work.
 
+Before using any engineering skill, check `.agents/pitfalls.md` for known regressions or cross-contamination tied to that skill.
+
 - [improve-codebase-architecture](./improve-codebase-architecture/SKILL.md): Find deepening opportunities in a codebase, informed by the domain language in CONTEXT.md and the decisions in docs/adr/. Use when the user wants to improve architecture, find refactoring opportunities, consolidate tightly-coupled modules, or make a codebase more testable and AI-navigable.
 - [prototype](./prototype/SKILL.md): Build a throwaway prototype to flesh out a design before committing to it. Routes between two branches --- a runnable terminal app for state/business-logic questions, or several radically different UI variations toggleable from one route. Use when the user wants to prototype, sanity-check a data model or state machine, mock up a UI, explore design options, or says "prototype this", "let me play with it", "try a few designs".
 - [diagnose](./diagnose/SKILL.md): Diagnose a bug, failure, or suspicious behavior from symptoms, logs, tests, and code paths.

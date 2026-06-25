@@ -21,7 +21,31 @@ function Write-NewFile([string]$RelativePath, [string]$Content) {
     Set-Content -LiteralPath $path -Value $Content -NoNewline
 }
 
-"src", "tests", "config", "data", "assets", "examples", "docs/adr" | ForEach-Object { Ensure-Directory $_ }
+"src", "tests", "config", "data", "assets", "examples", "docs/adr", ".agents" | ForEach-Object { Ensure-Directory $_ }
+
+$pitfallsContent = @"
+# Pitfalls
+
+Append-only log of skill-specific regressions and anti-patterns.
+
+Rules:
+- do not delete past entries
+- do not rewrite history to make entries look cleaner
+- append a new entry when a skill causes a regression, forces a redo, or contaminates another workflow
+
+Entry shape:
+
+```markdown
+## 2026-01-01 - <skill-name>
+
+- Do not <action> because it regressed <symptom>.
+- Do not <action> because it forced a redo of <work>.
+- Cross-contamination note: <what leaked into where>.
+- Recovery: <what had to be redone>.
+```
+"@
+
+Write-NewFile ".agents/pitfalls.md" $pitfallsContent
 
 switch ($Profile) {
     "python-cli" {

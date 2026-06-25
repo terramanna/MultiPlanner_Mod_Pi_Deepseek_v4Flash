@@ -23,6 +23,7 @@ Keep all work scoped to this repository unless the operator explicitly asks to i
 - `docs/agents/triage-labels.md`: canonical triage vocabulary.
 - `docs/COMMIT_AUDIT.md`: actor identities and commit provenance.
 - `.agents/skills/`: repo-local skill set shared across coding agents.
+- `.agents/pitfalls.md`: append-only log of skill regressions, anti-patterns, and recovery notes.
 
 ## Repo-local skills
 
@@ -39,6 +40,9 @@ set for this repository. The imported layout currently includes:
 When a repo-local skill and a global/default skill overlap, prefer the
 repo-local skill if it is more specific to this repository or workflow.
 
+Before running a skill, check `.agents/pitfalls.md` for known regressions or
+cross-contamination notes tied to that skill.
+
 Do not create parallel project skill trees under `.claude/skills/` or
 `.codex/skills/`; keep the shared repository skill set in `.agents/skills/`
 to avoid drift.
@@ -51,6 +55,13 @@ to avoid drift.
 - Document contracts, invariants, and rationale rather than narrating code.
 - Test public behaviour and isolated edge cases.
 - Measure before performance optimisation and hide it behind a stable interface.
+
+## Hard limits
+
+- No source file may exceed 600 lines.
+- No function may exceed 30 lines.
+- These limits are enforced by the staged-file pre-commit check, not by memory or review discipline.
+- If a change would exceed a limit, split the work before committing instead of asking for an exception.
 
 ## Commit audit identity
 

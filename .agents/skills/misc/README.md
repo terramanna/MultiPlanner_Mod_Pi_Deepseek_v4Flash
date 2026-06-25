@@ -2,6 +2,8 @@
 
 Bucket: kept around but rarely used.
 
+Before using any misc skill, check `.agents/pitfalls.md` for known regressions or cross-contamination tied to that skill.
+
 - [git-guardrails-claude-code](./git-guardrails-claude-code/SKILL.md): Set up Claude Code hooks to block dangerous git commands (push, reset --hard, clean, branch -D, etc.) before they execute. Use when user wants to prevent destructive git operations, add git safety hooks, or block git push/reset in Claude Code.
 - [migrate-to-shoehorn](./migrate-to-shoehorn/SKILL.md): Migrate test files from `as` type assertions to @total-typescript/shoehorn. Use when user mentions shoehorn, wants to replace `as` in tests, or needs partial test data.
 - [scaffold-exercises](./scaffold-exercises/SKILL.md): Create exercise directory structures with sections, problems, solutions, and explainers that pass linting. Use when user wants to scaffold exercises, create exercise stubs, or set up a new course section.
