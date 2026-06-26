@@ -77,6 +77,26 @@ function downloadPayload() {
   };
 }
 
+function fakeStreamResponse(result) {
+  const sse = `data: ${JSON.stringify({ type: "done", result })}\n\n`;
+  const bytes = new TextEncoder().encode(sse);
+  let consumed = false;
+  return {
+    ok: true,
+    body: {
+      getReader() {
+        return {
+          async read() {
+            if (consumed) return { done: true, value: undefined };
+            consumed = true;
+            return { done: false, value: bytes };
+          },
+        };
+      },
+    },
+  };
+}
+
 function fakeDirectoryHandle(name = "downloads") {
   return {
     name,
@@ -90,7 +110,7 @@ globalThis.window = {
 };
 const { context: downloadContext, statusMessages } = recordingDownloadContext([
   { ok: true, json: async () => previewPayload() },
-  { ok: true, json: async () => downloadPayload() },
+  fakeStreamResponse(downloadPayload()),
 ]);
 await requestLeafletSubset(downloadContext, true);
 assert.deepEqual(statusMessages, [

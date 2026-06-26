@@ -76,6 +76,7 @@ async function submitSubsetRequest(context, download, body, rootDirectoryHandle)
 async function streamSubsetDownload(context, body, rootDirectoryHandle) {
   const response = await postJson(context, "/api/v1/subsets/download-stream", body);
   if (!response.ok) throw new Error(await errorDetail(response, "Download failed"));
+  setStatus(context, "Downloading source tiles and building export...");
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
