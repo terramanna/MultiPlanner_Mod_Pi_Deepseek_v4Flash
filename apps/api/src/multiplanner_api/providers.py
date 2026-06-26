@@ -10,6 +10,8 @@ from shapely.ops import transform
 
 from multiplanner_api.bb import locate_tiles as locate_bb_tiles
 from multiplanner_api.bb import summarize_tiles as summarize_bb_tiles
+from multiplanner_api.hh import locate_tiles as locate_hh_tiles
+from multiplanner_api.hh import summarize_tiles as summarize_hh_tiles
 from multiplanner_api.geosn import locate_tiles as locate_geosn_tiles
 from multiplanner_api.geosn import summarize_tiles as summarize_geosn_tiles
 from multiplanner_api.he import locate_tiles as locate_he_tiles
@@ -86,6 +88,13 @@ SERVICE_PROVIDERS = {
     "geobasis-bb": {
         "label": "Geobasis Brandenburg",
         "adapter": "geobasis_bb_wcs",
+        "datasets": {
+            "dgm1": {},
+        },
+    },
+    "lgv-hh": {
+        "label": "LGV Hamburg",
+        "adapter": "lgv_hh_ogc",
         "datasets": {
             "dgm1": {},
         },
@@ -186,6 +195,8 @@ def locate_remote_tiles(
         return locate_st_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "geobasis_bb_wcs":
         return locate_bb_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
+    if SERVICE_PROVIDERS[provider].get("adapter") == "lgv_hh_ogc":
+        return locate_hh_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "nrw_grid":
         return locate_nrw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
 
@@ -217,6 +228,8 @@ def summarize_remote_tiles(
         return summarize_st_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "geobasis_bb_wcs":
         return summarize_bb_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
+    if SERVICE_PROVIDERS[provider].get("adapter") == "lgv_hh_ogc":
+        return summarize_hh_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "nrw_grid":
         return summarize_nrw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
 

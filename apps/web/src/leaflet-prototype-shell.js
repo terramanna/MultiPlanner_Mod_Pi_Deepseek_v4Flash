@@ -6,6 +6,7 @@ const defaultProviders = [
   { name: "hvbg-he", label: "HVBG Hessen" },
   { name: "lvermgeo-st", label: "LVermGeo Saxony-Anhalt" },
   { name: "geobasis-bb", label: "Geobasis Brandenburg" },
+  { name: "lgv-hh", label: "LGV Hamburg" },
 ];
 
 const labels = {
