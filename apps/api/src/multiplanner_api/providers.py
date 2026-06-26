@@ -8,6 +8,8 @@ from pyproj import Transformer
 from shapely.geometry import LineString
 from shapely.ops import transform
 
+from multiplanner_api.geosn import locate_tiles as locate_geosn_tiles
+from multiplanner_api.geosn import summarize_tiles as summarize_geosn_tiles
 from multiplanner_api.nrw import locate_tiles as locate_nrw_tiles
 from multiplanner_api.nrw import summarize_tiles as summarize_nrw_tiles
 
@@ -45,6 +47,19 @@ SERVICE_PROVIDERS = {
                 "base_url": "https://www.opengeodata.nrw.de/produkte/geobasis/hm/dom1_tiff/dom1_tiff/",
                 "catalog_url": "https://www.opengeodata.nrw.de/produkte/geobasis/hm/dom1_tiff/dom1_tiff/",
                 "filename_prefix": "dom1",
+            },
+        },
+    },
+    "geosn-sn": {
+        "label": "GeoSN Saxony",
+        "adapter": "geosn_grid",
+        "datasets": {
+            "dgm1": {
+                # DGM share token may differ from DOM — verify before use
+                "base_url": "https://geocloud.landesvermessung.sachsen.de/public.php/dav/files/S6wwnFwX7882sZm/",
+            },
+            "dom1": {
+                "base_url": "https://geocloud.landesvermessung.sachsen.de/public.php/dav/files/S6wwnFwX7882sZm/",
             },
         },
     },
@@ -136,6 +151,8 @@ def locate_remote_tiles(
     geometry_type: str,
     timeout: int = 60,
 ) -> list[dict[str, Any]]:
+    if SERVICE_PROVIDERS[provider].get("adapter") == "geosn_grid":
+        return locate_geosn_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "nrw_grid":
         return locate_nrw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
 
@@ -159,6 +176,8 @@ def summarize_remote_tiles(
     geometry_type: str,
     timeout: int = 60,
 ) -> list[dict[str, Any]]:
+    if SERVICE_PROVIDERS[provider].get("adapter") == "geosn_grid":
+        return summarize_geosn_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "nrw_grid":
         return summarize_nrw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
 

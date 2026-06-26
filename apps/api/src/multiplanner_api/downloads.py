@@ -8,6 +8,7 @@ import struct
 import subprocess
 import warnings
 from pathlib import Path
+import zipfile
 
 import requests
 from urllib3.exceptions import InsecureRequestWarning
@@ -128,7 +129,8 @@ def _download_result_files(
                 saved_path=str(target_path.resolve()),
             )
         )
-        downloaded_by_dataset.setdefault(result.dataset, []).append(target_path)
+        tile_path = _maybe_extract_tif(target_path, dataset_dir) or target_path
+        downloaded_by_dataset.setdefault(result.dataset, []).append(tile_path)
     return downloaded_files, downloaded_by_dataset, warnings_list
 
 
@@ -165,6 +167,21 @@ def _target_filename(url: str, tile_id: str | None) -> str:
     if tile_id:
         return f"{tile_id}{suffix}"
     return Path(url).name or f"download{suffix}"
+
+
+def _maybe_extract_tif(zip_path: Path, dest_dir: Path) -> Path | None:
+    """Extract the first .tif from *zip_path* into *dest_dir* and return its path.
+
+    Returns None if the file is not a ZIP or contains no GeoTIFF.
+    """
+    if zip_path.suffix.lower() != ".zip":
+        return None
+    with zipfile.ZipFile(zip_path) as zf:
+        tif_entries = [n for n in zf.namelist() if n.lower().endswith((".tif", ".tiff"))]
+        if not tif_entries:
+            return None
+        zf.extract(tif_entries[0], dest_dir)
+        return dest_dir / tif_entries[0]
 
 
 def _download_file(url: str, target_path: Path) -> None:

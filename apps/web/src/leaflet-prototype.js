@@ -26,7 +26,8 @@ const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
 const bkgStateBoundaryUrl = "https://sgx.geodatenzentrum.de/wfs_vg250?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=vg250:vg250_lan&outputFormat=application%2Fjson&SRSNAME=EPSG%3A4326&COUNT=20";
 const providerCoverage = {
   "lgln-ni": { stateCode: "NI", color: "#3b82f6", label: "LGLN Lower Saxony" },
-  "geobasis-nrw": { stateCode: "NW", color: "#f97316", label: "Geobasis NRW" }
+  "geobasis-nrw": { stateCode: "NW", color: "#f97316", label: "Geobasis NRW" },
+  "geosn-sn": { stateCode: "SN", color: "#16a34a", label: "GeoSN Saxony" },
 };
 const variants = ["corridor", "area", "point"];
 const params = new URLSearchParams(window.location.search);

@@ -2,6 +2,7 @@ const defaultProviders = [
   { name: "auto", label: "Auto (split by provider)" },
   { name: "lgln-ni", label: "LGLN Lower Saxony" },
   { name: "geobasis-nrw", label: "Geobasis NRW" },
+  { name: "geosn-sn", label: "GeoSN Saxony" },
 ];
 
 const labels = {
