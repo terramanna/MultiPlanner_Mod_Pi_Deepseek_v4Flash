@@ -31,6 +31,7 @@ const providerCoverage = {
   "hvbg-he": { stateCode: "HE", color: "#dc2626", label: "HVBG Hessen" },
   "lvermgeo-st": { stateCode: "ST", color: "#7c3aed", label: "LVermGeo Saxony-Anhalt" },
   "geobasis-bb": { stateCode: "BB", color: "#eab308", label: "Geobasis Brandenburg" },
+  "ldbv-by": { stateCode: "BY", color: "#2563eb", label: "LDBV Bayern" },
   "lgv-hh": { stateCode: "HH", color: "#0891b2", label: "LGV Hamburg" },
   "lvermgeo-sh": { stateCode: "SH", color: "#14b8a6", label: "LVermGeo Schleswig-Holstein" },
   "laiv-mv": { stateCode: "MV", color: "#a21caf", label: "LAiV Mecklenburg-Vorpommern" },
