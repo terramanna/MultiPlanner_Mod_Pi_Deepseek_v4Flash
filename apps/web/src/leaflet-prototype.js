@@ -45,8 +45,34 @@ const satellite = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   { maxZoom: 19, attribution: "Tiles Esri" }
 );
+const nrwDop = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms_nw_dop", {
+  layers: "nw_dop_rgb",
+  format: "image/jpeg",
+  transparent: false,
+  maxZoom: 19,
+  attribution: "© Geobasis NRW"
+});
+const nrwTopo = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms_nw_dtk", {
+  layers: "nw_dtk_col",
+  format: "image/png",
+  transparent: false,
+  maxZoom: 19,
+  attribution: "© Geobasis NRW"
+});
+const nrwHillshade = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms_nw_dgm-schummerung", {
+  layers: "nw_dgm-schummerung_col",
+  format: "image/png",
+  transparent: true,
+  opacity: 0.6,
+  maxZoom: 19,
+  attribution: "© Geobasis NRW"
+});
 streets.addTo(map);
-L.control.layers({ Streets: streets, Satellite: satellite }, undefined, { position: "topright" }).addTo(map);
+L.control.layers(
+  { Streets: streets, Satellite: satellite, "NRW Ortho (DOP)": nrwDop, "NRW Topo (DTK)": nrwTopo },
+  { "NRW Hillshade": nrwHillshade },
+  { position: "topright" }
+).addTo(map);
 map.pm.addControls({
   position: "topleft",
   drawMarker: false,
