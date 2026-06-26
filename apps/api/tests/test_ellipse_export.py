@@ -24,7 +24,7 @@ def test_warp_reprojects_the_ellipse_tiff_to_wgs84_utm32(monkeypatch, tmp_path) 
     assert command[command.index("-t_srs") + 1] == WGS84_UTM32
 
 
-def test_grd_warp_uses_the_northwood_numeric_grid_driver(monkeypatch, tmp_path) -> None:
+def test_grd_translate_uses_createcopy_with_the_northwood_driver(monkeypatch, tmp_path) -> None:
     command = []
 
     monkeypatch.setattr(
@@ -32,11 +32,45 @@ def test_grd_warp_uses_the_northwood_numeric_grid_driver(monkeypatch, tmp_path) 
         lambda args, check, env: command.extend(args),
     )
 
-    from multiplanner_api.downloads import _warp_to_grd
+    from multiplanner_api.downloads import _translate_to_grd
 
-    _warp_to_grd(Path("gdalwarp.exe"), tmp_path / "dgm1.vrt", tmp_path / "dgm1.grd", {})
+    _translate_to_grd(Path("gdal_translate.exe"), tmp_path / "dgm1.tif", tmp_path / "dgm1.grd", {})
 
+    # NWT_GRD must be built by gdal_translate (CreateCopy) reading the warped
+    # GeoTIFF, so the driver derives the real Z min/max instead of garbage defaults.
+    assert command[0] == "gdal_translate.exe"
     assert command[command.index("-of") + 1] == GRD_DRIVER
+    assert str(tmp_path / "dgm1.tif") in command
+
+
+def test_grd_elevation_warps_to_geotiff_then_createcopies_to_grd(monkeypatch, tmp_path) -> None:
+    calls = []
+
+    monkeypatch.setattr(
+        "multiplanner_api.downloads._warp_vrt",
+        lambda _gdalwarp, _vrt, tif, _env: calls.append(("warp", Path(tif).suffix)),
+    )
+    monkeypatch.setattr(
+        "multiplanner_api.downloads._translate_to_grd",
+        lambda _translate, tif, grd, _env: calls.append(("translate", Path(tif).suffix, Path(grd).suffix)),
+    )
+    monkeypatch.setattr("multiplanner_api.downloads._write_mapinfo_tab", lambda *_args: None)
+
+    from multiplanner_api.downloads import _export_grd_elevation
+
+    exports = _export_grd_elevation(
+        "sel_dgm1_3tiles",
+        tmp_path,
+        Path("gdalwarp.exe"),
+        Path("gdalinfo.exe"),
+        {},
+        tmp_path / "sel_dgm1_3tiles.vrt",
+    )
+
+    # Elevation export must warp to a Float32 GeoTIFF first, then CreateCopy that
+    # into NWT_GRD -- never warp straight into the grid (the flat-surface bug).
+    assert calls == [("warp", ".tif"), ("translate", ".tif", ".grd")]
+    assert any(path.endswith("_utm32.grd") for path in exports)
 
 
 def test_tab_declares_wgs84_utm32(monkeypatch, tmp_path) -> None:

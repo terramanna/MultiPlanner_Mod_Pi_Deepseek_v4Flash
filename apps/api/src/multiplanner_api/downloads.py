@@ -291,8 +291,12 @@ def _export_grd_elevation(
 ) -> list[str]:
     grd_path = export_dir / f"{stem}_utm32.grd"
     tab_path = export_dir / f"{stem}_utm32.TAB"
-    _warp_to_grd(gdalwarp, vrt_path, grd_path, environment)
+    tif_path = export_dir / f"{stem}_utm32_grd_src.tif"
+    gdal_translate = gdalwarp.with_name("gdal_translate.exe")
+    _warp_vrt(gdalwarp, vrt_path, tif_path, environment)
+    _translate_to_grd(gdal_translate, tif_path, grd_path, environment)
     _write_mapinfo_tab(gdalinfo, grd_path, tab_path, environment)
+    tif_path.unlink(missing_ok=True)
     vrt_path.unlink(missing_ok=True)
     return [str(grd_path.resolve()), str(tab_path.resolve())]
 
@@ -313,16 +317,19 @@ def _export_grd_orthophoto(
     return [str(tif_path.resolve()), str(tab_path.resolve())]
 
 
-def _warp_to_grd(gdalwarp: Path, vrt_path: Path, grd_path: Path, environment: dict[str, str]) -> None:
+def _translate_to_grd(gdal_translate: Path, tif_path: Path, grd_path: Path, environment: dict[str, str]) -> None:
+    # NWT_GRD stores elevations as 16-bit ints scaled between the header's Z-min/
+    # Z-max. gdalwarp's Create path can't know that range before streaming pixels,
+    # so it bakes in garbage min/max (~+/-2e38) and every elevation collapses onto
+    # a single quantization level -> a flat surface of bogus values. gdal_translate
+    # uses CreateCopy, which derives the true min/max from the already-warped
+    # Float32 GeoTIFF, so the elevation export must go warp -> GTiff -> translate.
     subprocess.run(
         [
-            str(gdalwarp),
-            "-overwrite",
+            str(gdal_translate),
             "-of",
             GRD_DRIVER,
-            "-t_srs",
-            WGS84_UTM32,
-            str(vrt_path),
+            str(tif_path),
             str(grd_path),
         ],
         check=True,
