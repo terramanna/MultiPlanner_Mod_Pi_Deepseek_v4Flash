@@ -28,6 +28,7 @@ const providerCoverage = {
   "lgln-ni": { stateCode: "NI", color: "#3b82f6", label: "LGLN Lower Saxony" },
   "geobasis-nrw": { stateCode: "NW", color: "#f97316", label: "Geobasis NRW" },
   "geosn-sn": { stateCode: "SN", color: "#16a34a", label: "GeoSN Saxony" },
+  "hvbg-he": { stateCode: "HE", color: "#dc2626", label: "HVBG Hessen" },
 };
 const variants = ["corridor", "area", "point"];
 const params = new URLSearchParams(window.location.search);

@@ -3,6 +3,7 @@ const defaultProviders = [
   { name: "lgln-ni", label: "LGLN Lower Saxony" },
   { name: "geobasis-nrw", label: "Geobasis NRW" },
   { name: "geosn-sn", label: "GeoSN Saxony" },
+  { name: "hvbg-he", label: "HVBG Hessen" },
 ];
 
 const labels = {

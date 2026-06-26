@@ -166,7 +166,7 @@ def _slugify(value: str) -> str:
 
 
 def _target_filename(url: str, tile_id: str | None) -> str:
-    suffix = Path(url).suffix or ".bin"
+    suffix = Path(url).suffix or ".tif"
     if tile_id:
         return f"{tile_id}{suffix}"
     return Path(url).name or f"download{suffix}"
