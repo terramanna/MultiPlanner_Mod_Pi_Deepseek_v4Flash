@@ -4,6 +4,7 @@ const defaultProviders = [
   { name: "geobasis-nrw", label: "Geobasis NRW" },
   { name: "geosn-sn", label: "GeoSN Saxony" },
   { name: "hvbg-he", label: "HVBG Hessen" },
+  { name: "lvermgeo-st", label: "LVermGeo Saxony-Anhalt" },
 ];
 
 const labels = {
