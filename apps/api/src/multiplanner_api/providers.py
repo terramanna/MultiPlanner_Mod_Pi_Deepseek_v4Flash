@@ -20,6 +20,8 @@ from multiplanner_api.st import locate_tiles as locate_st_tiles
 from multiplanner_api.st import summarize_tiles as summarize_st_tiles
 from multiplanner_api.nrw import locate_tiles as locate_nrw_tiles
 from multiplanner_api.nrw import summarize_tiles as summarize_nrw_tiles
+from multiplanner_api.be import locate_tiles as locate_be_tiles
+from multiplanner_api.be import summarize_tiles as summarize_be_tiles
 from multiplanner_api.hb import locate_tiles as locate_hb_tiles
 from multiplanner_api.hb import summarize_tiles as summarize_hb_tiles
 from multiplanner_api.mv import locate_tiles as locate_mv_tiles
@@ -122,6 +124,13 @@ SERVICE_PROVIDERS = {
     "lginf-hb": {
         "label": "Landesamt Geoinformation Bremen",
         "adapter": "lginf_hb_bulk",
+        "datasets": {
+            "dgm1": {},
+        },
+    },
+    "gdi-be": {
+        "label": "GDI Berlin",
+        "adapter": "gdi_be_atom",
         "datasets": {
             "dgm1": {},
         },
@@ -232,6 +241,8 @@ def locate_remote_tiles(
         return locate_mv_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "lginf_hb_bulk":
         return locate_hb_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
+    if SERVICE_PROVIDERS[provider].get("adapter") == "gdi_be_atom":
+        return locate_be_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
 
     config = _dataset_config(provider, dataset)
     response = requests.post(
@@ -271,6 +282,8 @@ def summarize_remote_tiles(
         return summarize_mv_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "lginf_hb_bulk":
         return summarize_hb_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
+    if SERVICE_PROVIDERS[provider].get("adapter") == "gdi_be_atom":
+        return summarize_be_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
 
     config = _dataset_config(provider, dataset)
     summaries: list[dict[str, Any]] = []
