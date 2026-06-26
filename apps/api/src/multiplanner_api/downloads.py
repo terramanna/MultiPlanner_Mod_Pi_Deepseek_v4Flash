@@ -34,7 +34,7 @@ def download_subset(request: DownloadSubsetRequest) -> DownloadSubsetResponse:
     subset_response = locate_subsets(_locate_request(request))
     settings = load_settings()
     selection_name = request.selection_name or _default_selection_name()
-    output_dir = _resolve_output_dir(settings.cache_root, selection_name)
+    output_dir = _resolve_output_dir(settings.cache_root, selection_name, settings.output_dir)
     downloaded_files, downloaded_by_dataset, download_warnings = _download_located_files(
         subset_response,
         output_dir,
@@ -69,8 +69,11 @@ def _locate_request(request: DownloadSubsetRequest) -> LocateSubsetRequest:
     )
 
 
-def _resolve_output_dir(cache_root: str, selection_name: str) -> Path:
-    output_dir = Path(cache_root) / "saved_subsets" / _slugify(selection_name)
+def _resolve_output_dir(cache_root: str, selection_name: str, custom_output_dir: str = "") -> Path:
+    if custom_output_dir:
+        output_dir = Path(custom_output_dir) / _slugify(selection_name)
+    else:
+        output_dir = Path(cache_root) / "saved_subsets" / _slugify(selection_name)
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir.resolve()
 

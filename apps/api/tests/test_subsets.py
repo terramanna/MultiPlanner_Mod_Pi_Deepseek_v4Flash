@@ -55,7 +55,7 @@ def fake_download_response(request) -> dict[str, object]:
 
 
 def patch_download_settings(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr("multiplanner_api.downloads.load_settings", lambda: SimpleNamespace(cache_root=str(tmp_path / "cache"), ellipse_gdal_dir="unused"))
+    monkeypatch.setattr("multiplanner_api.downloads.load_settings", lambda: SimpleNamespace(cache_root=str(tmp_path / "cache"), output_dir="", ellipse_gdal_dir="unused"))
     monkeypatch.setattr("multiplanner_api.downloads.locate_subsets", lambda request: single_tile_response())
 
 
