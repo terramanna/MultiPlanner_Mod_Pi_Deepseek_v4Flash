@@ -20,6 +20,8 @@ from multiplanner_api.st import locate_tiles as locate_st_tiles
 from multiplanner_api.st import summarize_tiles as summarize_st_tiles
 from multiplanner_api.nrw import locate_tiles as locate_nrw_tiles
 from multiplanner_api.nrw import summarize_tiles as summarize_nrw_tiles
+from multiplanner_api.mv import locate_tiles as locate_mv_tiles
+from multiplanner_api.mv import summarize_tiles as summarize_mv_tiles
 from multiplanner_api.sh import locate_tiles as locate_sh_tiles
 from multiplanner_api.sh import summarize_tiles as summarize_sh_tiles
 
@@ -104,6 +106,13 @@ SERVICE_PROVIDERS = {
     "lvermgeo-sh": {
         "label": "LVermGeo Schleswig-Holstein",
         "adapter": "lvermgeo_sh_geojson",
+        "datasets": {
+            "dgm1": {},
+        },
+    },
+    "laiv-mv": {
+        "label": "LAiV Mecklenburg-Vorpommern",
+        "adapter": "laiv_mv_wcs",
         "datasets": {
             "dgm1": {},
         },
@@ -210,6 +219,8 @@ def locate_remote_tiles(
         return locate_nrw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "lvermgeo_sh_geojson":
         return locate_sh_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
+    if SERVICE_PROVIDERS[provider].get("adapter") == "laiv_mv_wcs":
+        return locate_mv_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
 
     config = _dataset_config(provider, dataset)
     response = requests.post(
@@ -245,6 +256,8 @@ def summarize_remote_tiles(
         return summarize_nrw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "lvermgeo_sh_geojson":
         return summarize_sh_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
+    if SERVICE_PROVIDERS[provider].get("adapter") == "laiv_mv_wcs":
+        return summarize_mv_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
 
     config = _dataset_config(provider, dataset)
     summaries: list[dict[str, Any]] = []
