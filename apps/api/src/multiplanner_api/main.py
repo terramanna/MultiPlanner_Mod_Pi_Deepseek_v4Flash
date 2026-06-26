@@ -1,9 +1,13 @@
+import asyncio
+import json
 import os
+import queue as queue_module
 import subprocess
+import threading
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pathlib import Path
 
 from multiplanner_api.config import load_settings
@@ -98,6 +102,40 @@ def download_remote_subset(request: DownloadSubsetRequest) -> DownloadSubsetResp
         return download_subset(request)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/v1/subsets/download-stream")
+async def download_remote_subset_stream(request: DownloadSubsetRequest) -> StreamingResponse:
+    q: queue_module.SimpleQueue = queue_module.SimpleQueue()
+
+    def run_download() -> None:
+        def emit(tile_id: str, current: int, total: int) -> None:
+            q.put({"type": "progress", "tile_id": tile_id, "current": current, "total": total})
+        try:
+            result = download_subset(request, on_progress=emit)
+            q.put({"type": "done", "result": result.model_dump()})
+        except ValueError as exc:
+            q.put({"type": "error", "message": str(exc)})
+        except Exception as exc:
+            q.put({"type": "error", "message": str(exc)})
+
+    threading.Thread(target=run_download, daemon=True).start()
+
+    async def generate():
+        while True:
+            try:
+                event = q.get_nowait()
+                yield f"data: {json.dumps(event)}\n\n"
+                if event["type"] in ("done", "error"):
+                    break
+            except queue_module.Empty:
+                await asyncio.sleep(0.1)
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.get("/api/v1/subsets/file")

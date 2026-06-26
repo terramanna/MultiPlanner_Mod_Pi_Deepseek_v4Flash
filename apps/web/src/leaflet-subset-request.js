@@ -67,12 +67,39 @@ async function fetchSubsetPreview(context, body) {
 }
 
 async function submitSubsetRequest(context, download, body, rootDirectoryHandle) {
-  const endpoint = download ? "/api/v1/subsets/download" : "/api/v1/subsets/locate";
-  if (download) setStatus(context, "Downloading source tiles and building export...");
-  const response = await postJson(context, endpoint, body);
+  if (download) return streamSubsetDownload(context, body, rootDirectoryHandle);
+  const response = await postJson(context, "/api/v1/subsets/locate", body);
   if (!response.ok) throw new Error(await errorDetail(response, "Subset request failed"));
-  const payload = await response.json();
-  return download ? handleDownloadSubset(context, body, payload, rootDirectoryHandle) : handlePreviewSubset(context, payload);
+  return handlePreviewSubset(context, await response.json());
+}
+
+async function streamSubsetDownload(context, body, rootDirectoryHandle) {
+  const response = await postJson(context, "/api/v1/subsets/download-stream", body);
+  if (!response.ok) throw new Error(await errorDetail(response, "Download failed"));
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let payload = null;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop();
+    for (const part of parts) {
+      if (!part.startsWith("data: ")) continue;
+      const event = JSON.parse(part.slice(6));
+      if (event.type === "progress") {
+        setStatus(context, `Downloading tile ${event.current} of ${event.total}…`);
+      } else if (event.type === "done") {
+        payload = event.result;
+      } else if (event.type === "error") {
+        throw new Error(event.message);
+      }
+    }
+  }
+  if (!payload) throw new Error("Download stream ended without result.");
+  return handleDownloadSubset(context, body, payload, rootDirectoryHandle);
 }
 
 async function errorDetail(response, fallback) {

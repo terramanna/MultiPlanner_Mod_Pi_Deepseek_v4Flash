@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Callable
 import json
 import os
 import re
@@ -30,8 +31,13 @@ ORTHO_DATASETS = frozenset({"dop20"})
 GRD_DRIVER = "NWT_GRD"
 
 
-def download_subset(request: DownloadSubsetRequest) -> DownloadSubsetResponse:
+def download_subset(
+    request: DownloadSubsetRequest,
+    *,
+    on_progress: Callable[[str, int, int], None] | None = None,
+) -> DownloadSubsetResponse:
     subset_response = locate_subsets(_locate_request(request))
+    total_tiles = sum(len(result.tiles) for result in subset_response.results)
     settings = load_settings()
     selection_name = request.selection_name or _default_selection_name()
     output_dir = _resolve_output_dir(settings.cache_root, selection_name, settings.output_dir)
@@ -40,6 +46,8 @@ def download_subset(request: DownloadSubsetRequest) -> DownloadSubsetResponse:
         output_dir,
         group_by_provider=request.provider == "auto",
         default_provider=request.provider,
+        on_progress=on_progress,
+        total_tiles=total_tiles,
     )
     exports, export_warnings = _export_subset(
         request.export_profile,
@@ -84,11 +92,14 @@ def _download_located_files(
     *,
     group_by_provider: bool,
     default_provider: str,
+    on_progress: Callable[[str, int, int], None] | None = None,
+    total_tiles: int = 0,
 ) -> tuple[list[DownloadedFile], dict[str, list[Path]], list[str]]:
     downloaded_files: list[DownloadedFile] = []
     downloaded_by_dataset: dict[str, list[Path]] = {}
     warnings_list: list[str] = []
     subset_provider = getattr(subset_response, "provider", default_provider)
+    tile_counter: list[int] = [0]
     for result in subset_response.results:
         provider = getattr(result, "provider", None) or subset_provider
         result_files, result_paths, result_warnings = _download_result_files(
@@ -96,6 +107,9 @@ def _download_located_files(
             output_dir,
             provider,
             group_by_provider,
+            on_progress=on_progress,
+            tile_counter=tile_counter,
+            total_tiles=total_tiles,
         )
         downloaded_files.extend(result_files)
         warnings_list.extend(result_warnings)
@@ -109,6 +123,10 @@ def _download_result_files(
     output_dir: Path,
     provider: str,
     group_by_provider: bool,
+    *,
+    on_progress: Callable[[str, int, int], None] | None = None,
+    tile_counter: list[int] | None = None,
+    total_tiles: int = 0,
 ) -> tuple[list[DownloadedFile], dict[str, list[Path]], list[str]]:
     downloaded_files: list[DownloadedFile] = []
     downloaded_by_dataset: dict[str, list[Path]] = {}
@@ -117,6 +135,9 @@ def _download_result_files(
     for tile in result.tiles:
         if not tile.primary_url:
             continue
+        if on_progress is not None and tile_counter is not None:
+            tile_counter[0] += 1
+            on_progress(tile.tile_id or "tile", tile_counter[0], total_tiles)
         target_path = dataset_dir / _target_filename(tile.primary_url, tile.tile_id)
         try:
             _download_file(tile.primary_url, target_path)
