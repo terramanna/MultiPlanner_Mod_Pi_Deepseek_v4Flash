@@ -46,17 +46,34 @@ def test_geosn_locate_tiles_constructs_correct_url() -> None:
     )
     assert len(tiles) == 1
     tile = tiles[0]
-    assert tile["primary_url"].startswith(GEOSN_BASE + "dgm1_33")
+    assert tile["primary_url"].startswith(GEOSN_DGM_BASE + "dgm1_33")
     assert tile["primary_url"].endswith("_2_sn_tiff.zip")
 
 
-def test_geosn_tile_record_url_matches_known_good_link() -> None:
-    # Verified against the live URL provided by the user:
-    # https://geocloud.landesvermessung.sachsen.de/public.php/dav/files/S6wwnFwX7882sZm/dom1_33278_5590_2_sn_tiff.zip
+GEOSN_DGM_BASE = "https://geocloud.landesvermessung.sachsen.de/public.php/dav/files/JCcXyifaNdLDnxZ/"
+
+
+def test_geosn_tile_record_url_matches_known_good_dom1_link() -> None:
+    # Verified: https://...S6wwnFwX7882sZm/dom1_33278_5590_2_sn_tiff.zip
     from multiplanner_api.geosn import _tile_record
     record = _tile_record("dom1", 278, 5590, GEOSN_BASE)
     assert record["primary_url"] == GEOSN_BASE + "dom1_33278_5590_2_sn_tiff.zip"
     assert record["tile_id"] == "dom1_33278_5590_2_sn"
+
+
+def test_geosn_tile_record_url_matches_known_good_dgm1_link() -> None:
+    # Verified: https://...JCcXyifaNdLDnxZ/dgm1_33278_5590_2_sn_tiff.zip
+    from multiplanner_api.geosn import _tile_record
+    record = _tile_record("dgm1", 278, 5590, GEOSN_DGM_BASE)
+    assert record["primary_url"] == GEOSN_DGM_BASE + "dgm1_33278_5590_2_sn_tiff.zip"
+
+
+def test_geosn_dgm1_and_dom1_use_different_base_urls() -> None:
+    dgm_config = SERVICE_PROVIDERS["geosn-sn"]["datasets"]["dgm1"]
+    dom_config = SERVICE_PROVIDERS["geosn-sn"]["datasets"]["dom1"]
+    assert dgm_config["base_url"] != dom_config["base_url"]
+    assert "JCcXyifaNdLDnxZ" in dgm_config["base_url"]
+    assert "S6wwnFwX7882sZm" in dom_config["base_url"]
 
 
 def test_geosn_summarize_tiles_includes_provider_and_dataset() -> None:

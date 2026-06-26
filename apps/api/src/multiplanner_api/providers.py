@@ -55,8 +55,7 @@ SERVICE_PROVIDERS = {
         "adapter": "geosn_grid",
         "datasets": {
             "dgm1": {
-                # DGM share token may differ from DOM — verify before use
-                "base_url": "https://geocloud.landesvermessung.sachsen.de/public.php/dav/files/S6wwnFwX7882sZm/",
+                "base_url": "https://geocloud.landesvermessung.sachsen.de/public.php/dav/files/JCcXyifaNdLDnxZ/",
             },
             "dom1": {
                 "base_url": "https://geocloud.landesvermessung.sachsen.de/public.php/dav/files/S6wwnFwX7882sZm/",
