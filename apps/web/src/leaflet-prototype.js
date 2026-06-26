@@ -30,6 +30,7 @@ const providerCoverage = {
   "geosn-sn": { stateCode: "SN", color: "#16a34a", label: "GeoSN Saxony" },
   "hvbg-he": { stateCode: "HE", color: "#dc2626", label: "HVBG Hessen" },
   "lvermgeo-st": { stateCode: "ST", color: "#7c3aed", label: "LVermGeo Saxony-Anhalt" },
+  "geobasis-bb": { stateCode: "BB", color: "#eab308", label: "Geobasis Brandenburg" },
 };
 const variants = ["corridor", "area", "point"];
 const params = new URLSearchParams(window.location.search);

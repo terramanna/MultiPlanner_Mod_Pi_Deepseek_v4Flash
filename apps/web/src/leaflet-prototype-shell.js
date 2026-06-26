@@ -5,6 +5,7 @@ const defaultProviders = [
   { name: "geosn-sn", label: "GeoSN Saxony" },
   { name: "hvbg-he", label: "HVBG Hessen" },
   { name: "lvermgeo-st", label: "LVermGeo Saxony-Anhalt" },
+  { name: "geobasis-bb", label: "Geobasis Brandenburg" },
 ];
 
 const labels = {

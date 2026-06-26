@@ -8,6 +8,8 @@ from pyproj import Transformer
 from shapely.geometry import LineString
 from shapely.ops import transform
 
+from multiplanner_api.bb import locate_tiles as locate_bb_tiles
+from multiplanner_api.bb import summarize_tiles as summarize_bb_tiles
 from multiplanner_api.geosn import locate_tiles as locate_geosn_tiles
 from multiplanner_api.geosn import summarize_tiles as summarize_geosn_tiles
 from multiplanner_api.he import locate_tiles as locate_he_tiles
@@ -77,6 +79,13 @@ SERVICE_PROVIDERS = {
     "lvermgeo-st": {
         "label": "LVermGeo Saxony-Anhalt",
         "adapter": "lvermgeo_st_wcs",
+        "datasets": {
+            "dgm1": {},
+        },
+    },
+    "geobasis-bb": {
+        "label": "Geobasis Brandenburg",
+        "adapter": "geobasis_bb_wcs",
         "datasets": {
             "dgm1": {},
         },
@@ -175,6 +184,8 @@ def locate_remote_tiles(
         return locate_he_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "lvermgeo_st_wcs":
         return locate_st_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
+    if SERVICE_PROVIDERS[provider].get("adapter") == "geobasis_bb_wcs":
+        return locate_bb_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "nrw_grid":
         return locate_nrw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
 
@@ -204,6 +215,8 @@ def summarize_remote_tiles(
         return summarize_he_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "lvermgeo_st_wcs":
         return summarize_st_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
+    if SERVICE_PROVIDERS[provider].get("adapter") == "geobasis_bb_wcs":
+        return summarize_bb_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "nrw_grid":
         return summarize_nrw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
 
