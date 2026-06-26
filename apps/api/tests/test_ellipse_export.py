@@ -26,6 +26,8 @@ def test_warp_reprojects_the_ellipse_tiff_to_wgs84_utm32(monkeypatch, tmp_path) 
 
 def test_grd_translate_uses_createcopy_with_the_northwood_driver(monkeypatch, tmp_path) -> None:
     command = []
+    grd_path = tmp_path / "dgm1.grd"
+    grd_path.write_bytes(b"\x00" * 520)  # stub for _patch_grd_style
 
     monkeypatch.setattr(
         "multiplanner_api.downloads.subprocess.run",
@@ -34,13 +36,61 @@ def test_grd_translate_uses_createcopy_with_the_northwood_driver(monkeypatch, tm
 
     from multiplanner_api.downloads import _translate_to_grd
 
-    _translate_to_grd(Path("gdal_translate.exe"), tmp_path / "dgm1.tif", tmp_path / "dgm1.grd", {})
+    _translate_to_grd(Path("gdal_translate.exe"), tmp_path / "dgm1.tif", grd_path, {})
 
     # NWT_GRD must be built by gdal_translate (CreateCopy) reading the warped
     # GeoTIFF, so the driver derives the real Z min/max instead of garbage defaults.
+    # Explicit -ot Float32 -b 1 because NWT_GRD only supports single-band Float32.
     assert command[0] == "gdal_translate.exe"
     assert command[command.index("-of") + 1] == GRD_DRIVER
+    assert command[command.index("-ot") + 1] == "Float32"
+    assert command[command.index("-b") + 1] == "1"
     assert str(tmp_path / "dgm1.tif") in command
+
+
+def _make_stub_grd(path: Path, fz_min: float, fz_max: float, proj: str, mid_z: float) -> None:
+    import struct as _s
+    b = bytearray(1024)
+    b[0:6] = b"HGPC1\x00"
+    _s.pack_into("<f", b, 45, fz_min)
+    _s.pack_into("<f", b, 49, fz_max)
+    proj_enc = proj.encode("ascii") + b"\x00"
+    b[256:256 + len(proj_enc)] = proj_enc
+    _s.pack_into("<H", b, 516, 3)                    # nColorInflections = 3
+    _s.pack_into("<f", b, 518, fz_min)               # entry[0] z = fZMin
+    b[522:525] = bytes([0, 0, 255])
+    _s.pack_into("<f", b, 525, mid_z)                # entry[1] z = mid (GDAL bug value)
+    b[529:532] = bytes([255, 255, 0])
+    _s.pack_into("<f", b, 532, fz_max)               # entry[2] z = fZMax
+    b[536:539] = bytes([255, 0, 0])
+    path.write_bytes(bytes(b))
+
+
+def test_grd_style_flags_patched_to_gradient_after_translate(monkeypatch, tmp_path) -> None:
+    grd_path = tmp_path / "dgm1.grd"
+    _make_stub_grd(grd_path, 33.53, 68.08,
+                   'Earth Projection 8, 104, "m", 9, 0, 0.9996, 500000, 0',
+                   17.275)
+
+    monkeypatch.setattr("multiplanner_api.downloads.subprocess.run", lambda *a, **k: None)
+
+    from multiplanner_api.downloads import _translate_to_grd
+
+    _translate_to_grd(Path("gdal_translate.exe"), tmp_path / "dgm1.tif", grd_path, {})
+
+    data = grd_path.read_bytes()
+    import struct as _s
+
+    # 1. Style flags = 7 so Ellipse reads Float32 Z band, not byte color-ramp bands.
+    assert data[512:516] == b"\x07\x00\x00\x00"
+
+    # 2. Color entry[1] Z corrected from relative offset to absolute elevation.
+    fixed_z = _s.unpack_from("<f", data, 525)[0]
+    assert abs(fixed_z - (33.53 + 17.275)) < 0.001
+
+    # 3. Projection string prefixed with "CoordSys " for MapInfo/Ellipse parsing.
+    proj = data[256:data.index(b"\x00", 256)].decode("ascii")
+    assert proj.startswith("CoordSys ")
 
 
 def test_grd_elevation_warps_to_geotiff_then_createcopies_to_grd(monkeypatch, tmp_path) -> None:

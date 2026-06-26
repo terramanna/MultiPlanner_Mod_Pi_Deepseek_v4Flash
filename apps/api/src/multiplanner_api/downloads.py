@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 import json
 import os
 import re
+import struct
 import subprocess
 import warnings
 from pathlib import Path
@@ -327,14 +328,56 @@ def _translate_to_grd(gdal_translate: Path, tif_path: Path, grd_path: Path, envi
     subprocess.run(
         [
             str(gdal_translate),
-            "-of",
-            GRD_DRIVER,
+            "-of", GRD_DRIVER,
+            "-ot", "Float32",
+            "-b", "1",
             str(tif_path),
             str(grd_path),
         ],
         check=True,
         env=environment,
     )
+    _patch_grd_style(grd_path)
+
+
+def _patch_grd_style(grd_path: Path) -> None:
+    # Three fixes needed to make GDAL-written NWT_GRD compatible with Ellipse,
+    # compared against the known-good Vertical Mapper reference grid:
+    #
+    # 1. Style flags at offset 512 (int32): GDAL writes 0; Ellipse uses these to
+    #    decide between continuous elevation surface (7) and classified/image (0).
+    #    With 0 it reads byte color-ramp bands instead of the Float32 Z band.
+    #
+    # 2. Color table entry [1] Z value: GDAL writes a relative offset (half the
+    #    Z-range) instead of an absolute elevation, so it falls below fZMin and
+    #    makes the table invalid. Fix: add fZMin to convert to absolute.
+    #
+    # 3. Projection string at offset 256: GDAL omits the "CoordSys " prefix that
+    #    MapInfo/Ellipse requires to parse it as a valid coordinate system.
+    with grd_path.open("r+b") as f:
+        b = f.read(1024)
+        fz_min = struct.unpack_from("<f", b, 45)[0]
+        n_inflections = struct.unpack_from("<H", b, 516)[0]
+
+        f.seek(512)
+        f.write(b"\x07\x00\x00\x00")
+
+        if n_inflections >= 3:
+            entry1_z_off = 518 + 7  # entry[1] follows the 7-byte entry[0]
+            stored_z = struct.unpack_from("<f", b, entry1_z_off)[0]
+            if stored_z < fz_min:
+                f.seek(entry1_z_off)
+                f.write(struct.pack("<f", fz_min + stored_z))
+
+        proj_raw = b[256:512]
+        null = proj_raw.find(0)
+        proj_str = proj_raw[:null].decode("ascii", "replace") if null > 0 else ""
+        if proj_str and not proj_str.startswith("CoordSys "):
+            try:
+                f.seek(256)
+                f.write(("CoordSys " + proj_str).encode("ascii") + b"\x00")
+            except UnicodeEncodeError:
+                pass  # non-ASCII projection string; leave as-is
 
 
 def _gdal_environment(gdal_dir: Path) -> dict[str, str]:
