@@ -1,14 +1,11 @@
-"""INSPIRE WCS 2.0.1 adapter for HVBG Hessen DGM1/DOM1.
+"""INSPIRE WCS 2.0.1 adapter for LVGL Saarland DGM1.
 
-Endpoint:  https://inspirehessen.de/raster/{dataset}/ows
-Coverage IDs: dgm1 → he_dgm1, dom1 → dom1
-CRS:       EPSG:25832 (ETRS89 / UTM Zone 32N)
-Tile size: 1 km × 1 km (matches NRW grid; avoids large single requests)
-
-WCS GetCoverage example (from HVBG official guide, 2025-05):
-  https://inspirehessen.de/raster/dgm1/ows?request=GetCoverage&service=WCS
-    &version=2.0.1&coverageid=he_dgm1&FORMAT=GTIFF
-    &SUBSET=e(514145,518345)&SUBSET=n(5593248,5597467)
+Endpoint:   https://geoportal.saarland.de/gdi-sl/inspireraster/inspirewcsel
+Coverage ID: EL.GridCoverage
+CRS:        EPSG:25832 (ETRS89 / UTM Zone 32N)
+Axis labels: E (easting), N (northing) — INSPIRE convention
+Tile size:  1 km × 1 km
+Extent:     roughly x 296000–370000, y 5434000–5490000 (Saarland)
 """
 
 from __future__ import annotations
@@ -25,10 +22,10 @@ WGS84 = "EPSG:4326"
 ETRS89_UTM32 = "EPSG:25832"
 TILE_SIZE_M = 1000
 MAX_TILES_PER_DATASET = 200
-PROVIDER_ID = "hvbg-he"
+PROVIDER_ID = "lvgl-sl"
 
-_WCS_BASE = "https://inspirehessen.de/raster/{dataset}/ows"
-_COVERAGE_IDS: dict[str, str] = {"dgm1": "he_dgm1", "dom1": "dom1", "dop20": "he_dop20"}
+_WCS_BASE = "https://geoportal.saarland.de/gdi-sl/inspireraster/inspirewcsel"
+_COVERAGE_ID = "EL.GridCoverage"
 
 
 def locate_tiles(
@@ -43,12 +40,10 @@ def locate_tiles(
     cells = _tile_cells(geom_32)
     if len(cells) > MAX_TILES_PER_DATASET:
         raise ValueError(
-            f"Hessen selection resolves to {len(cells)} 1 km tiles. "
+            f"Saarland selection resolves to {len(cells)} 1 km tiles. "
             f"Limit the area to {MAX_TILES_PER_DATASET} tiles per dataset."
         )
-    wcs_base = _WCS_BASE.format(dataset=dataset)
-    coverage_id = _COVERAGE_IDS.get(dataset, f"he_{dataset}")
-    return [_tile_record(dataset, e_m, n_m, wcs_base, coverage_id) for e_m, n_m in cells]
+    return [_tile_record(e_m, n_m) for e_m, n_m in cells]
 
 
 def summarize_tiles(
@@ -66,7 +61,7 @@ def summarize_tiles(
             "tile_id": tile["tile_id"],
             "updated": None,
             "primary_url": tile["primary_url"],
-            "source": "https://inspirehessen.de/",
+            "source": "https://geoportal.saarland.de/",
         }
         for tile in locate_tiles(
             dataset,
@@ -87,7 +82,7 @@ def request_geometry(geometry: str, geometry_type: str):
         return box(payload["xmin"], payload["ymin"], payload["xmax"], payload["ymax"])
     if geometry_type == "esriGeometryPolygon":
         return Polygon(payload["rings"][0])
-    raise ValueError(f"Unsupported Hessen geometry type: {geometry_type}")
+    raise ValueError(f"Unsupported Saarland geometry type: {geometry_type}")
 
 
 def _to_utm32(geometry):
@@ -113,14 +108,12 @@ def _tile_cells(geometry) -> list[tuple[int, int]]:
     ]
 
 
-def _tile_record(
-    dataset: str, e_m: int, n_m: int, wcs_base: str, coverage_id: str
-) -> dict[str, str]:
-    tile_id = f"he_{dataset}_{e_m}_{n_m}"
+def _tile_record(e_m: int, n_m: int) -> dict[str, str]:
+    tile_id = f"sl_dgm1_{e_m}_{n_m}"
     url = (
-        f"{wcs_base}?request=GetCoverage&service=WCS&version=2.0.1"
-        f"&coverageid={coverage_id}&FORMAT=GTIFF"
-        f"&SUBSET=e({e_m},{e_m + TILE_SIZE_M})"
-        f"&SUBSET=n({n_m},{n_m + TILE_SIZE_M})"
+        f"{_WCS_BASE}?request=GetCoverage&service=WCS&version=2.0.1"
+        f"&coverageid={_COVERAGE_ID}&FORMAT=image/tiff"
+        f"&SUBSET=E({e_m},{e_m + TILE_SIZE_M})"
+        f"&SUBSET=N({n_m},{n_m + TILE_SIZE_M})"
     )
     return {"tile_id": tile_id, "primary_url": url}

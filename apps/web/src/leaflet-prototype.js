@@ -35,13 +35,17 @@ import {
   snDop,
   mvDop,
   heDop,
+  heDgm,
+  heDom,
   shDop,
   stDop,
   bwDop,
   rpDop,
+  slDop,
   nrwTopo,
   byTopo,
   nrwHillshade,
+  globalHillshade,
 } from "./leaflet-basemaps.js";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").trim();
@@ -91,10 +95,11 @@ L.control.layers(
     "Sachsen-Anhalt Ortho (DOP20)": stDop,
     "Baden-Württemberg Ortho (DOP20)": bwDop,
     "Rheinland-Pfalz Ortho (DOP20)": rpDop,
+    "Saarland Ortho (DOP20)": slDop,
     "NRW Topo (DTK)": nrwTopo,
     "Bayern Topo (DTK25)": byTopo
   },
-  { "NRW Hillshade": nrwHillshade },
+  { "Hillshade (global, ESRI)": globalHillshade, "NRW Hillshade (1m DGM)": nrwHillshade, "Hessen DGM1 (AdV-Farbe)": heDgm, "Hessen DOM1 (AdV-Farbe)": heDom },
   { position: "topright" }
 ).addTo(map);
 L.control.scale({ imperial: false, position: "bottomleft" }).addTo(map);

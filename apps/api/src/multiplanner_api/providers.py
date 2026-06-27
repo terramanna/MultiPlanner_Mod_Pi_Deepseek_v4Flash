@@ -34,6 +34,8 @@ from multiplanner_api.sh import locate_tiles as locate_sh_tiles
 from multiplanner_api.sh import summarize_tiles as summarize_sh_tiles
 from multiplanner_api.th import locate_tiles as locate_th_tiles
 from multiplanner_api.th import summarize_tiles as summarize_th_tiles
+from multiplanner_api.sl import locate_tiles as locate_sl_tiles
+from multiplanner_api.sl import summarize_tiles as summarize_sl_tiles
 
 SERVICE_PROVIDERS = {
     "lgln-ni": {
@@ -99,6 +101,7 @@ SERVICE_PROVIDERS = {
         "datasets": {
             "dgm1": {},
             "dom1": {},
+            "dop20": {},
         },
     },
     "lvermgeo-st": {
@@ -214,6 +217,13 @@ SERVICE_PROVIDERS = {
             "lod2": {},
         },
     },
+    "lvgl-sl": {
+        "label": "Saarland LVGL",
+        "adapter": "lvgl_sl_wcs",
+        "datasets": {
+            "dgm1": {},
+        },
+    },
 }
 
 ADAPTER_LOCATORS = {
@@ -230,6 +240,7 @@ ADAPTER_LOCATORS = {
     "lginf_hb_bulk": locate_hb_tiles,
     "gdi_be_atom": locate_be_tiles,
     "tlbg_th_atom": locate_th_tiles,
+    "lvgl_sl_wcs": locate_sl_tiles,
 }
 
 ADAPTER_SUMMARIZERS = {
@@ -246,6 +257,7 @@ ADAPTER_SUMMARIZERS = {
     "lginf_hb_bulk": summarize_hb_tiles,
     "gdi_be_atom": summarize_be_tiles,
     "tlbg_th_atom": summarize_th_tiles,
+    "lvgl_sl_wcs": summarize_sl_tiles,
 }
 
 WGS84 = "EPSG:4326"

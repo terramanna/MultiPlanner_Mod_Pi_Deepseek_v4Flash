@@ -104,10 +104,26 @@ export const mvDop = L.tileLayer.wms("https://www.geodaten-mv.de/dienste/adv_dop
   maxZoom: 20,
   attribution: "© LAiV Mecklenburg-Vorpommern"
 });
-export const heDop = L.tileLayer.wms("https://www.gds-srv.hessen.de/cgi-bin/lika-services/ogc-free-images.ows", {
-  layers: "he_dop20_rgb",
+export const heDop = L.tileLayer.wms("https://inspire-hessen.de/raster/wms/dop20-2024H2/ows", {
+  layers: "OI.OrthoimageCoverage",
   format: "image/jpeg",
   transparent: false,
+  maxZoom: 20,
+  attribution: "© HVBG Hessen"
+});
+export const heDgm = L.tileLayer.wms("https://inspire-hessen.de/raster/wms/dgm1/ows", {
+  layers: "EL.ElevationGridCoverage.AdV",
+  format: "image/png",
+  transparent: true,
+  opacity: 0.7,
+  maxZoom: 20,
+  attribution: "© HVBG Hessen"
+});
+export const heDom = L.tileLayer.wms("https://inspire-hessen.de/raster/wms/dom1/ows", {
+  layers: "EL.ElevationGridCoverage.AdV",
+  format: "image/png",
+  transparent: true,
+  opacity: 0.7,
   maxZoom: 20,
   attribution: "© HVBG Hessen"
 });
@@ -138,4 +154,11 @@ export const rpDop = L.tileLayer.wms("https://geo4.service24.rlp.de/wms/rp_dop20
   transparent: false,
   maxZoom: 20,
   attribution: "© Vermessungs- und Katasterverwaltung RLP"
+});
+export const slDop = L.tileLayer.wms("https://geoportal.saarland.de/freewms/dop2025", {
+  layers: "sl_dop20_rgb",
+  format: "image/jpeg",
+  transparent: false,
+  maxZoom: 20,
+  attribution: "© GeoBasis DE/LVGL-SL"
 });
