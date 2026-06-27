@@ -82,7 +82,7 @@ const thDop = L.tileLayer.wms("https://www.geoproxy.geoportal-th.de/geoproxy/ser
   layers: "th_dop200rgb",
   format: "image/jpeg",
   transparent: false,
-  maxZoom: 19,
+  maxZoom: 21,
   attribution: "© TLBG Thüringen"
 });
 const nrwTopo = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms_nw_dtk", {
