@@ -6,10 +6,12 @@ MultiPlanner is a terrain-tile download tool. It queries state geodata portals,
 finds which 1 km tiles intersect a user-drawn geometry, and downloads them for
 export. Each German state has a separate adapter module.
 
-**Your assignment:** implement DGM1 adapters for the southern German states,
-working north. Suggested order: BY → BW → RP/SL → TH.
+**Your assignment:** implement DGM1 adapters for the southern German states.
+BY, BW, TH are your remaining targets. RP and SL have already been implemented
+by Claude Appleton on `fix/prototype-provider-retry` — do not re-implement them.
 
-**My assignment (Claude Appleton):** MV and city-states (HB, BE), working south.
+**Claude Appleton has completed:** MV, HB, BE, ST (dom1/dop20/lod2), SH (dom1),
+HE (dop20 WCS + DGM1/DOM1 WMS), SL (dgm1 WCS + dop20 WMS), RP (dgm1 Metalink4).
 
 We merge later. The only file both of us touch is `providers.py`; that will need
 a clean 3-way merge — keep your changes isolated to the state entries you add.
@@ -219,11 +221,12 @@ The `Actor:` value must match your entry in `config/commit-actors.json`.
 - CRS: EPSG:25832; tile size: 1 km x 1 km (50 cm resolution DGM)
 - Provider ID: `lgl-bw`
 
-### RP (Rhineland-Palatinate) + SL (Saarland)
-- RP: `https://geodaten.naturschutz.rlp.de/kartendienste_naturschutz/` — check for WCS
-- RP institution: LVermGeo RP (`lvermgeo-rp`)
-- SL: likely via `https://geoportal.saarland.de` — check ATOM feed or WCS
-- Both are small states; one branch is fine
+### RP (Rhineland-Palatinate) + SL (Saarland) — DONE by Claude Appleton
+- RP: Metalink4 at `https://geobasis-rlp.de/data/dgm1/current/meta4/dgm1_tif_07.meta4`
+  naming: `dgm1_32_{x}_{y}_1_rp_{year}.tif`; provider `lvermgeo-rp`; module `rp.py`
+- SL: INSPIRE WCS at `geoportal.saarland.de/gdi-sl/inspireraster/inspirewcsel`
+  coverage `EL.GridCoverage`; provider `lvgl-sl`; module `sl.py`
+- Both already in `providers.py` and test suite (257 tests). Skip these.
 
 ### TH (Thuringia)
 - TLVermGeo WCS: `https://www.geoportal-th.de/geoportal/` — check for WCS or ATOM

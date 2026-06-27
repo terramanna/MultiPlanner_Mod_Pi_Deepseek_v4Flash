@@ -16,6 +16,21 @@
 - point-to-point LOS
 - path profile generation
 
+### Phase 1 provider status (2026-06-27) — 257 tests
+
+Backend adapters live: NRW, SN, HE, ST, BB, BW, BY, HH, SH, MV, HB, BE, TH, SL, RP (16 states).
+DOP20 WMS basemap: NRW, BY, TH, BB, HH, HB, NI, BE, SN, MV, HE, SH, ST, BW, RP, SL (16 states + NI WMS-only).
+HE DGM1/DOM1 AdV-colour WMS overlays: live.
+SL DOM1 WMS: pending licensing agreement.
+
+Remaining for full-state backend coverage:
+- **NI** — ArcGIS FS adapter (no custom module; queries run against LGLN service)
+- **SN LoD2** — ATOM feed URL not yet found
+- **SN DOP20** — DAV token confirmed; index parsing not yet validated
+- **RP DOM1/DOP20** — no backend adapter (WMS only)
+- **SL DOM1** — licensing pending; WCS endpoint exists
+- **HE LoD2** — shop-only, not automatable
+
 ## Phase 2: Cesium local planner
 
 - Cesium scene shell

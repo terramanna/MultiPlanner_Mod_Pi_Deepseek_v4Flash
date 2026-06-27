@@ -65,11 +65,52 @@ Responsibilities:
 - shared users/projects/permissions
 - provider fetch and analysis executed centrally
 
-## Initial provider strategy
+## Provider adapters
 
-The product must support provider adapters rather than a single hard-coded data
-source. The first implementation will start with Lower Saxony-style remote tile
-lookup, then expand toward Saxony and NRW.
+Each provider adapter lives at `apps/api/src/multiplanner_api/{state}.py` and
+exposes a uniform `locate_tiles` / `summarize_tiles` interface. Four adapter
+patterns are in use:
+
+| Pattern | States | Notes |
+|---------|--------|-------|
+| **INSPIRE WCS 2.0.1** | HE, ST, SL, MV | `GetCoverage` per 1 km cell; axis labels vary (e/n vs x/y vs E/N) |
+| **Metalink4 index** | NRW, RP | Fetch XML tile manifest; parse (x_km, y_km) → URL; 24 h cache |
+| **GeoJSON index** | SH, BB, HH | Fetch tile-index GeoJSON; spatial filter by geometry; cache |
+| **DAV / direct download** | SN (GeoSN), BY, BW | Pre-signed DAV or Metalink URL per file; polygon-based selection |
+| **Bulk ZIPs** | ST (LoD2), HB (LoD2) | Fixed set of state-wide ZIPs returned regardless of geometry |
+| **ATOM index** | SH (dom1), BE, TH | Parse INSPIRE ATOM feed to build tile index |
+| **OGC API Features** | HH | BBox query against a features endpoint |
+
+### Current provider inventory (2026-06-27)
+
+| Provider ID | State | Module | Datasets | Adapter type |
+|-------------|-------|--------|----------|--------------|
+| `lgln-ni` | Niedersachsen | *(ArcGIS FS)* | dgm1, dom1, dop20 | ArcGIS FeatureServer |
+| `geobasis-nrw` | Nordrhein-Westfalen | `nrw.py` | dgm1, dom1, lod2 | Metalink4 index |
+| `geosn-sn` | Sachsen | `geosn.py` | dgm1, dom1, dop20 | DAV direct download |
+| `hvbg-he` | Hessen | `he.py` | dgm1, dom1, dop20 | INSPIRE WCS |
+| `lvermgeo-st` | Sachsen-Anhalt | `st.py` | dgm1, dom1, dop20, lod2 | INSPIRE WCS + bulk ZIPs |
+| `geobasis-bb` | Brandenburg | `bb.py` | dgm1, bdom, lod2 | WCS / GeoJSON index |
+| `lgl-bw` | Baden-Württemberg | `bw.py` | dgm1, dom1, dop20, bdom | Grid ZIP |
+| `ldbv-by` | Bayern | `by.py` | dgm1, dom1, dop20, bdom | Metalink |
+| `lgv-hh` | Hamburg | `hh.py` | dgm1, bdom, lod2 | OGC API Features |
+| `lvermgeo-sh` | Schleswig-Holstein | `sh.py` | dgm1, dom1, dop20, lod2 | GeoJSON index |
+| `laiv-mv` | Mecklenburg-Vorpommern | `mv.py` | dgm1, dom1 | INSPIRE WCS |
+| `lginf-hb` | Bremen | `hb.py` | dgm1, dom1, lod2 | Bulk ZIPs |
+| `gdi-be` | Berlin | `be.py` | dgm1, dom1, bdom | ATOM index |
+| `tlbg-th` | Thüringen | `th.py` | dgm, dom, lod2 | ATOM index |
+| `lvgl-sl` | Saarland | `sl.py` | dgm1 | INSPIRE WCS |
+| `lvermgeo-rp` | Rheinland-Pfalz | `rp.py` | dgm1 | Metalink4 index |
+
+States without a backend adapter yet: **NI** (ArcGIS FS, no custom module).
+States with WMS-only coverage (no download backend): **RP** (dop20 WMS only),
+**SL** (dop20 WMS; dom1 WMS pending licensing agreement).
+
+### Leaflet UI — DOP20 WMS basemap coverage
+
+17 states now have ortho WMS layers in `leaflet-basemaps.js`:
+NRW, BY, TH, BB, HH, HB, NI, BE, SN, MV, HE, SH, ST, BW, RP, SL.
+HE additionally exposes DGM1 and DOM1 as toggleable AdV-colour overlays.
 
 Each provider adapter should expose the same conceptual capabilities:
 
