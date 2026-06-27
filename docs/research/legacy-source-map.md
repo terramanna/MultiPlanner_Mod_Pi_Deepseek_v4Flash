@@ -45,3 +45,16 @@ The new repo narrows the first build target to:
 3. Cesium local planner workflow
 
 Legacy documents remain a source of ideas, not source of truth.
+
+## Temporary local testing note
+
+- MapLibre frontend testing currently needs backend CORS access for
+  `http://127.0.0.1:5186` in addition to the default `http://127.0.0.1:5173`.
+- This is a temporary local testing patch only, so the extra `5186` origin must
+  be removed once side-by-side MapLibre testing is finished.
+
+## Local research notes
+
+- `docs/research/maplibre-prototype-handoff.md`
+  Repository-local handoff for the isolated MapLibre renderer spike, including
+  the verified worktree state and cleanup notes needed before promotion.
