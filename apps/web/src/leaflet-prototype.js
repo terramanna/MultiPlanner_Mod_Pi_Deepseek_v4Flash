@@ -114,6 +114,17 @@ L.control.layers(
   { "NRW Hillshade": nrwHillshade },
   { position: "topright" }
 ).addTo(map);
+L.control.scale({ imperial: false, position: "bottomleft" }).addTo(map);
+const zoomLevelControl = L.control({ position: "bottomleft" });
+zoomLevelControl.onAdd = function (m) {
+  const div = L.DomUtil.create("div");
+  div.style.cssText = "background:rgba(255,255,255,0.85);padding:3px 8px;border-radius:3px;font:12px/1.5 monospace;box-shadow:0 1px 4px rgba(0,0,0,.3)";
+  const update = () => { div.textContent = `Zoom ${m.getZoom()}`; };
+  update();
+  m.on("zoom", update);
+  return div;
+};
+zoomLevelControl.addTo(map);
 map.pm.addControls({
   position: "topleft",
   drawMarker: false,
