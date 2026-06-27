@@ -10,6 +10,8 @@ from shapely.ops import transform
 
 from multiplanner_api.bb import locate_tiles as locate_bb_tiles
 from multiplanner_api.bb import summarize_tiles as summarize_bb_tiles
+from multiplanner_api.bw import locate_tiles as locate_bw_tiles
+from multiplanner_api.bw import summarize_tiles as summarize_bw_tiles
 from multiplanner_api.by import locate_tiles as locate_by_tiles
 from multiplanner_api.by import summarize_tiles as summarize_by_tiles
 from multiplanner_api.hh import locate_tiles as locate_hh_tiles
@@ -33,7 +35,7 @@ from multiplanner_api.sh import summarize_tiles as summarize_sh_tiles
 
 SERVICE_PROVIDERS = {
     "lgln-ni": {
-        "label": "LGLN Lower Saxony",
+        "label": "Saxony Lower LGLN",
         "datasets": {
             "dgm1": {
                 "query_url": "https://services-eu1.arcgis.com/4v3xxN52w88W065F/arcgis/rest/services/lgln_opengeodata_dgm1/FeatureServer/0/query",
@@ -53,7 +55,7 @@ SERVICE_PROVIDERS = {
         },
     },
     "geobasis-nrw": {
-        "label": "Geobasis NRW",
+        "label": "NRW Geobasis",
         "adapter": "nrw_grid",
         "datasets": {
             "dgm1": {
@@ -69,7 +71,7 @@ SERVICE_PROVIDERS = {
         },
     },
     "geosn-sn": {
-        "label": "GeoSN Saxony",
+        "label": "Saxony GeoSN",
         "adapter": "geosn_grid",
         "datasets": {
             "dgm1": {
@@ -81,7 +83,7 @@ SERVICE_PROVIDERS = {
         },
     },
     "hvbg-he": {
-        "label": "HVBG Hessen",
+        "label": "Hessen HVBG",
         "adapter": "hvbg_he_wcs",
         "datasets": {
             "dgm1": {},
@@ -89,59 +91,68 @@ SERVICE_PROVIDERS = {
         },
     },
     "lvermgeo-st": {
-        "label": "LVermGeo Saxony-Anhalt",
+        "label": "Saxony-Anhalt LVermGeo",
         "adapter": "lvermgeo_st_wcs",
         "datasets": {
             "dgm1": {},
         },
     },
     "geobasis-bb": {
-        "label": "Geobasis Brandenburg",
+        "label": "Brandenburg Geobasis",
         "adapter": "geobasis_bb_wcs",
         "datasets": {
             "dgm1": {},
         },
     },
+    "lgl-bw": {
+        "label": "Baden-Wuerttemberg LGL",
+        "adapter": "lgl_bw_gridzip",
+        "datasets": {
+            "dgm1": {},
+        },
+    },
     "ldbv-by": {
-        "label": "LDBV Bayern",
+        "label": "Bayern LDBV",
         "adapter": "ldbv_by_metalink",
         "datasets": {
             "dgm1": {},
         },
     },
     "lgv-hh": {
-        "label": "LGV Hamburg",
+        "label": "Hamburg LGV",
         "adapter": "lgv_hh_ogc",
         "datasets": {
             "dgm1": {},
         },
     },
     "lvermgeo-sh": {
-        "label": "LVermGeo Schleswig-Holstein",
+        "label": "Schleswig-Holstein LVermGeo",
         "adapter": "lvermgeo_sh_geojson",
         "datasets": {
             "dgm1": {},
         },
     },
     "laiv-mv": {
-        "label": "LAiV Mecklenburg-Vorpommern",
+        "label": "Mecklenburg-Vorpommern LAiV",
         "adapter": "laiv_mv_wcs",
         "datasets": {
             "dgm1": {},
         },
     },
     "lginf-hb": {
-        "label": "Landesamt Geoinformation Bremen",
+        "label": "Bremen Landesamt Geoinformation",
         "adapter": "lginf_hb_bulk",
         "datasets": {
             "dgm1": {},
         },
     },
     "gdi-be": {
-        "label": "GDI Berlin",
+        "label": "Berlin GDI",
         "adapter": "gdi_be_atom",
         "datasets": {
             "dgm1": {},
+            "dom1": {},
+            "bdom": {},
         },
     },
 }
@@ -240,6 +251,8 @@ def locate_remote_tiles(
         return locate_st_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "geobasis_bb_wcs":
         return locate_bb_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
+    if SERVICE_PROVIDERS[provider].get("adapter") == "lgl_bw_gridzip":
+        return locate_bw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "ldbv_by_metalink":
         return locate_by_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "lgv_hh_ogc":
@@ -283,6 +296,8 @@ def summarize_remote_tiles(
         return summarize_st_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "geobasis_bb_wcs":
         return summarize_bb_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
+    if SERVICE_PROVIDERS[provider].get("adapter") == "lgl_bw_gridzip":
+        return summarize_bw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "ldbv_by_metalink":
         return summarize_by_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
     if SERVICE_PROVIDERS[provider].get("adapter") == "lgv_hh_ogc":
