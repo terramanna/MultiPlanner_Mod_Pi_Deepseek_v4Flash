@@ -65,6 +65,13 @@ export const nrwHillshade = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms
   maxZoom: 19,
   attribution: "© Geobasis NRW"
 });
+export const heDop = L.tileLayer.wms("https://www.gds-srv.hessen.de/cgi-bin/lika-services/ogc-free-images.ows", {
+  layers: "he_dop20_rgb",
+  format: "image/jpeg",
+  transparent: false,
+  maxZoom: 20,
+  attribution: "© HVBG Hessen"
+});
 export const shDop = L.tileLayer.wms("https://service.gdi-sh.de/WMS_SH_DOP20col_OpenGBD", {
   layers: "sh_dop20_rgb",
   format: "image/jpeg",
