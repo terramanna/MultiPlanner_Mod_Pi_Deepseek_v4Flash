@@ -21,6 +21,18 @@ import {
   polygonAreaM2,
   renderDatasetChoices,
 } from "./leaflet-prototype-utils.js";
+import {
+  streets,
+  satellite,
+  nrwDop,
+  byDop,
+  thDop,
+  bbDop,
+  hhDop,
+  nrwTopo,
+  byTopo,
+  nrwHillshade,
+} from "./leaflet-basemaps.js";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").trim();
 const bkgStateBoundaryUrl = "https://sgx.geodatenzentrum.de/wfs_vg250?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=vg250:vg250_lan&outputFormat=application%2Fjson&SRSNAME=EPSG%3A4326&COUNT=20";
@@ -49,65 +61,6 @@ app.innerHTML = renderPrototypeShell(variant);
 
 const map = L.map("leafletMap", { zoomControl: true }).setView([51.1657, 10.4515], 6);
 map.getContainer().classList.add("is-site-placement");
-const streets = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19,
-  attribution: "OpenStreetMap contributors"
-});
-const satellite = L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  { maxZoom: 19, attribution: "Tiles Esri" }
-);
-const nrwDop = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms_nw_dop", {
-  layers: "nw_dop_rgb",
-  format: "image/jpeg",
-  transparent: false,
-  maxZoom: 19,
-  attribution: "© Geobasis NRW"
-});
-const byDop = L.tileLayer.wms("https://geoservices.bayern.de/od/wms/dop/v1/dop20", {
-  layers: "by_dop20c",
-  format: "image/jpeg",
-  transparent: false,
-  maxZoom: 19,
-  attribution: "© Bayerische Vermessungsverwaltung"
-});
-const byTopo = L.tileLayer.wms("https://geoservices.bayern.de/od/wms/dtk/v1/dtk25", {
-  layers: "by_dtk25",
-  format: "image/png",
-  transparent: false,
-  maxZoom: 19,
-  attribution: "© Bayerische Vermessungsverwaltung"
-});
-const thDop = L.tileLayer.wms("https://www.geoproxy.geoportal-th.de/geoproxy/services/DOP", {
-  layers: "th_dop",
-  format: "image/jpeg",
-  transparent: false,
-  maxZoom: 21,
-  attribution: "© TLBG Thüringen"
-});
-const bbDop = L.tileLayer.wms("https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms", {
-  layers: "bebb_dop20c",
-  format: "image/jpeg",
-  transparent: false,
-  maxZoom: 21,
-  attribution: "© GeoBasis-DE/LGB"
-});
-
-const nrwTopo = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms_nw_dtk", {
-  layers: "nw_dtk_col",
-  format: "image/png",
-  transparent: false,
-  maxZoom: 19,
-  attribution: "© Geobasis NRW"
-});
-const nrwHillshade = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms_nw_dgm-schummerung", {
-  layers: "nw_dgm-schummerung_col",
-  format: "image/png",
-  transparent: true,
-  opacity: 0.6,
-  maxZoom: 19,
-  attribution: "© Geobasis NRW"
-});
 streets.addTo(map);
 L.control.layers(
   {
@@ -117,6 +70,7 @@ L.control.layers(
     "Bayern Ortho (DOP20)": byDop,
     "Thüringen Ortho (DOP)": thDop,
     "Brandenburg Ortho (DOP20c)": bbDop,
+    "Hamburg Ortho (DOP)": hhDop,
     "NRW Topo (DTK)": nrwTopo,
     "Bayern Topo (DTK25)": byTopo
   },

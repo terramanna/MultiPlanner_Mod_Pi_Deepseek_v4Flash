@@ -70,6 +70,11 @@ SERVICE_PROVIDERS = {
                 "catalog_url": "https://www.opengeodata.nrw.de/produkte/geobasis/hm/dom1_tiff/dom1_tiff/",
                 "filename_prefix": "dom1",
             },
+            "lod2": {
+                "base_url": "https://www.opengeodata.nrw.de/produkte/geobasis/3dg/lod2_gml/lod2_gml/",
+                "catalog_url": "https://www.opengeodata.nrw.de/produkte/geobasis/3dg/lod2_gml/lod2_gml/",
+                "filename_prefix": "LoD2",
+            },
         },
     },
     "geosn-sn": {
@@ -97,6 +102,7 @@ SERVICE_PROVIDERS = {
         "adapter": "lvermgeo_st_wcs",
         "datasets": {
             "dgm1": {},
+            "dom1": {},
         },
     },
     "geobasis-bb": {
@@ -153,6 +159,8 @@ SERVICE_PROVIDERS = {
         "adapter": "lgv_hh_ogc",
         "datasets": {
             "dgm1": {},
+            "bdom": {},
+            "lod2": {},
         },
     },
     "lvermgeo-sh": {
@@ -167,6 +175,7 @@ SERVICE_PROVIDERS = {
         "adapter": "laiv_mv_wcs",
         "datasets": {
             "dgm1": {},
+            "dom1": {},
         },
     },
     "lginf-hb": {

@@ -36,8 +36,8 @@ def _mock_response(features):
     )
 
 
-def test_lgv_hh_provider_lists_dgm1_only() -> None:
-    assert provider_dataset_names("lgv-hh") == ("dgm1",)
+def test_lgv_hh_provider_lists_datasets() -> None:
+    assert provider_dataset_names("lgv-hh") == ("dgm1", "bdom", "lod2")
 
 
 def test_tile_record_url_and_id() -> None:
@@ -151,3 +151,69 @@ def test_locate_tiles_raises_for_oversized_area(monkeypatch) -> None:
     with pytest.raises(ValueError, match="100 tiles"):
         locate_tiles("dgm1", config=config, geometry=HAMBURG_POINT,
                      geometry_type="esriGeometryPoint", timeout=5)
+
+
+# --- bdom (bulk single-file) ---
+
+BDOM_URL = "https://daten-hamburg.de/opendata/Digitales_Hoehenmodell_bDOM/dom1_hh_2022-11-21.zip"
+LOD2_URL = "https://archiv.transparenz.hamburg.de/hmbtgarchive/HMDK/lod2-de_hh_2016-11-22_21283_snap_1.GML"
+
+
+def test_bdom_hamburg_point_returns_one_tile() -> None:
+    config = SERVICE_PROVIDERS["lgv-hh"]["datasets"]["bdom"]
+    tiles = locate_tiles("bdom", config=config, geometry=HAMBURG_POINT,
+                         geometry_type="esriGeometryPoint", timeout=1)
+    assert len(tiles) == 1
+    assert tiles[0]["tile_id"] == "hh_bdom_HH"
+    assert tiles[0]["primary_url"] == BDOM_URL
+
+
+def test_bdom_outside_hamburg_returns_empty() -> None:
+    config = SERVICE_PROVIDERS["lgv-hh"]["datasets"]["bdom"]
+    outside = "8.5,51.0"  # Frankfurt area
+    tiles = locate_tiles("bdom", config=config, geometry=outside,
+                         geometry_type="esriGeometryPoint", timeout=1)
+    assert tiles == []
+
+
+def test_summarize_bdom_has_correct_fields() -> None:
+    config = SERVICE_PROVIDERS["lgv-hh"]["datasets"]["bdom"]
+    summaries = summarize_tiles("bdom", config=config, geometry=HAMBURG_POINT,
+                                geometry_type="esriGeometryPoint", timeout=1)
+    assert len(summaries) == 1
+    s = summaries[0]
+    assert s["provider"] == "lgv-hh"
+    assert s["dataset"] == "bdom"
+    assert s["tile_id"] == "hh_bdom_HH"
+    assert s["primary_url"] == BDOM_URL
+
+
+# --- lod2 (bulk single-file) ---
+
+def test_lod2_hamburg_point_returns_one_tile() -> None:
+    config = SERVICE_PROVIDERS["lgv-hh"]["datasets"]["lod2"]
+    tiles = locate_tiles("lod2", config=config, geometry=HAMBURG_POINT,
+                         geometry_type="esriGeometryPoint", timeout=1)
+    assert len(tiles) == 1
+    assert tiles[0]["tile_id"] == "hh_lod2_HH"
+    assert tiles[0]["primary_url"] == LOD2_URL
+
+
+def test_lod2_outside_hamburg_returns_empty() -> None:
+    config = SERVICE_PROVIDERS["lgv-hh"]["datasets"]["lod2"]
+    outside = "8.5,51.0"
+    tiles = locate_tiles("lod2", config=config, geometry=outside,
+                         geometry_type="esriGeometryPoint", timeout=1)
+    assert tiles == []
+
+
+def test_summarize_lod2_has_correct_fields() -> None:
+    config = SERVICE_PROVIDERS["lgv-hh"]["datasets"]["lod2"]
+    summaries = summarize_tiles("lod2", config=config, geometry=HAMBURG_POINT,
+                                geometry_type="esriGeometryPoint", timeout=1)
+    assert len(summaries) == 1
+    s = summaries[0]
+    assert s["provider"] == "lgv-hh"
+    assert s["dataset"] == "lod2"
+    assert s["tile_id"] == "hh_lod2_HH"
+    assert s["primary_url"] == LOD2_URL

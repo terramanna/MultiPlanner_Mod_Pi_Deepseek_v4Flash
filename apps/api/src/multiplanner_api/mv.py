@@ -1,7 +1,7 @@
-"""WCS 2.0.1 adapter for LAiV Mecklenburg-Vorpommern DGM1.
+"""WCS 2.0.1 adapter for LAiV Mecklenburg-Vorpommern DGM1/DOM1.
 
-Endpoint:    https://www.geodaten-mv.de/dienste/dgm_wcs
-Coverage:    mv_dgm
+Endpoints:   dgm1 → https://www.geodaten-mv.de/dienste/dgm_wcs  (coverage mv_dgm)
+             dom1 → https://www.geodaten-mv.de/dienste/dom_wcs  (coverage mv_dom)
 Axis labels: x (easting), y (northing) — from DescribeCoverage gml:axisLabels
 CRS:         EPSG:25833 (ETRS89 / UTM Zone 33N)
 Format:      image/tiff
@@ -27,8 +27,10 @@ TILE_SIZE_M = 1000
 MAX_TILES_PER_DATASET = 200
 PROVIDER_ID = "laiv-mv"
 
-_WCS_ENDPOINT = "https://www.geodaten-mv.de/dienste/dgm_wcs"
-_COVERAGE_ID = "mv_dgm"
+_WCS_CONFIGS: dict[str, tuple[str, str]] = {
+    "dgm1": ("https://www.geodaten-mv.de/dienste/dgm_wcs", "mv_dgm"),
+    "dom1": ("https://www.geodaten-mv.de/dienste/dom_wcs", "mv_dom"),
+}
 
 
 def locate_tiles(
@@ -112,10 +114,11 @@ def _tile_cells(geometry) -> list[tuple[int, int]]:
 
 
 def _tile_record(dataset: str, x_m: int, y_m: int) -> dict[str, str]:
+    endpoint, coverage_id = _WCS_CONFIGS[dataset]
     tile_id = f"mv_{dataset}_{x_m}_{y_m}"
     url = (
-        f"{_WCS_ENDPOINT}?request=GetCoverage&service=WCS&version=2.0.1"
-        f"&coverageid={_COVERAGE_ID}&FORMAT=image/tiff"
+        f"{endpoint}?request=GetCoverage&service=WCS&version=2.0.1"
+        f"&coverageid={coverage_id}&FORMAT=image/tiff"
         f"&SUBSET=x({x_m},{x_m + TILE_SIZE_M})"
         f"&SUBSET=y({y_m},{y_m + TILE_SIZE_M})"
     )

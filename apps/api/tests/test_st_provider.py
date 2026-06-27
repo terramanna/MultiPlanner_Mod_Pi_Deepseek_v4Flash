@@ -4,13 +4,14 @@ from multiplanner_api.st import _tile_cells, _tile_record, locate_tiles, summari
 from multiplanner_api.providers import SERVICE_PROVIDERS, provider_dataset_names
 
 WCS_ENDPOINT = "https://www.geodatenportal.sachsen-anhalt.de/wss/service/ST_LVermGeo_DGM1_WCS_OpenData/guest"
+DOM_WCS_ENDPOINT = "https://www.geodatenportal.sachsen-anhalt.de/wss/service/ST_LVermGeo_DOM1_WCS_OpenData/guest"
 
 # Halle (Saale) city centre ~ EPSG:25832: x ≈ 704 000, y ≈ 5 717 000
 HALLE_POINT = "11.9668,51.4825"
 
 
-def test_lvermgeo_st_provider_lists_dgm1_only() -> None:
-    assert provider_dataset_names("lvermgeo-st") == ("dgm1",)
+def test_lvermgeo_st_provider_lists_dgm1_and_dom1() -> None:
+    assert provider_dataset_names("lvermgeo-st") == ("dgm1", "dom1")
 
 
 def test_tile_cells_single_point_returns_one_cell() -> None:
@@ -110,3 +111,39 @@ def test_locate_tiles_raises_for_oversized_area() -> None:
     with pytest.raises(ValueError, match="200 tiles"):
         locate_tiles("dgm1", config=config, geometry=geom,
                      geometry_type="esriGeometryEnvelope", timeout=1)
+
+
+# --- dom1 ---
+
+def test_tile_record_dom1_uses_dom_endpoint() -> None:
+    record = _tile_record("dom1", 704_000, 5_717_000)
+    assert record["tile_id"] == "st_dom1_704000_5717000"
+    url = record["primary_url"]
+    assert url.startswith(DOM_WCS_ENDPOINT + "?")
+    assert "coverageid=Coverage1" in url
+    assert "FORMAT=image/tiff" in url
+    assert "SUBSET=x(704000,705000)" in url
+    assert "SUBSET=y(5717000,5718000)" in url
+
+
+def test_locate_tiles_dom1_point_returns_one_tile() -> None:
+    import json as _json
+    config = SERVICE_PROVIDERS["lvermgeo-st"]["datasets"]["dom1"]
+    tiles = locate_tiles("dom1", config=config, geometry=HALLE_POINT,
+                         geometry_type="esriGeometryPoint", timeout=1)
+    assert len(tiles) == 1
+    tile = tiles[0]
+    assert tile["tile_id"].startswith("st_dom1_")
+    assert "ST_LVermGeo_DOM1_WCS_OpenData" in tile["primary_url"]
+    assert "coverageid=Coverage1" in tile["primary_url"]
+
+
+def test_summarize_dom1_has_correct_provider_and_dataset() -> None:
+    config = SERVICE_PROVIDERS["lvermgeo-st"]["datasets"]["dom1"]
+    summaries = summarize_tiles("dom1", config=config, geometry=HALLE_POINT,
+                                geometry_type="esriGeometryPoint", timeout=1)
+    assert len(summaries) == 1
+    s = summaries[0]
+    assert s["provider"] == "lvermgeo-st"
+    assert s["dataset"] == "dom1"
+    assert s["tile_id"].startswith("st_dom1_")

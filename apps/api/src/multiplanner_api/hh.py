@@ -1,11 +1,12 @@
-"""Hamburg FHH DGM1 adapter via OGC API Features + DAV download.
+"""Hamburg FHH adapter via OGC API Features (DGM1) and bulk download (bDOM/LOD2).
 
-Tile catalog:  https://api.hamburg.de/datasets/v1/uebersicht_kachelbezeichnungen/
-               collections/lgv_kachel_dgm_2km_utm/items?bbox=...
-Tile download: https://daten-hamburg.de/DAV/DGM1/{dateiname_dgm_1}
-File format:   ASCII XYZ (.xyz), EPSG:25832
-Tile size:     2 km × 2 km; 244 tiles cover the Hamburg city-state
-Dataset:       dgm1 only (no WCS or DOM1 available)
+dgm1     OGC API + DAV:  https://api.hamburg.de/datasets/v1/…/lgv_kachel_dgm_2km_utm
+         Download:       https://daten-hamburg.de/DAV/DGM1/{dateiname_dgm_1}
+         Format:         ASCII XYZ (.xyz), EPSG:25832, 2 km × 2 km tiles
+bdom     Single ZIP:     https://daten-hamburg.de/opendata/Digitales_Hoehenmodell_bDOM/
+dom1_hh_2022-11-21.zip
+lod2     Single GML:     https://archiv.transparenz.hamburg.de/hmbtgarchive/HMDK/
+lod2-de_hh_2016-11-22_21283_snap_1.GML
 """
 
 from __future__ import annotations
@@ -25,6 +26,22 @@ _OGC_API_URL = (
 )
 _DAV_BASE = "https://daten-hamburg.de/DAV/DGM1"
 
+_HH_BBOX = box(9.70, 53.35, 10.35, 53.80)
+
+_BDOM_BASE = "https://daten-hamburg.de/opendata/Digitales_Hoehenmodell_bDOM"
+_LOD2_BASE = "https://archiv.transparenz.hamburg.de/hmbtgarchive/HMDK"
+
+_BULK_TILES: dict[str, dict] = {
+    "bdom": {
+        "tile_id": "hh_bdom_HH",
+        "primary_url": f"{_BDOM_BASE}/dom1_hh_2022-11-21.zip",
+    },
+    "lod2": {
+        "tile_id": "hh_lod2_HH",
+        "primary_url": f"{_LOD2_BASE}/lod2-de_hh_2016-11-22_21283_snap_1.GML",
+    },
+}
+
 
 def locate_tiles(
     dataset: str,
@@ -34,6 +51,8 @@ def locate_tiles(
     geometry_type: str,
     timeout: int,
 ) -> list[dict[str, str]]:
+    if dataset in _BULK_TILES:
+        return _locate_bulk(dataset, geometry, geometry_type)
     geom = request_geometry(geometry, geometry_type)
     west, south, east, north = _ensure_bbox_extent(*geom.bounds)
     features = _query_ogc_api(west, south, east, north, timeout)
@@ -43,6 +62,14 @@ def locate_tiles(
             f"Limit the area to {MAX_TILES_PER_DATASET} tiles per dataset."
         )
     return [_tile_record(feat["properties"]) for feat in features]
+
+
+def _locate_bulk(dataset: str, geometry: str, geometry_type: str) -> list[dict[str, str]]:
+    geom = request_geometry(geometry, geometry_type)
+    entry = _BULK_TILES[dataset]
+    if not geom.intersects(_HH_BBOX):
+        return []
+    return [{"tile_id": entry["tile_id"], "primary_url": entry["primary_url"]}]
 
 
 def summarize_tiles(

@@ -1,8 +1,7 @@
-"""WCS 2.0.1 adapter for LVermGeo Sachsen-Anhalt DGM1.
+"""WCS 2.0.1 adapter for LVermGeo Sachsen-Anhalt DGM1/DOM1.
 
-Endpoint:   https://www.geodatenportal.sachsen-anhalt.de/wss/service/
-            ST_LVermGeo_DGM1_WCS_OpenData/guest
-Coverage:   Coverage1
+Endpoints:  dgm1 → …/ST_LVermGeo_DGM1_WCS_OpenData/guest  (Coverage1)
+            dom1 → …/ST_LVermGeo_DOM1_WCS_OpenData/guest  (Coverage1)
 Axis labels: x (easting), y (northing) — from DescribeCoverage gml:axisLabels
 CRS:        EPSG:25832 (ETRS89 / UTM Zone 32N)
 Format:     image/tiff
@@ -27,11 +26,11 @@ TILE_SIZE_M = 1000
 MAX_TILES_PER_DATASET = 200
 PROVIDER_ID = "lvermgeo-st"
 
-_WCS_ENDPOINT = (
-    "https://www.geodatenportal.sachsen-anhalt.de"
-    "/wss/service/ST_LVermGeo_DGM1_WCS_OpenData/guest"
-)
-_COVERAGE_ID = "Coverage1"
+_ST_WCS_BASE = "https://www.geodatenportal.sachsen-anhalt.de/wss/service"
+_WCS_CONFIGS: dict[str, tuple[str, str]] = {
+    "dgm1": (f"{_ST_WCS_BASE}/ST_LVermGeo_DGM1_WCS_OpenData/guest", "Coverage1"),
+    "dom1": (f"{_ST_WCS_BASE}/ST_LVermGeo_DOM1_WCS_OpenData/guest", "Coverage1"),
+}
 
 
 def locate_tiles(
@@ -115,10 +114,11 @@ def _tile_cells(geometry) -> list[tuple[int, int]]:
 
 
 def _tile_record(dataset: str, x_m: int, y_m: int) -> dict[str, str]:
+    endpoint, coverage_id = _WCS_CONFIGS[dataset]
     tile_id = f"st_{dataset}_{x_m}_{y_m}"
     url = (
-        f"{_WCS_ENDPOINT}?request=GetCoverage&service=WCS&version=2.0.1"
-        f"&coverageid={_COVERAGE_ID}&FORMAT=image/tiff"
+        f"{endpoint}?request=GetCoverage&service=WCS&version=2.0.1"
+        f"&coverageid={coverage_id}&FORMAT=image/tiff"
         f"&SUBSET=x({x_m},{x_m + TILE_SIZE_M})"
         f"&SUBSET=y({y_m},{y_m + TILE_SIZE_M})"
     )

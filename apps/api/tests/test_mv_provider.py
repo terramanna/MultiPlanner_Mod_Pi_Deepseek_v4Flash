@@ -7,13 +7,14 @@ from multiplanner_api.mv import _tile_cells, _tile_record, locate_tiles, summari
 from multiplanner_api.providers import SERVICE_PROVIDERS, provider_dataset_names
 
 WCS_ENDPOINT = "https://www.geodaten-mv.de/dienste/dgm_wcs"
+DOM_WCS_ENDPOINT = "https://www.geodaten-mv.de/dienste/dom_wcs"
 
 # Rostock city centre ~ EPSG:25833: x ≈ 313 000, y ≈ 5 998 000
 ROSTOCK_POINT = "12.14,54.09"
 
 
-def test_laiv_mv_provider_lists_dgm1_only() -> None:
-    assert provider_dataset_names("laiv-mv") == ("dgm1",)
+def test_laiv_mv_provider_lists_dgm1_and_dom1() -> None:
+    assert provider_dataset_names("laiv-mv") == ("dgm1", "dom1")
 
 
 def test_tile_cells_single_point_returns_one_cell() -> None:
@@ -117,3 +118,38 @@ def test_locate_tiles_raises_for_oversized_area() -> None:
     with pytest.raises(ValueError, match="200 tiles"):
         locate_tiles("dgm1", config=config, geometry=geom,
                      geometry_type="esriGeometryEnvelope", timeout=1)
+
+
+# --- dom1 ---
+
+def test_tile_record_dom1_uses_dom_endpoint() -> None:
+    record = _tile_record("dom1", 313_000, 5_998_000)
+    assert record["tile_id"] == "mv_dom1_313000_5998000"
+    url = record["primary_url"]
+    assert url.startswith(DOM_WCS_ENDPOINT + "?")
+    assert "coverageid=mv_dom" in url
+    assert "FORMAT=image/tiff" in url
+    assert "SUBSET=x(313000,314000)" in url
+    assert "SUBSET=y(5998000,5999000)" in url
+
+
+def test_locate_tiles_dom1_point_returns_one_tile() -> None:
+    config = SERVICE_PROVIDERS["laiv-mv"]["datasets"]["dom1"]
+    tiles = locate_tiles("dom1", config=config, geometry=ROSTOCK_POINT,
+                         geometry_type="esriGeometryPoint", timeout=1)
+    assert len(tiles) == 1
+    tile = tiles[0]
+    assert tile["tile_id"].startswith("mv_dom1_")
+    assert DOM_WCS_ENDPOINT in tile["primary_url"]
+    assert "coverageid=mv_dom" in tile["primary_url"]
+
+
+def test_summarize_dom1_has_correct_provider_and_dataset() -> None:
+    config = SERVICE_PROVIDERS["laiv-mv"]["datasets"]["dom1"]
+    summaries = summarize_tiles("dom1", config=config, geometry=ROSTOCK_POINT,
+                                geometry_type="esriGeometryPoint", timeout=1)
+    assert len(summaries) == 1
+    s = summaries[0]
+    assert s["provider"] == "laiv-mv"
+    assert s["dataset"] == "dom1"
+    assert s["tile_id"].startswith("mv_dom1_")
