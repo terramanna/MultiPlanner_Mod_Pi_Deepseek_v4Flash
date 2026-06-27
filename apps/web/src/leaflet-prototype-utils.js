@@ -265,10 +265,12 @@ export function selectedDatasets(doc = globalThis.document) {
 
 export function renderDatasetChoices(datasets, doc = globalThis.document) {
   const labels = {
-    dgm1: "DGM1 - 1 m terrain",
-    dom1: "DOM1 - 1 m surface",
-    dop20: "DOP20 - 20 cm orthophoto"
+    dgm1: "DGM1 - terrain model",
+    dom1: "DOM - surface model",
+    dop20: "DOP20 - 20 cm orthophoto",
+    bdom: "BDOM / LOD2 - 3D buildings"
   };
+  const defaultChecked = new Set(["dgm1", "dom1", "dop20"]);
   const fieldset = doc.getElementById("datasetChoices");
   fieldset.innerHTML = "<legend>Download datasets</legend>";
   for (const dataset of datasets) {
@@ -277,7 +279,7 @@ export function renderDatasetChoices(datasets, doc = globalThis.document) {
     input.type = "checkbox";
     input.name = "dataset";
     input.value = dataset;
-    input.checked = true;
+    input.checked = defaultChecked.has(dataset);
     label.append(input, ` ${labels[dataset] || dataset}`);
     fieldset.appendChild(label);
   }
