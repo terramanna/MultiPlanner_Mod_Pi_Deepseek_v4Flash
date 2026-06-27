@@ -230,9 +230,8 @@ SERVICE_PROVIDERS = {
         "label": "Rheinland-Pfalz LVermGeo",
         "adapter": "lvermgeo_rp_meta4",
         "datasets": {
-            "dgm1": {
-                "meta4_url": "https://geobasis-rlp.de/data/dgm1/current/meta4/dgm1_tif_07.meta4",
-            },
+            "dgm1": {},
+            "dop20": {},
         },
     },
 }

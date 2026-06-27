@@ -1,10 +1,12 @@
-"""Metalink4 tile-index adapter for LVermGeo Rheinland-Pfalz DGM1.
+"""Metalink4 tile-index adapter for LVermGeo Rheinland-Pfalz.
 
-Meta4 index:  https://geobasis-rlp.de/data/dgm1/current/meta4/dgm1_tif_07.meta4
-Tile pattern: dgm1_32_{X}_{Y}_1_rp_{YYYY}.tif
-              X = easting km, Y = northing km (EPSG:25832)
-Tile size:    1 km × 1 km
-~900+ tiles covering RP; fetched once and cached for 24 h.
+Supported datasets:
+  dgm1   — bare-earth DTM, 1 km × 1 km GeoTIFF tiles
+             index: https://geobasis-rlp.de/data/dgm1/current/meta4/dgm1_tif_07.meta4
+  dop20  — RGB ortho, 2 km × 2 km JPEG2000 tiles
+             index: https://geobasis-rlp.de/data/dop20rgb/current/meta4/dop20rgb_jp2_07.meta4
+
+Both indexes are fetched once and cached for 24 h.
 """
 
 from __future__ import annotations
@@ -28,17 +30,31 @@ from multiplanner_api.config import load_settings
 
 WGS84 = "EPSG:4326"
 ETRS89_UTM32 = "EPSG:25832"
-TILE_SIZE_M = 1000
 MAX_TILES_PER_DATASET = 200
 CACHE_MAX_AGE_SECONDS = 24 * 60 * 60
 PROVIDER_ID = "lvermgeo-rp"
-
-META4_URL = "https://geobasis-rlp.de/data/dgm1/current/meta4/dgm1_tif_07.meta4"
-_FILENAME_RE = re.compile(
-    r"^dgm1_32_(?P<x>\d+)_(?P<y>\d+)_1_rp_(?P<year>\d{4})\.tif$",
-    re.IGNORECASE,
-)
 _META4_NS = "urn:ietf:params:xml:ns:metalink"
+
+_DATASETS: dict[str, dict[str, Any]] = {
+    "dgm1": {
+        "meta4_url": "https://geobasis-rlp.de/data/dgm1/current/meta4/dgm1_tif_07.meta4",
+        "cache_file": "lvermgeo_rp_dgm1.json",
+        "filename_re": re.compile(
+            r"^dgm1_32_(?P<x>\d+)_(?P<y>\d+)_1_rp_(?P<year>\d{4})\.tif$",
+            re.IGNORECASE,
+        ),
+        "tile_size_m": 1000,
+    },
+    "dop20": {
+        "meta4_url": "https://geobasis-rlp.de/data/dop20rgb/current/meta4/dop20rgb_jp2_07.meta4",
+        "cache_file": "lvermgeo_rp_dop20.json",
+        "filename_re": re.compile(
+            r"^dop20rgb_32_(?P<x>\d+)_(?P<y>\d+)_2_rp_(?P<year>\d{4})\.jp2$",
+            re.IGNORECASE,
+        ),
+        "tile_size_m": 2000,
+    },
+}
 
 
 def locate_tiles(
@@ -49,13 +65,15 @@ def locate_tiles(
     geometry_type: str,
     timeout: int,
 ) -> list[dict[str, str]]:
-    candidates = _tile_coordinates(_to_utm32(request_geometry(geometry, geometry_type)))
+    ds = _dataset_config(dataset)
+    geom = _to_utm32(request_geometry(geometry, geometry_type))
+    candidates = _tile_coordinates(geom, ds["tile_size_m"])
     if len(candidates) > MAX_TILES_PER_DATASET:
         raise ValueError(
-            f"Rheinland-Pfalz selection resolves to {len(candidates)} 1 km tiles. "
+            f"Rheinland-Pfalz selection resolves to {len(candidates)} tiles. "
             f"Limit the area to {MAX_TILES_PER_DATASET} tiles per dataset."
         )
-    index = _load_index(timeout=timeout)
+    index = _load_index(dataset, timeout=timeout)
     return [index[key] for key in candidates if key in index]
 
 
@@ -86,12 +104,19 @@ def summarize_tiles(
     ]
 
 
-def _load_index(*, timeout: int) -> dict[tuple[int, int], dict[str, str]]:
-    path = Path(load_settings().cache_root) / "provider_indexes" / "lvermgeo_rp_dgm1.json"
+def _dataset_config(dataset: str) -> dict[str, Any]:
+    if dataset not in _DATASETS:
+        raise ValueError(f"Unknown Rheinland-Pfalz dataset: {dataset!r}")
+    return _DATASETS[dataset]
+
+
+def _load_index(dataset: str, *, timeout: int) -> dict[tuple[int, int], dict[str, str]]:
+    ds = _dataset_config(dataset)
+    path = Path(load_settings().cache_root) / "provider_indexes" / ds["cache_file"]
     if path.exists() and time.time() - path.stat().st_mtime < CACHE_MAX_AGE_SECONDS:
         return _decode_index(json.loads(path.read_text(encoding="utf-8")))
-    xml_text = _fetch_meta4(META4_URL, timeout)
-    index = _parse_meta4(xml_text)
+    xml_text = _fetch_meta4(ds["meta4_url"], timeout)
+    index = _parse_meta4(xml_text, ds["filename_re"])
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(_encode_index(index), separators=(",", ":")), encoding="utf-8")
     return index
@@ -118,12 +143,15 @@ def _http_get(url: str, timeout: int, *, verify: bool) -> str:
         return r.text
 
 
-def _parse_meta4(xml_text: str) -> dict[tuple[int, int], dict[str, str]]:
+def _parse_meta4(
+    xml_text: str,
+    filename_re: re.Pattern[str],
+) -> dict[tuple[int, int], dict[str, str]]:
     index: dict[tuple[int, int], dict[str, str]] = {}
     root = ElementTree.fromstring(xml_text)
     for file_el in root.iter(f"{{{_META4_NS}}}file"):
         name = file_el.attrib.get("name", "")
-        m = _FILENAME_RE.match(name)
+        m = filename_re.match(name)
         if not m:
             continue
         key = (int(m["x"]), int(m["y"]))
@@ -163,16 +191,24 @@ def _to_utm32(geometry):
     return transform(transformer.transform, geometry)
 
 
-def _tile_coordinates(geometry) -> list[tuple[int, int]]:
-    """Return (x_km, y_km) km-origin pairs for 1 km cells intersecting *geometry*.
+def _tile_coordinates(geometry, tile_size_m: int) -> list[tuple[int, int]]:
+    """Return (x_km, y_km) km-origin pairs for tiles of *tile_size_m* intersecting *geometry*.
 
-    geometry must already be in EPSG:25832.
+    geometry must already be in EPSG:25832. x_km and y_km are always in 1 km
+    units (e.g. 344 means 344 000 m); the step between adjacent tiles is
+    tile_size_m // 1000 km (1 for dgm1, 2 for dop20).
     """
+    step = tile_size_m // 1000
     west, south, east, north = geometry.bounds
+    x_lo = math.floor(west / tile_size_m) * step
+    x_hi = math.floor(east / tile_size_m) * step
+    y_lo = math.floor(south / tile_size_m) * step
+    y_hi = math.floor(north / tile_size_m) * step
     return [
         (x_km, y_km)
-        for x_km in range(math.floor(west / TILE_SIZE_M), math.floor(east / TILE_SIZE_M) + 1)
-        for y_km in range(math.floor(south / TILE_SIZE_M), math.floor(north / TILE_SIZE_M) + 1)
-        if geometry.intersects(box(x_km * TILE_SIZE_M, y_km * TILE_SIZE_M,
-                                   (x_km + 1) * TILE_SIZE_M, (y_km + 1) * TILE_SIZE_M))
+        for x_km in range(x_lo, x_hi + step, step)
+        for y_km in range(y_lo, y_hi + step, step)
+        if geometry.intersects(
+            box(x_km * 1000, y_km * 1000, x_km * 1000 + tile_size_m, y_km * 1000 + tile_size_m)
+        )
     ]
