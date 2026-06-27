@@ -15,7 +15,7 @@ CATALOG = """<?xml version=\"1.0\"?>
 
 
 def test_nrw_provider_lists_1m_terrain_and_surface_datasets() -> None:
-    assert provider_dataset_names("geobasis-nrw") == ("dgm1", "dom1")
+    assert provider_dataset_names("geobasis-nrw") == ("dgm1", "dom1", "lod2")
 
 
 def test_nrw_grid_derives_the_intersecting_1km_tile() -> None:

@@ -24,7 +24,8 @@ ETRS89_UTM32 = "EPSG:25832"
 TILE_SIZE_M = 1000
 MAX_TILES_PER_DATASET = 200
 CACHE_MAX_AGE_SECONDS = 24 * 60 * 60
-FILENAME_PATTERN = re.compile(r"^(?P<prefix>\w+)_32_(?P<x>\d+)_(?P<y>\d+)_1_nw_(?P<version>\d+)\.tif$")
+DEFAULT_FILENAME_PATTERN = re.compile(r"^(?P<prefix>\w+)_32_(?P<x>\d+)_(?P<y>\d+)_1_nw_(?P<version>\d+)\.tif$", re.IGNORECASE)
+LOD2_FILENAME_PATTERN = re.compile(r"^(?P<prefix>LoD2)_32_(?P<x>\d+)_(?P<y>\d+)_1_NW\.gml$", re.IGNORECASE)
 
 
 def locate_tiles(
@@ -69,7 +70,7 @@ def load_index(dataset: str, config: dict[str, Any], *, timeout: int) -> dict[tu
         return decode_index(json.loads(path.read_text(encoding="utf-8")))
     response = _get_catalog(config["catalog_url"], timeout)
     response.raise_for_status()
-    index = parse_catalog(response.text, config["base_url"])
+    index = parse_catalog(response.text, config["base_url"], pattern=_catalog_pattern(dataset))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(encode_index(index), separators=(",", ":")), encoding="utf-8")
     return index
@@ -92,18 +93,28 @@ def index_path(dataset: str) -> Path:
     return Path(load_settings().cache_root) / "provider_indexes" / f"geobasis_nrw_{dataset}.json"
 
 
-def parse_catalog(content: str, base_url: str) -> dict[tuple[int, int], dict[str, str]]:
+def parse_catalog(
+    content: str,
+    base_url: str,
+    *,
+    pattern: re.Pattern[str] = DEFAULT_FILENAME_PATTERN,
+) -> dict[tuple[int, int], dict[str, str]]:
     index: dict[tuple[int, int], dict[str, str]] = {}
     for file_element in ElementTree.fromstring(content).iter("file"):
         name = file_element.attrib["name"]
-        match = FILENAME_PATTERN.match(name)
+        match = pattern.match(name)
         if not match:
             continue
         key = (int(match["x"]), int(match["y"]))
-        tile = {"tile_id": name.removesuffix(".tif"), "primary_url": f"{base_url}{name}", "version": match["version"]}
+        version = match.groupdict().get("version", "")
+        tile = {"tile_id": Path(name).stem, "primary_url": f"{base_url}{name}", "version": version}
         if key not in index or tile["version"] > index[key]["version"]:
             index[key] = tile
     return index
+
+
+def _catalog_pattern(dataset: str) -> re.Pattern[str]:
+    return LOD2_FILENAME_PATTERN if dataset == "lod2" else DEFAULT_FILENAME_PATTERN
 
 
 def encode_index(index: dict[tuple[int, int], dict[str, str]]) -> dict[str, dict[str, str]]:
