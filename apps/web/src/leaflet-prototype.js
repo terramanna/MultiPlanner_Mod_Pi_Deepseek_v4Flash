@@ -29,6 +29,7 @@ import {
   thDop,
   bbDop,
   hhDop,
+  stDop,
   nrwTopo,
   byTopo,
   nrwHillshade,
@@ -71,6 +72,7 @@ L.control.layers(
     "Thüringen Ortho (DOP)": thDop,
     "Brandenburg Ortho (DOP20c)": bbDop,
     "Hamburg Ortho (DOP)": hhDop,
+    "Sachsen-Anhalt Ortho (DOP20)": stDop,
     "NRW Topo (DTK)": nrwTopo,
     "Bayern Topo (DTK25)": byTopo
   },
