@@ -268,9 +268,12 @@ export function renderDatasetChoices(datasets, doc = globalThis.document) {
     dgm1: "DGM1 - terrain model",
     dom1: "DOM - surface model",
     dop20: "DOP20 - 20 cm orthophoto",
-    bdom: "BDOM / LOD2 - 3D buildings"
+    bdom: "BDOM / LOD2 - 3D buildings",
+    dgm: "DGM - terrain model",
+    dom: "DOM - surface model",
+    lod2: "LOD2 - 3D buildings (Cesium)"
   };
-  const defaultChecked = new Set(["dgm1", "dom1", "dop20"]);
+  const defaultChecked = new Set(["dgm1", "dom1", "dop20", "dgm", "dom"]);
   const fieldset = doc.getElementById("datasetChoices");
   fieldset.innerHTML = "<legend>Download datasets</legend>";
   for (const dataset of datasets) {

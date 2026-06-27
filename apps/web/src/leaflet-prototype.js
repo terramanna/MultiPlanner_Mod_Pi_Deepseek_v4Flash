@@ -38,6 +38,7 @@ const providerCoverage = {
   "laiv-mv": { stateCode: "MV", color: "#a21caf", label: "Mecklenburg-Vorpommern LAiV" },
   "lginf-hb": { stateCode: "HB", color: "#65a30d", label: "Bremen Landesamt Geoinformation" },
   "gdi-be": { stateCode: "BE", color: "#4338ca", label: "Berlin GDI" },
+  "tlbg-th": { stateCode: "TH", color: "#b45309", label: "Thüringen TLBG" },
 };
 const variants = ["corridor", "area", "point"];
 const params = new URLSearchParams(window.location.search);

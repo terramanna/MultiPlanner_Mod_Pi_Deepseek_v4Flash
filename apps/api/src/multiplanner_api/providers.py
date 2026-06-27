@@ -32,6 +32,8 @@ from multiplanner_api.mv import locate_tiles as locate_mv_tiles
 from multiplanner_api.mv import summarize_tiles as summarize_mv_tiles
 from multiplanner_api.sh import locate_tiles as locate_sh_tiles
 from multiplanner_api.sh import summarize_tiles as summarize_sh_tiles
+from multiplanner_api.th import locate_tiles as locate_th_tiles
+from multiplanner_api.th import summarize_tiles as summarize_th_tiles
 
 SERVICE_PROVIDERS = {
     "lgln-ni": {
@@ -181,6 +183,15 @@ SERVICE_PROVIDERS = {
             "bdom": {},
         },
     },
+    "tlbg-th": {
+        "label": "Thüringen TLBG",
+        "adapter": "tlbg_th_atom",
+        "datasets": {
+            "dgm": {},
+            "dom": {},
+            "lod2": {},
+        },
+    },
 }
 
 ADAPTER_LOCATORS = {
@@ -196,6 +207,7 @@ ADAPTER_LOCATORS = {
     "laiv_mv_wcs": locate_mv_tiles,
     "lginf_hb_bulk": locate_hb_tiles,
     "gdi_be_atom": locate_be_tiles,
+    "tlbg_th_atom": locate_th_tiles,
 }
 
 ADAPTER_SUMMARIZERS = {
@@ -211,6 +223,7 @@ ADAPTER_SUMMARIZERS = {
     "laiv_mv_wcs": summarize_mv_tiles,
     "lginf_hb_bulk": summarize_hb_tiles,
     "gdi_be_atom": summarize_be_tiles,
+    "tlbg_th_atom": summarize_th_tiles,
 }
 
 WGS84 = "EPSG:4326"
