@@ -1,11 +1,15 @@
-"""Schleswig-Holstein DGM1 adapter via GeoJSON tile index + mass download.
+"""Schleswig-Holstein adapter via GeoJSON tile indexes (GeoData portal Massendownload).
 
-Tile index:  https://geodaten.schleswig-holstein.de/gaialight-sh/_apps/dladownload/
-             single.php?file=DGM1_SH__Massendownload.geojson&id=4
-Download:    link_data field in each GeoJSON feature (.xyz files)
-File format: ASCII XYZ (.xyz), EPSG:25832
-Tile size:   1 km x 1 km; ~278 tiles cover Schleswig-Holstein
-Dataset:     dgm1 only
+Index URLs follow the pattern:
+  https://geodaten.schleswig-holstein.de/gaialight-sh/_apps/dladownload/
+  single.php?file={GEOJSON_FILE}&id=4
+
+Dataset       GeoJSON file                         ID field   URL field
+dgm1          DGM1_SH__Massendownload.geojson      kachel     link_data
+dop20         DOP20_SH__Massendownload.geojson     kachel     link_data
+lod2          LOD2_SH_Massendownload.geojson       id         data_link
+
+Tile size: 1 km x 1 km; CRS: EPSG:25832.
 """
 
 from __future__ import annotations
@@ -28,10 +32,25 @@ PROVIDER_ID = "lvermgeo-sh"
 MAX_TILES_PER_DATASET = 200
 CACHE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
 
-_GEOJSON_URL = (
-    "https://geodaten.schleswig-holstein.de/gaialight-sh/_apps/dladownload/"
-    "single.php?file=DGM1_SH__Massendownload.geojson&id=4"
-)
+_BASE_URL = "https://geodaten.schleswig-holstein.de/gaialight-sh/_apps/dladownload/"
+
+_DATASET_CONFIG: dict[str, dict[str, str]] = {
+    "dgm1": {
+        "geojson_file": "DGM1_SH__Massendownload.geojson",
+        "id_field": "kachel",
+        "url_field": "link_data",
+    },
+    "dop20": {
+        "geojson_file": "DOP20_SH__Massendownload.geojson",
+        "id_field": "kachel",
+        "url_field": "link_data",
+    },
+    "lod2": {
+        "geojson_file": "LOD2_SH_Massendownload.geojson",
+        "id_field": "id",
+        "url_field": "data_link",
+    },
+}
 
 
 def locate_tiles(
@@ -42,15 +61,21 @@ def locate_tiles(
     geometry_type: str,
     timeout: int,
 ) -> list[dict[str, str]]:
+    cfg = _DATASET_CONFIG[dataset]
     geom_utm32 = _to_utm32(request_geometry(geometry, geometry_type))
-    tiles = _load_index(timeout=timeout)
+    tiles = _load_index(dataset, timeout=timeout)
     matching = [t for t in tiles if _tile_shape(t).intersects(geom_utm32)]
     if len(matching) > MAX_TILES_PER_DATASET:
         raise ValueError(
             f"Schleswig-Holstein selection resolves to {len(matching)} 1 km tiles. "
             f"Limit the area to {MAX_TILES_PER_DATASET} tiles per dataset."
         )
-    return [{"tile_id": f"sh_dgm1_{t['kachel']}", "primary_url": t["link_data"], "datum": t["datum"]} for t in matching]
+    id_field = cfg["id_field"]
+    url_field = cfg["url_field"]
+    return [
+        {"tile_id": f"sh_{dataset}_{t[id_field]}", "primary_url": t[url_field], "datum": t["datum"]}
+        for t in matching
+    ]
 
 
 def summarize_tiles(
@@ -97,33 +122,49 @@ def _to_utm32(geometry):
     return transform(transformer.transform, geometry)
 
 
-def _load_index(*, timeout: int) -> list[dict]:
-    path = _cache_path()
+def _load_index(dataset: str, *, timeout: int) -> list[dict]:
+    path = _cache_path(dataset)
     if path.exists() and time.time() - path.stat().st_mtime < CACHE_MAX_AGE_SECONDS:
         return json.loads(path.read_text(encoding="utf-8"))
-    response = requests.get(_GEOJSON_URL, timeout=timeout)
+    cfg = _DATASET_CONFIG[dataset]
+    response = requests.get(_geojson_url(dataset), timeout=timeout)
     response.raise_for_status()
-    entries = _parse_geojson(response.json())
+    entries = _parse_geojson(
+        response.json(),
+        id_field=cfg["id_field"],
+        url_field=cfg["url_field"],
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(entries, separators=(",", ":")), encoding="utf-8")
     return entries
 
 
-def _cache_path() -> Path:
-    return Path(load_settings().cache_root) / "provider_indexes" / "geodaten_sh_dgm1.json"
+def _cache_path(dataset: str) -> Path:
+    return Path(load_settings().cache_root) / "provider_indexes" / f"geodaten_sh_{dataset}.json"
 
 
-def _parse_geojson(geojson: dict) -> list[dict]:
+def _geojson_url(dataset: str) -> str:
+    return f"{_BASE_URL}single.php?file={_DATASET_CONFIG[dataset]['geojson_file']}&id=4"
+
+
+def _parse_geojson(
+    geojson: dict,
+    *,
+    id_field: str = "kachel",
+    url_field: str = "link_data",
+) -> list[dict]:
     entries = []
     for feature in geojson.get("features", []):
         props = feature.get("properties", {})
         geom = feature.get("geometry")
-        if not geom or not props.get("kachel") or not props.get("link_data"):
+        tile_id = props.get(id_field)
+        url = props.get(url_field)
+        if not geom or not tile_id or not url:
             continue
         bbox = list(shape(geom).bounds)
         entries.append({
-            "kachel": str(props["kachel"]),
-            "link_data": str(props["link_data"]),
+            id_field: str(tile_id),
+            url_field: str(url),
             "datum": str(props.get("datum", "")),
             "bbox": bbox,
         })

@@ -168,6 +168,8 @@ SERVICE_PROVIDERS = {
         "adapter": "lvermgeo_sh_geojson",
         "datasets": {
             "dgm1": {},
+            "dop20": {},
+            "lod2": {},
         },
     },
     "laiv-mv": {
