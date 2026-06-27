@@ -65,6 +65,20 @@ export const nrwHillshade = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms
   maxZoom: 19,
   attribution: "© Geobasis NRW"
 });
+export const snDop = L.tileLayer.wms("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", {
+  layers: "sn_dop_020",
+  format: "image/jpeg",
+  transparent: false,
+  maxZoom: 20,
+  attribution: "© GeoSN Sachsen"
+});
+export const mvDop = L.tileLayer.wms("https://www.geodaten-mv.de/dienste/adv_dop20", {
+  layers: "mv_dop",
+  format: "image/jpeg",
+  transparent: false,
+  maxZoom: 20,
+  attribution: "© LAiV Mecklenburg-Vorpommern"
+});
 export const heDop = L.tileLayer.wms("https://www.gds-srv.hessen.de/cgi-bin/lika-services/ogc-free-images.ows", {
   layers: "he_dop20_rgb",
   format: "image/jpeg",
