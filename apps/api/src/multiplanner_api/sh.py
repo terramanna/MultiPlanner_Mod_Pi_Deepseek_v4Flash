@@ -45,6 +45,11 @@ _DATASET_CONFIG: dict[str, dict[str, str]] = {
         "id_field": "kachel",
         "url_field": "link_data",
     },
+    "dom1": {
+        "geojson_file": "DOM1_SH__Massendownload.geojson",
+        "id_field": "kachel",
+        "url_field": "link_data",
+    },
     "lod2": {
         "geojson_file": "LOD2_SH_Massendownload.geojson",
         "id_field": "id",

@@ -88,6 +88,7 @@ L.control.layers(
     "Hessen Ortho (DOP20)": heDop,
     "Schleswig-Holstein Ortho (DOP20)": shDop,
     "Sachsen-Anhalt Ortho (DOP20)": stDop,
+    "Baden-Württemberg Ortho (DOP20)": bwDop,
     "NRW Topo (DTK)": nrwTopo,
     "Bayern Topo (DTK25)": byTopo
   },
