@@ -17,13 +17,19 @@ _CACHE: dict = {}
 _ACTIVE_STATES = ("30_Primary", "20_Nominal")
 
 _SITE_SQL = """
-    SELECT site_name, site_name_2, latitude, longitude,
-           site_type, site_status, s_number, flags_csv
-    FROM ellipse_site_current
-    WHERE is_active = 1
-      AND latitude  BETWEEN -90  AND 90
-      AND longitude BETWEEN -180 AND 180
-      AND site_status GLOB '[0-8]*'
+    SELECT s.site_name, s.site_name_2, s.latitude, s.longitude,
+           s.site_type, s.site_status, s.s_number, s.flags_csv
+    FROM ellipse_site_current s
+    WHERE s.is_active = 1
+      AND s.latitude  BETWEEN -90  AND 90
+      AND s.longitude BETWEEN -180 AND 180
+      AND s.site_status GLOB '[0-8]*'
+      AND EXISTS (
+          SELECT 1 FROM ellipse_link_current l
+          WHERE l.is_active = 1
+            AND l.link_state IN ('30_Primary', '20_Nominal')
+            AND (l.site_a_name = s.site_name OR l.site_b_name = s.site_name)
+      )
 """
 
 _LINK_SQL = """
