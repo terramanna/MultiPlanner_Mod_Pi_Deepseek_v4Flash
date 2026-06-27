@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { applyProviderSelection, coverageShouldShow, providerDatasets } from "../src/provider-selection.js";
+import { applyProviderSelection, coverageShouldShow, providerDatasets, sortProviders } from "../src/provider-selection.js";
 
 const providers = [
-  { name: "auto", datasets: ["dgm1", "dom1", "dop20"] },
-  { name: "lgln-ni", datasets: ["dgm1", "dom1", "dop20"] },
-  { name: "geobasis-nrw", datasets: ["dgm1", "dom1"] },
+  { name: "auto", label: "Auto (split by provider)", datasets: ["dgm1", "dom1", "dop20"] },
+  { name: "lgln-ni", label: "LGLN Lower Saxony", datasets: ["dgm1", "dom1", "dop20"] },
+  { name: "geobasis-nrw", label: "Geobasis NRW", datasets: ["dgm1", "dom1"] },
 ];
 
 assert.equal(coverageShouldShow("auto", "lgln-ni", true), true);
@@ -12,6 +12,22 @@ assert.equal(coverageShouldShow("geobasis-nrw", "lgln-ni", true), false);
 assert.equal(coverageShouldShow("geobasis-nrw", "geobasis-nrw", true), true);
 assert.equal(coverageShouldShow("geobasis-nrw", "geobasis-nrw", false), false);
 assert.deepEqual(providerDatasets(providers, "geobasis-nrw"), ["dgm1", "dom1"]);
+assert.deepEqual(
+  sortProviders([
+    providers[0],
+    { name: "z-last", label: "Zulu Provider", datasets: [] },
+    { name: "a-first", label: "Alpha Provider", datasets: [] },
+  ], "asc").map((provider) => provider.name),
+  ["auto", "a-first", "z-last"],
+);
+assert.deepEqual(
+  sortProviders([
+    providers[0],
+    { name: "z-last", label: "Zulu Provider", datasets: [] },
+    { name: "a-first", label: "Alpha Provider", datasets: [] },
+  ], "desc").map((provider) => provider.name),
+  ["auto", "z-last", "a-first"],
+);
 
 const state = { provider: "auto" };
 const providerSelect = { value: "geobasis-nrw" };

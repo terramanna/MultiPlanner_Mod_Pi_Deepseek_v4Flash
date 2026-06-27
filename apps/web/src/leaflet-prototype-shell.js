@@ -1,13 +1,14 @@
 const defaultProviders = [
   { name: "auto", label: "Auto (split by provider)" },
-  { name: "lgln-ni", label: "LGLN Lower Saxony" },
-  { name: "geobasis-nrw", label: "Geobasis NRW" },
-  { name: "geosn-sn", label: "GeoSN Saxony" },
-  { name: "hvbg-he", label: "HVBG Hessen" },
-  { name: "lvermgeo-st", label: "LVermGeo Saxony-Anhalt" },
-  { name: "geobasis-bb", label: "Geobasis Brandenburg" },
-  { name: "ldbv-by", label: "LDBV Bayern" },
-  { name: "lgv-hh", label: "LGV Hamburg" },
+  { name: "lgln-ni", label: "Saxony Lower LGLN" },
+  { name: "geobasis-nrw", label: "NRW Geobasis" },
+  { name: "geosn-sn", label: "Saxony GeoSN" },
+  { name: "hvbg-he", label: "Hessen HVBG" },
+  { name: "lvermgeo-st", label: "Saxony-Anhalt LVermGeo" },
+  { name: "geobasis-bb", label: "Brandenburg Geobasis" },
+  { name: "lgl-bw", label: "Baden-Wuerttemberg LGL" },
+  { name: "ldbv-by", label: "Bayern LDBV" },
+  { name: "lgv-hh", label: "Hamburg LGV" },
 ];
 
 const labels = {
@@ -53,7 +54,13 @@ function renderSearch() {
 
 function renderProviderControls() {
   return `<label for="providerSelect">Data provider</label>
+    <div class="prototype-search-row">
     <select id="providerSelect">${providerOptions()}</select>
+      <select id="providerSortSelect" aria-label="Sort providers">
+        <option value="asc" selected>A to Z</option>
+        <option value="desc">Z to A</option>
+      </select>
+    </div>
     <label for="jobNameInput">Job / file name</label>
     <input id="jobNameInput" placeholder="01wzoming01_2km_diam_1m_res" />
     <label class="prototype-coverage-toggle"><input id="coverageToggle" type="checkbox" checked /> Show selected provider coverage</label>
@@ -107,5 +114,11 @@ function renderVariantSwitcher(variant) {
 }
 
 function providerOptions() {
-  return defaultProviders.map((provider) => `<option value="${provider.name}">${provider.label}</option>`).join("");
+  const autoProvider = defaultProviders.find((provider) => provider.name === "auto");
+  const sortedProviders = defaultProviders
+    .filter((provider) => provider.name !== "auto")
+    .slice()
+    .sort((left, right) => left.label.localeCompare(right.label));
+  const providers = autoProvider ? [autoProvider, ...sortedProviders] : sortedProviders;
+  return providers.map((provider) => `<option value="${provider.name}">${provider.label}</option>`).join("");
 }

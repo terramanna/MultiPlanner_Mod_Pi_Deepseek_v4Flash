@@ -11,7 +11,7 @@ import { requestLeafletSubset } from "./leaflet-subset-request.js";
 import { bindPersistedInput } from "./persisted-input.js";
 import { renderPrototypeShell } from "./leaflet-prototype-shell.js";
 import { loadProviderCoverageCache, saveProviderCoverageCache } from "./provider-coverage-cache.js";
-import { applyProviderSelection, coverageShouldShow } from "./provider-selection.js";
+import { applyProviderSelection, coverageShouldShow, sortProviders } from "./provider-selection.js";
 import {
   currentGeometryFrom,
   flattenLatLngs,
@@ -25,18 +25,19 @@ import {
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").trim();
 const bkgStateBoundaryUrl = "https://sgx.geodatenzentrum.de/wfs_vg250?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=vg250:vg250_lan&outputFormat=application%2Fjson&SRSNAME=EPSG%3A4326&COUNT=20";
 const providerCoverage = {
-  "lgln-ni": { stateCode: "NI", color: "#3b82f6", label: "LGLN Lower Saxony" },
-  "geobasis-nrw": { stateCode: "NW", color: "#f97316", label: "Geobasis NRW" },
-  "geosn-sn": { stateCode: "SN", color: "#16a34a", label: "GeoSN Saxony" },
-  "hvbg-he": { stateCode: "HE", color: "#dc2626", label: "HVBG Hessen" },
-  "lvermgeo-st": { stateCode: "ST", color: "#7c3aed", label: "LVermGeo Saxony-Anhalt" },
-  "geobasis-bb": { stateCode: "BB", color: "#eab308", label: "Geobasis Brandenburg" },
-  "ldbv-by": { stateCode: "BY", color: "#2563eb", label: "LDBV Bayern" },
-  "lgv-hh": { stateCode: "HH", color: "#0891b2", label: "LGV Hamburg" },
-  "lvermgeo-sh": { stateCode: "SH", color: "#14b8a6", label: "LVermGeo Schleswig-Holstein" },
-  "laiv-mv": { stateCode: "MV", color: "#a21caf", label: "LAiV Mecklenburg-Vorpommern" },
-  "lginf-hb": { stateCode: "HB", color: "#65a30d", label: "Landesamt Geoinformation Bremen" },
-  "gdi-be": { stateCode: "BE", color: "#4338ca", label: "GDI Berlin" },
+  "lgln-ni": { stateCode: "NI", color: "#3b82f6", label: "Saxony Lower LGLN" },
+  "geobasis-nrw": { stateCode: "NW", color: "#f97316", label: "NRW Geobasis" },
+  "geosn-sn": { stateCode: "SN", color: "#16a34a", label: "Saxony GeoSN" },
+  "hvbg-he": { stateCode: "HE", color: "#dc2626", label: "Hessen HVBG" },
+  "lvermgeo-st": { stateCode: "ST", color: "#7c3aed", label: "Saxony-Anhalt LVermGeo" },
+  "geobasis-bb": { stateCode: "BB", color: "#eab308", label: "Brandenburg Geobasis" },
+  "lgl-bw": { stateCode: "BW", color: "#0f766e", label: "Baden-Wuerttemberg LGL" },
+  "ldbv-by": { stateCode: "BY", color: "#2563eb", label: "Bayern LDBV" },
+  "lgv-hh": { stateCode: "HH", color: "#0891b2", label: "Hamburg LGV" },
+  "lvermgeo-sh": { stateCode: "SH", color: "#14b8a6", label: "Schleswig-Holstein LVermGeo" },
+  "laiv-mv": { stateCode: "MV", color: "#a21caf", label: "Mecklenburg-Vorpommern LAiV" },
+  "lginf-hb": { stateCode: "HB", color: "#65a30d", label: "Bremen Landesamt Geoinformation" },
+  "gdi-be": { stateCode: "BE", color: "#4338ca", label: "Berlin GDI" },
 };
 const variants = ["corridor", "area", "point"];
 const params = new URLSearchParams(window.location.search);
@@ -100,6 +101,7 @@ const state = {
   activeSite: null,
   provider: "auto",
   providers: [],
+  providerSortDirection: "asc",
   apiReady: false,
   siteA: null,
   siteB: null,
@@ -128,6 +130,7 @@ const selectionReadout = document.getElementById("selectionReadout");
 const downloadStatus = document.getElementById("downloadStatus");
 const tileList = document.getElementById("tileList");
 const providerSelect = document.getElementById("providerSelect");
+const providerSortSelect = document.getElementById("providerSortSelect");
 const jobNameInput = document.getElementById("jobNameInput");
 const measurementReadout = document.getElementById("measurementReadout");
 const coverageToggle = document.getElementById("coverageToggle");
@@ -183,6 +186,7 @@ document.getElementById("previousVariant").addEventListener("click", () => switc
 document.getElementById("nextVariant").addEventListener("click", () => switchVariant(1));
 providerSelect.addEventListener("input", handleProviderSelection);
 providerSelect.addEventListener("change", handleProviderSelection);
+providerSortSelect.addEventListener("input", handleProviderSortChange);
 coverageToggle.addEventListener("change", updateCoverageOverlay);
 
 function monitorProviderSelection() {
@@ -318,22 +322,23 @@ async function loadProviderBootstrap() {
   if (!healthResponse.ok || !providersResponse.ok) throw new Error("API unavailable");
   const payload = await providersResponse.json();
   state.providers = payload.providers || [];
-  populateProviderSelect(state.providers);
+  populateProviderSelect(state.providers, state.providerSortDirection);
   state.apiReady = true;
   searchStatus.textContent = "API ready";
 }
 
-function populateProviderSelect(providers) {
+function populateProviderSelect(providers, sortDirection) {
+  const sortedProviders = sortProviders(providers, sortDirection);
   providerSelect.innerHTML = "";
-  for (const provider of providers) {
+  for (const provider of sortedProviders) {
     const option = document.createElement("option");
     option.value = provider.name;
     option.textContent = provider.label;
     option.selected = provider.name === state.provider;
     providerSelect.appendChild(option);
   }
-  if (!providers.some((provider) => provider.name === state.provider)) {
-    state.provider = providers[0]?.name || "";
+  if (!sortedProviders.some((provider) => provider.name === state.provider)) {
+    state.provider = sortedProviders[0]?.name || "";
   }
   syncProviderSelection(false);
 }
@@ -341,6 +346,11 @@ function populateProviderSelect(providers) {
 function handleProviderSelection() {
   if (!state.providers.length) return;
   syncProviderSelection(true);
+}
+
+function handleProviderSortChange() {
+  state.providerSortDirection = providerSortSelect.value === "desc" ? "desc" : "asc";
+  populateProviderSelect(state.providers, state.providerSortDirection);
 }
 
 function syncProviderSelection(clearTiles) {

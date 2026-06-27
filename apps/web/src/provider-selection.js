@@ -12,6 +12,19 @@ export function providerDatasets(providers, providerName) {
   return providers.find((provider) => provider.name === providerName)?.datasets || [];
 }
 
+export function sortProviders(providers, direction) {
+  const autoProvider = providers.find((provider) => provider.name === "auto");
+  const sorted = providers
+    .filter((provider) => provider.name !== "auto")
+    .slice()
+    .sort((left, right) => left.label.localeCompare(right.label));
+
+  if (direction === "desc") {
+    sorted.reverse();
+  }
+  return autoProvider ? [autoProvider, ...sorted] : sorted;
+}
+
 export function coverageShouldShow(selectedProvider, coverageProvider, coverageEnabled) {
   return coverageEnabled && (selectedProvider === "auto" || coverageProvider === selectedProvider);
 }
