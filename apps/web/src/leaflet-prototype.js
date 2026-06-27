@@ -78,6 +78,13 @@ const byTopo = L.tileLayer.wms("https://geoservices.bayern.de/od/wms/dtk/v1/dtk2
   maxZoom: 19,
   attribution: "© Bayerische Vermessungsverwaltung"
 });
+const thDop = L.tileLayer.wms("https://www.geoproxy.geoportal-th.de/geoproxy/services/DOP", {
+  layers: "th_dop200rgb",
+  format: "image/jpeg",
+  transparent: false,
+  maxZoom: 19,
+  attribution: "© TLBG Thüringen"
+});
 const nrwTopo = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms_nw_dtk", {
   layers: "nw_dtk_col",
   format: "image/png",
@@ -100,6 +107,7 @@ L.control.layers(
     Satellite: satellite,
     "NRW Ortho (DOP)": nrwDop,
     "Bayern Ortho (DOP20)": byDop,
+    "Thüringen Ortho (DOP)": thDop,
     "NRW Topo (DTK)": nrwTopo,
     "Bayern Topo (DTK25)": byTopo
   },
