@@ -31,6 +31,7 @@ function renderPanel(variant) {
     ${renderSearch()}
     ${renderProviderControls()}
     ${renderSelection()}
+    ${renderProbeControls()}
     ${renderDownloadControls()}
   </aside>`;
 }
@@ -72,6 +73,13 @@ function renderSelection() {
       <h2>Current selection</h2>
       <pre id="selectionReadout">none</pre>
     </section>`;
+}
+
+function renderProbeControls() {
+  return `<section class="prototype-probe">
+    <button id="probeToggle" class="secondary" type="button">Probe DOM at click</button>
+    <span id="probeStatus" class="prototype-status"></span>
+  </section>`;
 }
 
 function renderDownloadControls() {

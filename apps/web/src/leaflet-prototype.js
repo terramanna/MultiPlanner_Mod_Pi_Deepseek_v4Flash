@@ -6,6 +6,7 @@ import "@geoman-io/leaflet-geoman-free";
 import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
 import "./leaflet-prototype.css";
 import { retryUntilReady } from "./bootstrap-retry.js";
+import { createPointProbe } from "./leaflet-point-probe.js";
 import { clearLeafletSelection } from "./leaflet-selection.js";
 import { requestLeafletSubset } from "./leaflet-subset-request.js";
 import { bindPersistedInput } from "./persisted-input.js";
@@ -176,6 +177,7 @@ configureVariant();
 refreshReadout();
 bootstrapApi();
 loadProviderCoverage();
+const pointProbe = createPointProbe(map, apiBaseUrl, () => state.provider);
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
@@ -193,7 +195,9 @@ window.addEventListener(
 );
 
 map.on("click", (event) => {
-  if (!state.isDrawing) placeFromMap(event.latlng);
+  if (state.isDrawing) return;
+  if (pointProbe.isActive()) { pointProbe.probe(event.latlng); return; }
+  placeFromMap(event.latlng);
 });
 map.on("pm:drawstart", (event) => {
   state.isDrawing = true;
@@ -222,6 +226,11 @@ providerSelect.addEventListener("input", handleProviderSelection);
 providerSelect.addEventListener("change", handleProviderSelection);
 providerSortSelect.addEventListener("input", handleProviderSortChange);
 coverageToggle.addEventListener("change", updateCoverageOverlay);
+document.getElementById("probeToggle").addEventListener("click", () => {
+  const active = pointProbe.toggle();
+  document.getElementById("probeToggle").classList.toggle("is-active", active);
+  document.getElementById("probeStatus").textContent = active ? "Click the map to read DOM height." : "";
+});
 
 function monitorProviderSelection() {
   if (state.providers.length && providerSelect.value !== state.provider) {

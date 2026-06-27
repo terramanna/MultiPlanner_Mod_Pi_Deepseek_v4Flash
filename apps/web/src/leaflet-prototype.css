@@ -25,5 +25,9 @@ pre { margin: 0; white-space: pre-wrap; font: 12px/1.5 Consolas, monospace; }
 #leafletMap.is-site-placement .leaflet-tile {
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M4 2v20l5-5 4 11 4-2-4-10h7z' fill='white' stroke='%2314273a' stroke-width='2'/%3E%3Ccircle cx='4' cy='2' r='3' fill='%2300a6d6' stroke='white' stroke-width='1.5'/%3E%3C/svg%3E") 4 2, crosshair !important;
 }
+#leafletMap.is-probe-active,
+#leafletMap.is-probe-active .leaflet-pane,
+#leafletMap.is-probe-active .leaflet-tile { cursor: crosshair !important; }
+.prototype-probe { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .prototype-switcher { position: fixed; z-index: 1000; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px; background: #102b3a; color: white; border-radius: 999px; box-shadow: 0 5px 20px #0005; }.prototype-switcher button { padding: 5px 10px; }.prototype-switcher a { color: #aeeaff; font-size: 12px; }
 @media (max-width: 850px) { .leaflet-prototype-shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }.leaflet-prototype-panel { max-height: 52vh; border-right: 0; border-bottom: 1px solid #cbd5df; } }
