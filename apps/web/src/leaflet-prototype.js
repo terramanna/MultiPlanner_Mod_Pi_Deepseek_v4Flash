@@ -126,7 +126,11 @@ map.pm.addControls({
   drawPolygon: true,
   drawCircle: true,
   editMode: true,
-  removalMode: true
+  dragMode: false,
+  cutMode: false,
+  rotateMode: false,
+  scaleMode: false,
+  removalMode: true,
 });
 
 const state = {
