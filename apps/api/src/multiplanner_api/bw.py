@@ -1,17 +1,17 @@
-"""Grid-ZIP adapter for LGL Baden-Wuerttemberg DGM1.
+"""Grid-ZIP adapter for tiled LGL Baden-Wuerttemberg products.
 
 Official product catalog:
   https://opengeodata.lgl-bw.de/assets/config/local/odp-products.json
 
-Published contract:
-  - layerLID: zwei_km_gitter
-  - productConnectorKey: DGM
-  - selectionCapacity: 10 in the portal UI
-  - tile download pattern: /data/dgm/dgm1_32_{x_km}_{y_km}_2_bw.zip
+Published contracts used here:
+  - DGM1: /data/dgm/dgm1_32_{x_km}_{y_km}_2_bw.zip
+  - DOM1: /data/dom1/dom1_32_{x_km}_{y_km}_2_bw.zip
+  - DOP20 RGB: /data/dop20/dop20rgb_32_{x_km}_{y_km}_2_bw.zip
+  - LoD2: /data/lod2/LoD2_32_{x_km}_{y_km}_2_bw.zip
 
 CRS:       EPSG:25832 (ETRS89 / UTM Zone 32N)
 Tile size: 2 km x 2 km
-Format:    ZIP containing four 1 km ASCII XYZ files
+Format:    ZIP bundles; internal source type depends on dataset
 """
 
 from __future__ import annotations
@@ -29,8 +29,7 @@ ETRS89_UTM32 = "EPSG:25832"
 TILE_SIZE_M = 1000
 MAX_TILES_PER_DATASET = 200
 PROVIDER_ID = "lgl-bw"
-SOURCE_URL = "https://opengeodata.lgl-bw.de/"
-BASE_URL = "https://opengeodata.lgl-bw.de/data/dgm/"
+DEFAULT_SOURCE_URL = "https://opengeodata.lgl-bw.de/"
 
 
 def locate_tiles(
@@ -66,7 +65,7 @@ def summarize_tiles(
             "tile_id": tile["tile_id"],
             "updated": None,
             "primary_url": tile["primary_url"],
-            "source": SOURCE_URL,
+            "source": config.get("source_url", DEFAULT_SOURCE_URL),
         }
         for tile in locate_tiles(
             dataset,
@@ -120,5 +119,18 @@ def _package_y(y_km: int) -> int:
 
 def _tile_record(dataset: str, x_km: int, y_km: int) -> dict[str, str]:
     tile_id = f"bw_{dataset}_{x_km}_{y_km}"
-    filename = f"{dataset}_32_{x_km}_{y_km}_2_bw.zip"
-    return {"tile_id": tile_id, "primary_url": f"{BASE_URL}{filename}"}
+    filename, base_url = _dataset_location(dataset)
+    return {"tile_id": tile_id, "primary_url": f"{base_url}{filename.format(x_km=x_km, y_km=y_km)}"}
+
+
+def _dataset_location(dataset: str) -> tuple[str, str]:
+    locations = {
+        "dgm1": ("dgm1_32_{x_km}_{y_km}_2_bw.zip", "https://opengeodata.lgl-bw.de/data/dgm/"),
+        "dom1": ("dom1_32_{x_km}_{y_km}_2_bw.zip", "https://opengeodata.lgl-bw.de/data/dom1/"),
+        "dop20": ("dop20rgb_32_{x_km}_{y_km}_2_bw.zip", "https://opengeodata.lgl-bw.de/data/dop20/"),
+        "bdom": ("LoD2_32_{x_km}_{y_km}_2_bw.zip", "https://opengeodata.lgl-bw.de/data/lod2/"),
+    }
+    try:
+        return locations[dataset]
+    except KeyError as exc:
+        raise ValueError(f"Unsupported Baden-Wuerttemberg dataset: {dataset}") from exc

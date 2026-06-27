@@ -219,3 +219,18 @@ def test_expanded_download_paths_returns_original_file_when_zip_has_no_supported
     expanded = _expanded_download_paths(zip_path, tmp_path)
 
     assert expanded == [zip_path]
+
+
+def test_extract_supported_sources_falls_back_to_gml_files(tmp_path) -> None:
+    zip_path = tmp_path / "tiles.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("tile/a.gml", b"<CityModel />")
+        zf.writestr("tile/b.gml", b"<CityModel />")
+        zf.writestr("tile/readme.txt", b"hello")
+
+    extracted = _extract_supported_sources(zip_path, tmp_path)
+
+    assert [path.as_posix() for path in extracted] == [
+        (tmp_path / "tile" / "a.gml").as_posix(),
+        (tmp_path / "tile" / "b.gml").as_posix(),
+    ]

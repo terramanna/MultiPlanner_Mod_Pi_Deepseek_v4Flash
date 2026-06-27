@@ -204,6 +204,7 @@ def _extract_supported_sources(zip_path: Path, dest_dir: Path) -> list[Path]:
     1. GeoTIFF files (.tif/.tiff)
     2. ASCII XYZ files (.xyz)
     3. CSV files (kept as a last resort for XYZ-style products)
+    4. GML files (for 3D building tiles / CityGML products)
 
     Returns an empty list if *zip_path* is not a ZIP or contains no supported
     sources.
@@ -212,7 +213,7 @@ def _extract_supported_sources(zip_path: Path, dest_dir: Path) -> list[Path]:
         return []
     with zipfile.ZipFile(zip_path) as zf:
         names = zf.namelist()
-        for suffixes in ((".tif", ".tiff"), (".xyz",), (".csv",)):
+        for suffixes in ((".tif", ".tiff"), (".xyz",), (".csv",), (".gml",)):
             matches = [name for name in names if name.lower().endswith(suffixes)]
             if not matches:
                 continue
