@@ -1,18 +1,16 @@
-"""Bulk-ZIP adapter for Landesamt Geoinformation Bremen (FHB) DGM1.
+"""Bulk-ZIP adapter for Landesamt Geoinformation Bremen (FHB).
 
-Bremen offers no WCS or per-tile API; the entire DGM1 for each city is
-distributed as a single ASCII XYZ ZIP file via INSPIRE ATOM.
+Bremen distributes data as one ZIP per city (Bremen + Bremerhaven).
 
-City ZIPs (CC BY 4.0):
-  Bremen (2017):      https://gdi2.geo.bremen.de/inspire/download/DGM/data/Gitternetz_DGM1_2017_HB_ASCII_XYZ.zip
-  Bremerhaven (2015): https://gdi2.geo.bremen.de/inspire/download/DGM/data/Gitternetz_DGM1_2015_BHV_ASCII_XYZ.zip
+Dataset   ZIPs                                                            Format
+dgm1      gdi2.geo.bremen.de/inspire/download/DGM/data/Gitternetz_…      ASCII XYZ
+lod2      gdi2.geo.bremen.de/inspire/download/LoD/data/LOD2_CITYGML_…   CityGML
 
-CRS:    EPSG:25832 (ETRS89 / UTM Zone 32N)
-Format: ASCII XYZ
+CRS:  EPSG:25832 (ETRS89 / UTM Zone 32N)
+License: CC BY 4.0 — Landesamt GeoInformation Bremen
 
 locate_tiles returns the ZIP(s) whose city bbox intersects the request geometry
-(0-2 results). Geometry input is WGS84 — no reprojection needed for the coarse
-city-level intersection check.
+(0–2 results per dataset). Geometry input is WGS84.
 """
 
 from __future__ import annotations
@@ -24,25 +22,38 @@ from shapely.geometry import Point, Polygon, box
 
 PROVIDER_ID = "lginf-hb"
 
-# WGS84 bounding boxes (conservative) for each city ZIP.
-_CITY_TILES = [
-    {
-        "tile_id": "hb_dgm1_HB",
-        "bbox": box(8.4766, 52.9960, 8.9910, 53.2280),
-        "primary_url": (
-            "https://gdi2.geo.bremen.de/inspire/download/DGM/data"
-            "/Gitternetz_DGM1_2017_HB_ASCII_XYZ.zip"
-        ),
-    },
-    {
-        "tile_id": "hb_dgm1_BHV",
-        "bbox": box(8.4930, 53.4700, 8.6290, 53.6140),
-        "primary_url": (
-            "https://gdi2.geo.bremen.de/inspire/download/DGM/data"
-            "/Gitternetz_DGM1_2015_BHV_ASCII_XYZ.zip"
-        ),
-    },
-]
+_BASE = "https://gdi2.geo.bremen.de/inspire/download"
+
+# WGS84 bounding boxes (conservative) for each city.
+_HB_BBOX = box(8.4766, 52.9960, 8.9910, 53.2280)
+_BHV_BBOX = box(8.4930, 53.4700, 8.6290, 53.6140)
+
+_CITY_TILES: dict[str, list[dict]] = {
+    "dgm1": [
+        {
+            "tile_id": "hb_dgm1_HB",
+            "bbox": _HB_BBOX,
+            "primary_url": f"{_BASE}/DGM/data/Gitternetz_DGM1_2017_HB_ASCII_XYZ.zip",
+        },
+        {
+            "tile_id": "hb_dgm1_BHV",
+            "bbox": _BHV_BBOX,
+            "primary_url": f"{_BASE}/DGM/data/Gitternetz_DGM1_2015_BHV_ASCII_XYZ.zip",
+        },
+    ],
+    "lod2": [
+        {
+            "tile_id": "hb_lod2_HB",
+            "bbox": _HB_BBOX,
+            "primary_url": f"{_BASE}/LoD/data/LOD2_CITYGML_HB.zip",
+        },
+        {
+            "tile_id": "hb_lod2_BHV",
+            "bbox": _BHV_BBOX,
+            "primary_url": f"{_BASE}/LoD/data/LOD2_CITYGML_BHV.zip",
+        },
+    ],
+}
 
 
 def locate_tiles(
@@ -56,7 +67,7 @@ def locate_tiles(
     geom = request_geometry(geometry, geometry_type)
     return [
         {"tile_id": city["tile_id"], "primary_url": city["primary_url"]}
-        for city in _CITY_TILES
+        for city in _CITY_TILES[dataset]
         if geom.intersects(city["bbox"])
     ]
 
@@ -76,7 +87,7 @@ def summarize_tiles(
             "tile_id": tile["tile_id"],
             "updated": None,
             "primary_url": tile["primary_url"],
-            "source": "https://gdi2.geo.bremen.de/",
+            "source": f"{_BASE}/",
         }
         for tile in locate_tiles(
             dataset,

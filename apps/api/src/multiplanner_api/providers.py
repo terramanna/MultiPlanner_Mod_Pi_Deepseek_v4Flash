@@ -174,6 +174,7 @@ SERVICE_PROVIDERS = {
         "adapter": "lginf_hb_bulk",
         "datasets": {
             "dgm1": {},
+            "lod2": {},
         },
     },
     "gdi-be": {

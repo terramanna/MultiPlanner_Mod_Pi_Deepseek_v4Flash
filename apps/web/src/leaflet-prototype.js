@@ -92,6 +92,13 @@ const bbDop = L.tileLayer.wms("https://isk.geobasis-bb.de/mapproxy/dop20c/servic
   maxZoom: 21,
   attribution: "© GeoBasis-DE/LGB"
 });
+const hbDom = L.tileLayer.wms("https://geodienste.bremen.de/wms_dom1", {
+  layers: "DOM1_HB,DOM1_BHV",
+  format: "image/png",
+  transparent: false,
+  maxZoom: 19,
+  attribution: "© Landesamt GeoInformation Bremen (CC-BY)"
+});
 const nrwTopo = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms_nw_dtk", {
   layers: "nw_dtk_col",
   format: "image/png",
@@ -116,6 +123,7 @@ L.control.layers(
     "Bayern Ortho (DOP20)": byDop,
     "Thüringen Ortho (DOP)": thDop,
     "Brandenburg Ortho (DOP20c)": bbDop,
+    "Bremen DOM1": hbDom,
     "NRW Topo (DTK)": nrwTopo,
     "Bayern Topo (DTK25)": byTopo
   },
