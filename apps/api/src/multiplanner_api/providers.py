@@ -115,7 +115,22 @@ SERVICE_PROVIDERS = {
         "label": "Bayern LDBV",
         "adapter": "ldbv_by_metalink",
         "datasets": {
-            "dgm1": {},
+            "dgm1": {
+                "metalink_url": "https://geoservices.bayern.de/services/poly2metalink/metalink/dgm1?data=dgm1&service=polygon",
+                "source_url": "https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=dgm1&active=DOWNLOAD",
+            },
+            "dom1": {
+                "metalink_url": "https://geoservices.bayern.de/services/poly2metalink/metalink/dom20dom?data=dom20dom&service=polygon",
+                "source_url": "https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=dom20&active=DOWNLOAD",
+            },
+            "dop20": {
+                "metalink_url": "https://geoservices.bayern.de/services/poly2metalink/metalink/dop20rgb?data=dop20rgb&service=polygon",
+                "source_url": "https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=dop20rgb&active=DOWNLOAD",
+            },
+            "bdom": {
+                "metalink_url": "https://geoservices.bayern.de/services/poly2metalink/metalink/lod2?data=lod2&service=polygon",
+                "source_url": "https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=lod2&active=MASSENDOWNLOAD",
+            },
         },
     },
     "lgv-hh": {
@@ -155,6 +170,36 @@ SERVICE_PROVIDERS = {
             "bdom": {},
         },
     },
+}
+
+ADAPTER_LOCATORS = {
+    "geosn_grid": locate_geosn_tiles,
+    "hvbg_he_wcs": locate_he_tiles,
+    "lvermgeo_st_wcs": locate_st_tiles,
+    "geobasis_bb_wcs": locate_bb_tiles,
+    "lgl_bw_gridzip": locate_bw_tiles,
+    "ldbv_by_metalink": locate_by_tiles,
+    "lgv_hh_ogc": locate_hh_tiles,
+    "nrw_grid": locate_nrw_tiles,
+    "lvermgeo_sh_geojson": locate_sh_tiles,
+    "laiv_mv_wcs": locate_mv_tiles,
+    "lginf_hb_bulk": locate_hb_tiles,
+    "gdi_be_atom": locate_be_tiles,
+}
+
+ADAPTER_SUMMARIZERS = {
+    "geosn_grid": summarize_geosn_tiles,
+    "hvbg_he_wcs": summarize_he_tiles,
+    "lvermgeo_st_wcs": summarize_st_tiles,
+    "geobasis_bb_wcs": summarize_bb_tiles,
+    "lgl_bw_gridzip": summarize_bw_tiles,
+    "ldbv_by_metalink": summarize_by_tiles,
+    "lgv_hh_ogc": summarize_hh_tiles,
+    "nrw_grid": summarize_nrw_tiles,
+    "lvermgeo_sh_geojson": summarize_sh_tiles,
+    "laiv_mv_wcs": summarize_mv_tiles,
+    "lginf_hb_bulk": summarize_hb_tiles,
+    "gdi_be_atom": summarize_be_tiles,
 }
 
 WGS84 = "EPSG:4326"
@@ -243,30 +288,10 @@ def locate_remote_tiles(
     geometry_type: str,
     timeout: int = 60,
 ) -> list[dict[str, Any]]:
-    if SERVICE_PROVIDERS[provider].get("adapter") == "geosn_grid":
-        return locate_geosn_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "hvbg_he_wcs":
-        return locate_he_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "lvermgeo_st_wcs":
-        return locate_st_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "geobasis_bb_wcs":
-        return locate_bb_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "lgl_bw_gridzip":
-        return locate_bw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "ldbv_by_metalink":
-        return locate_by_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "lgv_hh_ogc":
-        return locate_hh_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "nrw_grid":
-        return locate_nrw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "lvermgeo_sh_geojson":
-        return locate_sh_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "laiv_mv_wcs":
-        return locate_mv_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "lginf_hb_bulk":
-        return locate_hb_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "gdi_be_atom":
-        return locate_be_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
+    adapter = SERVICE_PROVIDERS[provider].get("adapter")
+    locator = ADAPTER_LOCATORS.get(adapter)
+    if locator is not None:
+        return locator(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
 
     config = _dataset_config(provider, dataset)
     response = requests.post(
@@ -288,30 +313,10 @@ def summarize_remote_tiles(
     geometry_type: str,
     timeout: int = 60,
 ) -> list[dict[str, Any]]:
-    if SERVICE_PROVIDERS[provider].get("adapter") == "geosn_grid":
-        return summarize_geosn_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "hvbg_he_wcs":
-        return summarize_he_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "lvermgeo_st_wcs":
-        return summarize_st_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "geobasis_bb_wcs":
-        return summarize_bb_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "lgl_bw_gridzip":
-        return summarize_bw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "ldbv_by_metalink":
-        return summarize_by_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "lgv_hh_ogc":
-        return summarize_hh_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "nrw_grid":
-        return summarize_nrw_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "lvermgeo_sh_geojson":
-        return summarize_sh_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "laiv_mv_wcs":
-        return summarize_mv_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "lginf_hb_bulk":
-        return summarize_hb_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
-    if SERVICE_PROVIDERS[provider].get("adapter") == "gdi_be_atom":
-        return summarize_be_tiles(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
+    adapter = SERVICE_PROVIDERS[provider].get("adapter")
+    summarizer = ADAPTER_SUMMARIZERS.get(adapter)
+    if summarizer is not None:
+        return summarizer(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
 
     config = _dataset_config(provider, dataset)
     summaries: list[dict[str, Any]] = []

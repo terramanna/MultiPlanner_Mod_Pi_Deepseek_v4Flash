@@ -1,8 +1,9 @@
-"""Bavaria DGM1 adapter via the official poly2metalink polygon service."""
+"""Bavaria raster adapter via the official poly2metalink polygon service."""
 
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
 
@@ -14,8 +15,6 @@ from shapely.ops import transform
 WGS84 = "EPSG:4326"
 ETRS89_UTM32 = "EPSG:25832"
 PROVIDER_ID = "ldbv-by"
-SOURCE_URL = "https://geodaten.bayern.de/opengeodata/"
-METALINK_URL = "https://geoservices.bayern.de/services/poly2metalink/metalink/dgm1?data=dgm1&service=polygon"
 METALINK_NS = {"m": "urn:ietf:params:xml:ns:metalink"}
 
 
@@ -29,7 +28,7 @@ def locate_tiles(
 ) -> list[dict[str, str]]:
     geom_32 = _to_utm32(request_geometry(geometry, geometry_type))
     response = requests.post(
-        METALINK_URL,
+        config["metalink_url"],
         data=_request_body(geom_32),
         headers={"Content-Type": "text/plain"},
         timeout=timeout,
@@ -39,7 +38,7 @@ def locate_tiles(
     except Exception as exc:
         message = getattr(getattr(exc, "response", None), "text", "") or str(exc)
         raise ValueError(f"Bayern selection rejected: {message}") from exc
-    return _metalink_urls(response.text)
+    return _metalink_urls(response.text, dataset)
 
 
 def summarize_tiles(
@@ -57,7 +56,7 @@ def summarize_tiles(
             "tile_id": tile["tile_id"],
             "updated": None,
             "primary_url": tile["primary_url"],
-            "source": SOURCE_URL,
+            "source": config["source_url"],
         }
         for tile in locate_tiles(
             dataset,
@@ -90,7 +89,7 @@ def _request_body(geometry) -> str:
     return f"SRID=25832;{geometry.wkt}"
 
 
-def _metalink_urls(payload: str) -> list[dict[str, str]]:
+def _metalink_urls(payload: str, dataset: str) -> list[dict[str, str]]:
     root = ElementTree.fromstring(payload)
     records: list[dict[str, str]] = []
     for file_element in root.findall("m:file", METALINK_NS):
@@ -98,10 +97,10 @@ def _metalink_urls(payload: str) -> list[dict[str, str]]:
         url_element = file_element.find("m:url", METALINK_NS)
         if not name or url_element is None or not url_element.text:
             continue
-        stem = name.removesuffix(".tif")
+        stem = Path(name).stem
         records.append(
             {
-                "tile_id": f"by_dgm1_{stem}",
+                "tile_id": f"by_{dataset}_{stem}",
                 "primary_url": url_element.text.strip(),
             }
         )
