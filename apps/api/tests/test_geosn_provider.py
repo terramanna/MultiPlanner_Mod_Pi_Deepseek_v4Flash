@@ -4,8 +4,8 @@ from multiplanner_api.geosn import locate_tiles, summarize_tiles, tile_coordinat
 from multiplanner_api.providers import SERVICE_PROVIDERS, provider_dataset_names
 
 
-def test_geosn_provider_lists_1m_terrain_and_surface_datasets() -> None:
-    assert provider_dataset_names("geosn-sn") == ("dgm1", "dom1")
+def test_geosn_provider_lists_1m_terrain_surface_and_ortho_datasets() -> None:
+    assert provider_dataset_names("geosn-sn") == ("dgm1", "dom1", "dop20")
 
 
 def test_geosn_grid_derives_the_intersecting_2km_tile_from_a_point() -> None:
@@ -91,3 +91,48 @@ def test_geosn_summarize_tiles_includes_provider_and_dataset() -> None:
     assert s["dataset"] == "dom1"
     assert s["tile_id"].startswith("dom1_33")
     assert s["primary_url"].endswith("_tiff.zip")
+
+
+GEOSN_DOP20_BASE = "https://geocloud.landesvermessung.sachsen.de/public.php/dav/files/sX3GPcdBMGrfXT9/"
+
+
+def test_geosn_dop20_uses_correct_token() -> None:
+    config = SERVICE_PROVIDERS["geosn-sn"]["datasets"]["dop20"]
+    assert "sX3GPcdBMGrfXT9" in config["base_url"]
+
+
+def test_geosn_dop20_tile_record_uses_dop20rgbi_prefix() -> None:
+    # Verified: https://...sX3GPcdBMGrfXT9/dop20rgbi_33278_5590_2_sn_tiff.zip
+    from multiplanner_api.geosn import _tile_record
+    record = _tile_record("dop20rgbi", 278, 5590, GEOSN_DOP20_BASE)
+    assert record["primary_url"] == GEOSN_DOP20_BASE + "dop20rgbi_33278_5590_2_sn_tiff.zip"
+    assert record["tile_id"] == "dop20rgbi_33278_5590_2_sn"
+
+
+def test_geosn_locate_dop20_tiles_uses_rgbi_prefix_in_url() -> None:
+    config = SERVICE_PROVIDERS["geosn-sn"]["datasets"]["dop20"]
+    tiles = locate_tiles(
+        "dop20",
+        config=config,
+        geometry="13.74,51.05",
+        geometry_type="esriGeometryPoint",
+        timeout=1,
+    )
+    assert len(tiles) == 1
+    tile = tiles[0]
+    assert tile["primary_url"].startswith(GEOSN_DOP20_BASE + "dop20rgbi_33")
+    assert tile["primary_url"].endswith("_2_sn_tiff.zip")
+
+
+def test_geosn_dop20_known_tile_urls_match() -> None:
+    # All four tiles verified by user from batch download listing
+    from multiplanner_api.geosn import _tile_record
+    expected = [
+        (278, 5590, "dop20rgbi_33278_5590_2_sn_tiff.zip"),
+        (280, 5602, "dop20rgbi_33280_5602_2_sn_tiff.zip"),
+        (380, 5626, "dop20rgbi_33380_5626_2_sn_tiff.zip"),
+        (502, 5682, "dop20rgbi_33502_5682_2_sn_tiff.zip"),
+    ]
+    for east_km, north_km, filename in expected:
+        record = _tile_record("dop20rgbi", east_km, north_km, GEOSN_DOP20_BASE)
+        assert record["primary_url"] == GEOSN_DOP20_BASE + filename

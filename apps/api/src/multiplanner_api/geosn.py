@@ -32,6 +32,7 @@ def locate_tiles(
     timeout: int,
 ) -> list[dict[str, str]]:
     base_url = config["base_url"]
+    file_prefix = config.get("file_prefix", dataset)
     geom_33 = _to_utm33(request_geometry(geometry, geometry_type))
     candidates = tile_coordinates(geom_33)
     if len(candidates) > MAX_TILES_PER_DATASET:
@@ -39,7 +40,7 @@ def locate_tiles(
             f"GeoSN selection resolves to {len(candidates)} 2 km tiles. "
             f"Limit the area to {MAX_TILES_PER_DATASET} tiles per dataset."
         )
-    return [_tile_record(dataset, east_km, north_km, base_url) for east_km, north_km in candidates]
+    return [_tile_record(file_prefix, east_km, north_km, base_url) for east_km, north_km in candidates]
 
 
 def summarize_tiles(

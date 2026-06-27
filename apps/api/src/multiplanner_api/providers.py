@@ -87,6 +87,10 @@ SERVICE_PROVIDERS = {
             "dom1": {
                 "base_url": "https://geocloud.landesvermessung.sachsen.de/public.php/dav/files/S6wwnFwX7882sZm/",
             },
+            "dop20": {
+                "base_url": "https://geocloud.landesvermessung.sachsen.de/public.php/dav/files/sX3GPcdBMGrfXT9/",
+                "file_prefix": "dop20rgbi",
+            },
         },
     },
     "hvbg-he": {
