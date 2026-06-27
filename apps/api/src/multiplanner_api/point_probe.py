@@ -5,6 +5,14 @@ import subprocess
 
 from multiplanner_api.config import load_settings
 from multiplanner_api.downloads import _download_file, _expanded_download_paths, _target_filename
+# CRS for providers whose tiles are ASCII XYZ (no embedded CRS).
+# gdal_translate assigns the CRS when converting to GeoTIFF.
+_PROVIDER_XYZ_CRS: dict[str, str] = {
+    "lgv-hh": "EPSG:25832",
+    "lginf-hb": "EPSG:25832",
+    "gdi-be": "EPSG:25833",
+}
+
 from multiplanner_api.models import (
     LocateSubsetRequest,
     MultiProbeRequest,
@@ -107,7 +115,7 @@ def _prepare_sample_path(request: PointProbeRequest, tile: TileSummary) -> Path:
     target_path = cache_dir / _target_filename(tile.primary_url or "", tile.tile_id)
     if not target_path.exists():
         _download_file(tile.primary_url or "", target_path)
-    return _sample_source_path(_expanded_download_paths(target_path, cache_dir))
+    return _resolve_sample_path(_expanded_download_paths(target_path, cache_dir), request.provider)
 
 
 def _shared_source_cache_dir(provider: str, dataset: str) -> Path:
@@ -116,11 +124,30 @@ def _shared_source_cache_dir(provider: str, dataset: str) -> Path:
     return cache_dir.resolve()
 
 
-def _sample_source_path(paths: list[Path]) -> Path:
+def _resolve_sample_path(paths: list[Path], provider: str) -> Path:
     for path in paths:
         if path.suffix.lower() in {".tif", ".tiff"}:
             return path.resolve()
-    raise ValueError("Point probe currently supports GeoTIFF source tiles only.")
+    crs = _PROVIDER_XYZ_CRS.get(provider)
+    if crs:
+        for path in paths:
+            if path.suffix.lower() == ".xyz":
+                return _xyz_to_geotiff(path, crs).resolve()
+    raise ValueError(f"Point probe: no usable GeoTIFF or known-CRS XYZ tile for {provider}.")
+
+
+def _xyz_to_geotiff(xyz_path: Path, crs: str) -> Path:
+    tif_path = xyz_path.with_suffix(".tif")
+    if tif_path.exists():
+        return tif_path
+    executable = _gdal_exe("gdal_translate")
+    subprocess.run(
+        [str(executable), "-of", "GTiff", "-a_srs", crs, str(xyz_path), str(tif_path)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return tif_path
 
 
 def _sample_height(sample_path: Path, lon: float, lat: float) -> float:
