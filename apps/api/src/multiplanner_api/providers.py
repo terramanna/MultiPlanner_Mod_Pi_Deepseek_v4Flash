@@ -104,6 +104,8 @@ SERVICE_PROVIDERS = {
         "adapter": "geobasis_bb_wcs",
         "datasets": {
             "dgm1": {},
+            "bdom": {},
+            "lod2": {},
         },
     },
     "lgl-bw": {

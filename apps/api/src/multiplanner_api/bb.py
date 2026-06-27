@@ -1,13 +1,13 @@
-"""WCS 2.0.1 adapter for Geobasis Brandenburg DGM1.
+"""WCS 2.0.1 / direct-download adapter for Geobasis Brandenburg.
 
-Endpoint:   https://isk.geobasis-bb.de/ows/dgm_wcs
-Coverage:   bb_dgm
-Axis labels: x (easting), y (northing) — from DescribeCoverage gml:axisLabels
-CRS:        EPSG:25833 (ETRS89 / UTM Zone 33N)
-Format:     image/tiff
-Extent:     x 228152–493382, y 5690412–5939023
+Dataset     Endpoint / base URL                                      CRS
+dgm1        https://isk.geobasis-bb.de/ows/dgm_wcs  (bb_dgm)        EPSG:25833
+bdom        https://isk.geobasis-bb.de/ows/bdom_wcs (bb_bdom)       EPSG:25833
+lod2        https://data.geobasis-bb.de/geobasis/daten/3d_gebaeude/lod2_gml/
 
-Tile size: 1 km × 1 km.
+Axis labels: x (easting), y (northing)
+Tile size: 1 km × 1 km; LOD2 uses the same grid.
+LOD2 filename: lod2_33{easting_km:03d}-{northing_km:04d}.zip
 """
 
 from __future__ import annotations
@@ -26,8 +26,17 @@ TILE_SIZE_M = 1000
 MAX_TILES_PER_DATASET = 200
 PROVIDER_ID = "geobasis-bb"
 
-_WCS_ENDPOINT = "https://isk.geobasis-bb.de/ows/dgm_wcs"
-_COVERAGE_ID = "bb_dgm"
+_WCS_CONFIGS: dict[str, dict[str, str]] = {
+    "dgm1": {
+        "endpoint": "https://isk.geobasis-bb.de/ows/dgm_wcs",
+        "coverage_id": "bb_dgm",
+    },
+    "bdom": {
+        "endpoint": "https://isk.geobasis-bb.de/ows/bdom_wcs",
+        "coverage_id": "bb_bdom",
+    },
+}
+_LOD2_BASE = "https://data.geobasis-bb.de/geobasis/daten/3d_gebaeude/lod2_gml/"
 
 
 def locate_tiles(
@@ -56,6 +65,11 @@ def summarize_tiles(
     geometry_type: str,
     timeout: int,
 ) -> list[dict[str, str]]:
+    source = (
+        _LOD2_BASE
+        if dataset == "lod2"
+        else "https://isk.geobasis-bb.de/"
+    )
     return [
         {
             "provider": PROVIDER_ID,
@@ -63,7 +77,7 @@ def summarize_tiles(
             "tile_id": tile["tile_id"],
             "updated": None,
             "primary_url": tile["primary_url"],
-            "source": "https://isk.geobasis-bb.de/",
+            "source": source,
         }
         for tile in locate_tiles(
             dataset,
@@ -112,10 +126,15 @@ def _tile_cells(geometry) -> list[tuple[int, int]]:
 
 def _tile_record(dataset: str, x_m: int, y_m: int) -> dict[str, str]:
     tile_id = f"bb_{dataset}_{x_m}_{y_m}"
-    url = (
-        f"{_WCS_ENDPOINT}?request=GetCoverage&service=WCS&version=2.0.1"
-        f"&coverageid={_COVERAGE_ID}&FORMAT=image/tiff"
-        f"&SUBSET=x({x_m},{x_m + TILE_SIZE_M})"
-        f"&SUBSET=y({y_m},{y_m + TILE_SIZE_M})"
-    )
+    if dataset == "lod2":
+        fname = f"lod2_33{x_m // 1000:03d}-{y_m // 1000:04d}.zip"
+        url = f"{_LOD2_BASE}{fname}"
+    else:
+        cfg = _WCS_CONFIGS[dataset]
+        url = (
+            f"{cfg['endpoint']}?request=GetCoverage&service=WCS&version=2.0.1"
+            f"&coverageid={cfg['coverage_id']}&FORMAT=image/tiff"
+            f"&SUBSET=x({x_m},{x_m + TILE_SIZE_M})"
+            f"&SUBSET=y({y_m},{y_m + TILE_SIZE_M})"
+        )
     return {"tile_id": tile_id, "primary_url": url}
