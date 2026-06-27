@@ -52,8 +52,8 @@ function _matches(feature, q) {
   return _SEARCH_FIELDS.some((field) => feature.properties[field]?.toLowerCase().includes(q));
 }
 
-async function _fetchGeoJSON(apiBaseUrl) {
-  const resp = await fetch(`${apiBaseUrl}/api/v1/network/geojson`);
+async function _fetchGeoJSON(_apiBaseUrl) {
+  const resp = await fetch("/network.geojson");
   if (!resp.ok) throw new Error(`Network overlay: ${resp.status}`);
   return resp.json();
 }
