@@ -32,6 +32,10 @@ const providerCoverage = {
   "lvermgeo-st": { stateCode: "ST", color: "#7c3aed", label: "LVermGeo Saxony-Anhalt" },
   "geobasis-bb": { stateCode: "BB", color: "#eab308", label: "Geobasis Brandenburg" },
   "lgv-hh": { stateCode: "HH", color: "#0891b2", label: "LGV Hamburg" },
+  "lvermgeo-sh": { stateCode: "SH", color: "#14b8a6", label: "LVermGeo Schleswig-Holstein" },
+  "laiv-mv": { stateCode: "MV", color: "#a21caf", label: "LAiV Mecklenburg-Vorpommern" },
+  "lginf-hb": { stateCode: "HB", color: "#65a30d", label: "Landesamt Geoinformation Bremen" },
+  "gdi-be": { stateCode: "BE", color: "#4338ca", label: "GDI Berlin" },
 };
 const variants = ["corridor", "area", "point"];
 const params = new URLSearchParams(window.location.search);
