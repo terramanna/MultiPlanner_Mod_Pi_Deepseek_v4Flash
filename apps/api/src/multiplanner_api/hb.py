@@ -2,9 +2,10 @@
 
 Bremen distributes data as one ZIP per city (Bremen + Bremerhaven).
 
-Dataset   ZIPs                                                            Format
-dgm1      gdi2.geo.bremen.de/inspire/download/DGM/data/Gitternetz_…      ASCII XYZ
-lod2      gdi2.geo.bremen.de/inspire/download/LoD/data/LOD2_CITYGML_…   CityGML
+Dataset   ZIPs                                                                Format
+dgm1      gdi2.geo.bremen.de/inspire/download/DGM/data/Gitternetz_DGM1_…    ASCII XYZ
+dom1      gdi2.geo.bremen.de/inspire/download/DOM/data/Gitternetz_DOM1_…    ASCII XYZ
+lod2      gdi2.geo.bremen.de/inspire/download/LoD/data/LOD2_CITYGML_…      CityGML
 
 CRS:  EPSG:25832 (ETRS89 / UTM Zone 32N)
 License: CC BY 4.0 — Landesamt GeoInformation Bremen
@@ -39,6 +40,18 @@ _CITY_TILES: dict[str, list[dict]] = {
             "tile_id": "hb_dgm1_BHV",
             "bbox": _BHV_BBOX,
             "primary_url": f"{_BASE}/DGM/data/Gitternetz_DGM1_2015_BHV_ASCII_XYZ.zip",
+        },
+    ],
+    "dom1": [
+        {
+            "tile_id": "hb_dom1_HB",
+            "bbox": _HB_BBOX,
+            "primary_url": f"{_BASE}/DOM/data/Gitternetz_DOM1_2017_HB_ASCII_XYZ.zip",
+        },
+        {
+            "tile_id": "hb_dom1_BHV",
+            "bbox": _BHV_BBOX,
+            "primary_url": f"{_BASE}/DOM/data/Gitternetz_DOM1_2015_BHV_ASCII_XYZ.zip",
         },
     ],
     "lod2": [
