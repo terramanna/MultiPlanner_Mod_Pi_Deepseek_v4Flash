@@ -23,6 +23,7 @@ _SITE_SQL = """
     WHERE is_active = 1
       AND latitude  BETWEEN -90  AND 90
       AND longitude BETWEEN -180 AND 180
+      AND site_status GLOB '[0-8]*'
 """
 
 _LINK_SQL = """
