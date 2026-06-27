@@ -38,6 +38,7 @@ import {
   shDop,
   stDop,
   bwDop,
+  rpDop,
   nrwTopo,
   byTopo,
   nrwHillshade,
@@ -89,6 +90,7 @@ L.control.layers(
     "Schleswig-Holstein Ortho (DOP20)": shDop,
     "Sachsen-Anhalt Ortho (DOP20)": stDop,
     "Baden-Württemberg Ortho (DOP20)": bwDop,
+    "Rheinland-Pfalz Ortho (DOP20)": rpDop,
     "NRW Topo (DTK)": nrwTopo,
     "Bayern Topo (DTK25)": byTopo
   },

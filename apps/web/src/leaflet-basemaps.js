@@ -128,3 +128,10 @@ export const bwDop = L.tileLayer.wms("https://owsproxy.lgl-bw.de/owsproxy/ows/WM
   maxZoom: 20,
   attribution: "© LGL Baden-Württemberg"
 });
+export const rpDop = L.tileLayer.wms("https://geo4.service24.rlp.de/wms/rp_dop20.fcgi", {
+  layers: "rp_dop20",
+  format: "image/jpeg",
+  transparent: false,
+  maxZoom: 20,
+  attribution: "© Vermessungs- und Katasterverwaltung RLP"
+});
