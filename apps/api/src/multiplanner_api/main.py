@@ -20,9 +20,15 @@ from multiplanner_api.models import (
     LocateSubsetRequest,
     LocateSubsetResponse,
     OpenFolderRequest,
+    PointProbeRequest,
+    PointProbeResponse,
     SearchPlacesResponse,
+    TilePreviewRequest,
+    TilePreviewResponse,
 )
+from multiplanner_api.point_probe import preview_tile, probe_point
 from multiplanner_api.providers import SERVICE_PROVIDERS
+from multiplanner_api.raster_tiles import render_cached_tile
 from multiplanner_api.search import search_places
 from multiplanner_api.subsets import locate_subsets
 
@@ -36,7 +42,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.cors_origin],
+    allow_origins=list(settings.cors_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,6 +68,22 @@ def read_config() -> ConfigResponse:
 def search_place_candidates(q: str) -> SearchPlacesResponse:
     try:
         return search_places(q)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/v1/probe/point", response_model=PointProbeResponse)
+def probe_remote_point(request: PointProbeRequest) -> PointProbeResponse:
+    try:
+        return probe_point(request)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/v1/probe/tile-preview", response_model=TilePreviewResponse)
+def preview_remote_tile(request: TilePreviewRequest) -> TilePreviewResponse:
+    try:
+        return preview_tile(request)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -151,6 +173,15 @@ def read_downloaded_subset_file(path: str) -> FileResponse:
         raise HTTPException(status_code=404, detail="File not found.")
 
     return FileResponse(candidate, filename=candidate.name)
+
+
+@app.get("/api/v1/tiles/{provider}/{dataset}/{z}/{x}/{y}.png")
+def read_cached_raster_tile(provider: str, dataset: str, z: int, x: int, y: int) -> FileResponse:
+    try:
+        candidate = render_cached_tile(provider, dataset, z, x, y)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return FileResponse(candidate, filename=candidate.name, media_type="image/png")
 
 
 @app.post("/api/v1/subsets/open-folder")

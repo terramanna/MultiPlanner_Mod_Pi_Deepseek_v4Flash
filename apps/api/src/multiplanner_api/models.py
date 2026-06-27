@@ -26,6 +26,41 @@ class SearchPlacesResponse(BaseModel):
     candidates: list[SearchCandidate]
 
 
+class PointProbeRequest(BaseModel):
+    provider: str = "geobasis-nrw"
+    dataset: Literal["dgm1", "dom1"] = "dgm1"
+    lon: float
+    lat: float
+
+
+class PointProbeResponse(BaseModel):
+    provider: str
+    dataset: str
+    lon: float
+    lat: float
+    height_m: float
+    tile_id: str | None = None
+    sampled_path: str
+
+
+class TilePreviewRequest(BaseModel):
+    provider: str = "geobasis-nrw"
+    dataset: Literal["dgm1", "dom1"] = "dgm1"
+    lon: float
+    lat: float
+
+
+class TilePreviewResponse(BaseModel):
+    provider: str
+    dataset: str
+    tile_id: str | None = None
+    image_path: str
+    west: float
+    south: float
+    east: float
+    north: float
+
+
 class PointGeometryInput(BaseModel):
     kind: Literal["point"]
     lon: float
