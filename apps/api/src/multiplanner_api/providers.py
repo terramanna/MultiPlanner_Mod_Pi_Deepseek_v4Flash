@@ -108,7 +108,18 @@ SERVICE_PROVIDERS = {
         "label": "Baden-Wuerttemberg LGL",
         "adapter": "lgl_bw_gridzip",
         "datasets": {
-            "dgm1": {},
+            "dgm1": {
+                "source_url": "https://opengeodata.lgl-bw.de/",
+            },
+            "dom1": {
+                "source_url": "https://opengeodata.lgl-bw.de/",
+            },
+            "dop20": {
+                "source_url": "https://opengeodata.lgl-bw.de/",
+            },
+            "bdom": {
+                "source_url": "https://opengeodata.lgl-bw.de/",
+            },
         },
     },
     "ldbv-by": {

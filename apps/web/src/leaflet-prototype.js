@@ -63,6 +63,20 @@ const nrwDop = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms_nw_dop", {
   maxZoom: 19,
   attribution: "© Geobasis NRW"
 });
+const byDop = L.tileLayer.wms("https://geoservices.bayern.de/od/wms/dop/v1/dop20", {
+  layers: "by_dop20c",
+  format: "image/jpeg",
+  transparent: false,
+  maxZoom: 19,
+  attribution: "© Bayerische Vermessungsverwaltung"
+});
+const byTopo = L.tileLayer.wms("https://geoservices.bayern.de/od/wms/dtk/v1/dtk25", {
+  layers: "by_dtk25",
+  format: "image/png",
+  transparent: false,
+  maxZoom: 19,
+  attribution: "© Bayerische Vermessungsverwaltung"
+});
 const nrwTopo = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms_nw_dtk", {
   layers: "nw_dtk_col",
   format: "image/png",
@@ -80,7 +94,14 @@ const nrwHillshade = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms_nw_dgm
 });
 streets.addTo(map);
 L.control.layers(
-  { Streets: streets, Satellite: satellite, "NRW Ortho (DOP)": nrwDop, "NRW Topo (DTK)": nrwTopo },
+  {
+    Streets: streets,
+    Satellite: satellite,
+    "NRW Ortho (DOP)": nrwDop,
+    "Bayern Ortho (DOP20)": byDop,
+    "NRW Topo (DTK)": nrwTopo,
+    "Bayern Topo (DTK25)": byTopo
+  },
   { "NRW Hillshade": nrwHillshade },
   { position: "topright" }
 ).addTo(map);
