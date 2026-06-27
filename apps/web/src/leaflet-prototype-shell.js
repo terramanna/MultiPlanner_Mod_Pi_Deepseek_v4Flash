@@ -1,6 +1,6 @@
 const defaultProviders = [
   { name: "auto", label: "Auto (split by provider)" },
-  { name: "lgln-ni", label: "Saxony Lower LGLN" },
+  { name: "lgln-ni", label: "Niedersachsen LGLN" },
   { name: "geobasis-nrw", label: "NRW Geobasis" },
   { name: "geosn-sn", label: "Saxony GeoSN" },
   { name: "hvbg-he", label: "Hessen HVBG" },

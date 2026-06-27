@@ -41,7 +41,7 @@ from multiplanner_api.rp import summarize_tiles as summarize_rp_tiles
 
 SERVICE_PROVIDERS = {
     "lgln-ni": {
-        "label": "Saxony Lower LGLN",
+        "label": "Niedersachsen LGLN",
         "datasets": {
             "dgm1": {
                 "query_url": "https://services-eu1.arcgis.com/4v3xxN52w88W065F/arcgis/rest/services/lgln_opengeodata_dgm1/FeatureServer/0/query",
