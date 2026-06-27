@@ -36,6 +36,8 @@ from multiplanner_api.th import locate_tiles as locate_th_tiles
 from multiplanner_api.th import summarize_tiles as summarize_th_tiles
 from multiplanner_api.sl import locate_tiles as locate_sl_tiles
 from multiplanner_api.sl import summarize_tiles as summarize_sl_tiles
+from multiplanner_api.rp import locate_tiles as locate_rp_tiles
+from multiplanner_api.rp import summarize_tiles as summarize_rp_tiles
 
 SERVICE_PROVIDERS = {
     "lgln-ni": {
@@ -224,6 +226,15 @@ SERVICE_PROVIDERS = {
             "dgm1": {},
         },
     },
+    "lvermgeo-rp": {
+        "label": "Rheinland-Pfalz LVermGeo",
+        "adapter": "lvermgeo_rp_meta4",
+        "datasets": {
+            "dgm1": {
+                "meta4_url": "https://geobasis-rlp.de/data/dgm1/current/meta4/dgm1_tif_07.meta4",
+            },
+        },
+    },
 }
 
 ADAPTER_LOCATORS = {
@@ -241,6 +252,7 @@ ADAPTER_LOCATORS = {
     "gdi_be_atom": locate_be_tiles,
     "tlbg_th_atom": locate_th_tiles,
     "lvgl_sl_wcs": locate_sl_tiles,
+    "lvermgeo_rp_meta4": locate_rp_tiles,
 }
 
 ADAPTER_SUMMARIZERS = {
@@ -258,6 +270,7 @@ ADAPTER_SUMMARIZERS = {
     "gdi_be_atom": summarize_be_tiles,
     "tlbg_th_atom": summarize_th_tiles,
     "lvgl_sl_wcs": summarize_sl_tiles,
+    "lvermgeo_rp_meta4": summarize_rp_tiles,
 }
 
 WGS84 = "EPSG:4326"

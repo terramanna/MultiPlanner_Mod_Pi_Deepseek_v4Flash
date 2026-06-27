@@ -155,6 +155,14 @@ export const rpDop = L.tileLayer.wms("https://geo4.service24.rlp.de/wms/rp_dop20
   maxZoom: 20,
   attribution: "© Vermessungs- und Katasterverwaltung RLP"
 });
+export const slDom = L.tileLayer.wms("https://geoportal.saarland.de/owsproxy/00000000000000000000000000000000/be6685009b59b92b7aeab3a0e20a3d5a", {
+  layers: "sl_dom1_2025_shad",
+  format: "image/png",
+  transparent: true,
+  opacity: 0.75,
+  maxZoom: 20,
+  attribution: "© LVGL Saarland (pre-licence evaluation)"
+});
 export const slDop = L.tileLayer.wms("https://geoportal.saarland.de/freewms/dop2025", {
   layers: "sl_dop20_rgb",
   format: "image/jpeg",

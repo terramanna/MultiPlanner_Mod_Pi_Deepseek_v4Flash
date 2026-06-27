@@ -42,6 +42,7 @@ import {
   bwDop,
   rpDop,
   slDop,
+  slDom,
   nrwTopo,
   byTopo,
   nrwHillshade,
@@ -65,6 +66,8 @@ const providerCoverage = {
   "lginf-hb": { stateCode: "HB", color: "#65a30d", label: "Bremen Landesamt Geoinformation" },
   "gdi-be": { stateCode: "BE", color: "#4338ca", label: "Berlin GDI" },
   "tlbg-th": { stateCode: "TH", color: "#b45309", label: "Thüringen TLBG" },
+  "lvgl-sl": { stateCode: "SL", color: "#e11d48", label: "Saarland LVGL" },
+  "lvermgeo-rp": { stateCode: "RP", color: "#7c2d12", label: "Rheinland-Pfalz LVermGeo" },
 };
 const variants = ["corridor", "area", "point"];
 const params = new URLSearchParams(window.location.search);
@@ -99,7 +102,7 @@ L.control.layers(
     "NRW Topo (DTK)": nrwTopo,
     "Bayern Topo (DTK25)": byTopo
   },
-  { "Hillshade (global, ESRI)": globalHillshade, "NRW Hillshade (1m DGM)": nrwHillshade, "Hessen DGM1 (AdV-Farbe)": heDgm, "Hessen DOM1 (AdV-Farbe)": heDom },
+  { "Hillshade (global, ESRI)": globalHillshade, "NRW Hillshade (1m DGM)": nrwHillshade, "Hessen DGM1 (AdV-Farbe)": heDgm, "Hessen DOM1 (AdV-Farbe)": heDom, "Saarland DOM1 shaded [eval]": slDom },
   { position: "topright" }
 ).addTo(map);
 L.control.scale({ imperial: false, position: "bottomleft" }).addTo(map);
