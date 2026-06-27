@@ -14,6 +14,7 @@ class Settings:
     geocoder_url: str
     geocoder_countrycodes: str
     geocoder_email: str
+    network_db_path: str
 
 
 def load_settings() -> Settings:
@@ -42,4 +43,5 @@ def load_settings() -> Settings:
         ),
         geocoder_countrycodes=os.getenv("MULTIPLANNER_GEOCODER_COUNTRYCODES", "de"),
         geocoder_email=os.getenv("MULTIPLANNER_GEOCODER_EMAIL", ""),
+        network_db_path=os.getenv("MULTIPLANNER_NETWORK_DB_PATH", ""),
     )

@@ -26,6 +26,7 @@ from multiplanner_api.models import (
     TilePreviewRequest,
     TilePreviewResponse,
 )
+from multiplanner_api.network_overlay import load_network_geojson
 from multiplanner_api.point_probe import preview_tile, probe_point
 from multiplanner_api.providers import SERVICE_PROVIDERS
 from multiplanner_api.raster_tiles import render_cached_tile
@@ -70,6 +71,11 @@ def search_place_candidates(q: str) -> SearchPlacesResponse:
         return search_places(q)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/v1/network/geojson")
+def get_network_geojson() -> dict:
+    return load_network_geojson(settings.network_db_path)
 
 
 @app.post("/api/v1/probe/point", response_model=PointProbeResponse)

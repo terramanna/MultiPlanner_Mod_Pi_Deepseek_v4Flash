@@ -25,6 +25,14 @@ pre { margin: 0; white-space: pre-wrap; font: 12px/1.5 Consolas, monospace; }
 #leafletMap.is-site-placement .leaflet-tile {
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M4 2v20l5-5 4 11 4-2-4-10h7z' fill='white' stroke='%2314273a' stroke-width='2'/%3E%3Ccircle cx='4' cy='2' r='3' fill='%2300a6d6' stroke='white' stroke-width='1.5'/%3E%3C/svg%3E") 4 2, crosshair !important;
 }
+.prototype-network-filter { margin-top: 6px; }
+.prototype-network-filter input { width: 100%; box-sizing: border-box; }
+.net-popup { font-size: 12px; line-height: 1.5; min-width: 200px; }
+.net-popup strong { font-size: 13px; }
+.net-popup small { color: #4d6170; }
+.net-flags { color: #4d6170; word-break: break-word; }
+.net-popup-actions { display: flex; gap: 6px; margin-top: 8px; }
+.net-popup-actions button { font-size: 11px; padding: 4px 8px; background: #147a9a; color: white; border: none; border-radius: 4px; cursor: pointer; }
 #leafletMap.is-probe-active,
 #leafletMap.is-probe-active .leaflet-pane,
 #leafletMap.is-probe-active .leaflet-tile { cursor: crosshair !important; }

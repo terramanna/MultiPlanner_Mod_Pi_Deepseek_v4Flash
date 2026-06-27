@@ -7,6 +7,7 @@ import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
 import "./leaflet-prototype.css";
 import { retryUntilReady } from "./bootstrap-retry.js";
 import { createPointProbe } from "./leaflet-point-probe.js";
+import { createNetworkOverlay } from "./leaflet-network-overlay.js";
 import { clearLeafletSelection } from "./leaflet-selection.js";
 import { requestLeafletSubset } from "./leaflet-subset-request.js";
 import { bindPersistedInput } from "./persisted-input.js";
@@ -182,6 +183,11 @@ refreshReadout();
 bootstrapApi();
 loadProviderCoverage();
 const pointProbe = createPointProbe(map, apiBaseUrl, () => state.provider);
+const networkOverlay = createNetworkOverlay(map, apiBaseUrl, {
+  onSiteA: (p) => { state.activeSite = "A"; placeSample({ lat: p.lat, lon: p.lon }, false); },
+  onSiteB: (p) => { state.activeSite = "B"; placeSample({ lat: p.lat, lon: p.lon }, false); },
+  onCorridor: (p) => { state.siteA = { lat: p.lat_a, lon: p.lon_a }; state.siteB = { lat: p.lat_b, lon: p.lon_b }; redrawGeometry(); refreshReadout(); },
+});
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
@@ -230,6 +236,14 @@ providerSelect.addEventListener("input", handleProviderSelection);
 providerSelect.addEventListener("change", handleProviderSelection);
 providerSortSelect.addEventListener("input", handleProviderSortChange);
 coverageToggle.addEventListener("change", updateCoverageOverlay);
+const networkToggle = document.getElementById("networkToggle");
+const networkFilterWrap = document.getElementById("networkFilterWrap");
+const networkFilter = document.getElementById("networkFilter");
+networkToggle.addEventListener("change", async () => {
+  networkFilterWrap.hidden = !networkToggle.checked;
+  if (networkToggle.checked) { await networkOverlay.enable(); } else { networkOverlay.disable(); }
+});
+networkFilter.addEventListener("input", () => networkOverlay.filter(networkFilter.value));
 document.getElementById("probeToggle").addEventListener("click", () => {
   const active = pointProbe.toggle();
   document.getElementById("probeToggle").classList.toggle("is-active", active);

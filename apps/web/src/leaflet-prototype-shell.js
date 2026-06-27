@@ -65,6 +65,10 @@ function renderProviderControls() {
     <label for="jobNameInput">Job / file name</label>
     <input id="jobNameInput" placeholder="01wzoming01_2km_diam_1m_res" />
     <label class="prototype-coverage-toggle"><input id="coverageToggle" type="checkbox" checked /> Show selected provider coverage</label>
+    <label class="prototype-coverage-toggle"><input id="networkToggle" type="checkbox" /> Show network overlay</label>
+    <div id="networkFilterWrap" class="prototype-network-filter" hidden>
+      <input id="networkFilter" placeholder="Filter by site or link name…" />
+    </div>
     <fieldset id="datasetChoices" class="prototype-datasets"></fieldset>`;
 }
 
