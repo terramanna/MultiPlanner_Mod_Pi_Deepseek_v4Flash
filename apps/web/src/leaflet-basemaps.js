@@ -65,6 +65,20 @@ export const nrwHillshade = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms
   maxZoom: 19,
   attribution: "© Geobasis NRW"
 });
+export const niDop = L.tileLayer.wms("https://opendata.lgln.niedersachsen.de/doorman/noauth/dop_wms", {
+  layers: "ni_dop20",
+  format: "image/jpeg",
+  transparent: false,
+  maxZoom: 20,
+  attribution: "© LGLN Niedersachsen"
+});
+export const beDop = L.tileLayer.wms("https://gdi.berlin.de/services/wms/truedop_2024", {
+  layers: "truedop_2024",
+  format: "image/jpeg",
+  transparent: false,
+  maxZoom: 20,
+  attribution: "© SenStadt Berlin"
+});
 export const snDop = L.tileLayer.wms("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", {
   layers: "sn_dop_020",
   format: "image/jpeg",
