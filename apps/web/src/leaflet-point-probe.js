@@ -38,10 +38,10 @@ export function createPointProbe(map, apiBaseUrl, getProvider) {
 }
 
 async function _fetchProbe(apiBaseUrl, provider, lat, lon) {
-  const response = await fetch(`${apiBaseUrl}/api/v1/probe/point`, {
+  const response = await fetch(`${apiBaseUrl}/api/v1/probe/multi`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ provider, dataset: "dom1", lat, lon }),
+    body: JSON.stringify({ provider, lat, lon }),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
@@ -51,9 +51,15 @@ async function _fetchProbe(apiBaseUrl, provider, lat, lon) {
 }
 
 function _formatResult(r) {
+  const fmt = (v) => (v != null ? `${v.toFixed(2)} m` : "—");
+  const row = (label, v, err) =>
+    `<tr><td><b>${label}</b></td><td style="padding-left:10px">${err ? `<em style="color:#c00">${err}</em>` : fmt(v)}</td></tr>`;
   return (
-    `<b>${r.dataset.toUpperCase()}</b> · ${r.provider}<br/>` +
-    `${r.lat.toFixed(6)}, ${r.lon.toFixed(6)}<br/>` +
-    `<b style="font-size:1.15em">${r.height_m.toFixed(2)} m</b>`
+    `${r.provider}<br/>${r.lat.toFixed(6)}, ${r.lon.toFixed(6)}<br/>` +
+    `<table style="margin-top:4px">` +
+    row("DGM", r.dgm_m, r.dgm_error) +
+    row("DOM", r.dom_m, r.dom_error) +
+    row("nDSM", r.ndsm_m, null) +
+    `</table>`
   );
 }

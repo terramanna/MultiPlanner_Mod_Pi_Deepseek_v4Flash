@@ -28,7 +28,7 @@ class SearchPlacesResponse(BaseModel):
 
 class PointProbeRequest(BaseModel):
     provider: str = "geobasis-nrw"
-    dataset: Literal["dgm1", "dom1"] = "dgm1"
+    dataset: Literal["dgm1", "dom1", "ndsm"] = "dgm1"
     lon: float
     lat: float
 
@@ -45,7 +45,7 @@ class PointProbeResponse(BaseModel):
 
 class TilePreviewRequest(BaseModel):
     provider: str = "geobasis-nrw"
-    dataset: Literal["dgm1", "dom1"] = "dgm1"
+    dataset: Literal["dgm1", "dom1", "ndsm"] = "dgm1"
     lon: float
     lat: float
 
@@ -146,6 +146,23 @@ class DownloadSubsetResponse(BaseModel):
     warnings: list[str] = []
     total_estimated_source_bytes: int = 0
     total_estimated_ellipse_bytes: int = 0
+
+
+class MultiProbeRequest(BaseModel):
+    provider: str = "geobasis-nrw"
+    lon: float
+    lat: float
+
+
+class MultiProbeResponse(BaseModel):
+    provider: str
+    lon: float
+    lat: float
+    dgm_m: float | None = None
+    dom_m: float | None = None
+    ndsm_m: float | None = None
+    dgm_error: str | None = None
+    dom_error: str | None = None
 
 
 class OpenFolderRequest(BaseModel):
