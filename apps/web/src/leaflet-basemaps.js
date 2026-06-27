@@ -65,6 +65,13 @@ export const nrwHillshade = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms
   maxZoom: 19,
   attribution: "© Geobasis NRW"
 });
+export const shDop = L.tileLayer.wms("https://service.gdi-sh.de/WMS_SH_DOP20col_OpenGBD", {
+  layers: "sh_dop20_rgb",
+  format: "image/jpeg",
+  transparent: false,
+  maxZoom: 20,
+  attribution: "© GeoBasis-DE/LVermGeo SH/CC BY-SA 4.0"
+});
 export const stDop = L.tileLayer.wms("https://www.geodatenportal.sachsen-anhalt.de/wss/service/ST_LVermGeo_GDI_DOP20/guest", {
   layers: "lsa_lvermgeo_dop20",
   format: "image/jpeg",
