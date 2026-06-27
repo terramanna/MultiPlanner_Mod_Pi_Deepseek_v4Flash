@@ -107,6 +107,8 @@ SERVICE_PROVIDERS = {
         "datasets": {
             "dgm1": {},
             "dom1": {},
+            "dop20": {},
+            "lod2": {},
         },
     },
     "geobasis-bb": {

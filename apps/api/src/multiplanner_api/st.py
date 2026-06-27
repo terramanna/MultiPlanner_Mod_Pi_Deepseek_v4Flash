@@ -22,15 +22,17 @@ from shapely.ops import transform
 
 WGS84 = "EPSG:4326"
 ETRS89_UTM32 = "EPSG:25832"
-TILE_SIZE_M = 1000
+WCS_TILE_SIZE_M = 1000
+DOP20_TILE_SIZE_M = 2000
 MAX_TILES_PER_DATASET = 200
 PROVIDER_ID = "lvermgeo-st"
 
 _ST_WCS_BASE = "https://www.geodatenportal.sachsen-anhalt.de/wss/service"
 _WCS_CONFIGS: dict[str, tuple[str, str]] = {
     "dgm1": (f"{_ST_WCS_BASE}/ST_LVermGeo_DGM1_WCS_OpenData/guest", "Coverage1"),
-    "dom1": (f"{_ST_WCS_BASE}/ST_LVermGeo_DOM1_WCS_OpenData/guest", "Coverage1"),
+    "dom1": ("https://geodatenportal.sachsen-anhalt.de/ows_WCS_ST_DOM1", "Coverage1"),
 }
+_DOP20_BASE = "https://www.geodatenportal.sachsen-anhalt.de/gfds_webshare/sec-download/LVermGeo/DOP20"
 
 
 def locate_tiles(
@@ -42,7 +44,20 @@ def locate_tiles(
     timeout: int,
 ) -> list[dict[str, str]]:
     geom_32 = _to_utm32(request_geometry(geometry, geometry_type))
-    cells = _tile_cells(geom_32)
+    if dataset == "lod2":
+        return [
+            {"tile_id": f"st_lod2_{i + 1}", "primary_url": url}
+            for i, url in enumerate(_ST_LOD2_URLS)
+        ]
+    if dataset == "dop20":
+        cells = _tile_cells(geom_32, DOP20_TILE_SIZE_M)
+        if len(cells) > MAX_TILES_PER_DATASET:
+            raise ValueError(
+                f"Saxony-Anhalt selection resolves to {len(cells)} 2 km tiles. "
+                f"Limit the area to {MAX_TILES_PER_DATASET} tiles per dataset."
+            )
+        return [_dop20_tile_record(x_m, y_m) for x_m, y_m in cells]
+    cells = _tile_cells(geom_32, WCS_TILE_SIZE_M)
     if len(cells) > MAX_TILES_PER_DATASET:
         raise ValueError(
             f"Saxony-Anhalt selection resolves to {len(cells)} 1 km tiles. "
@@ -95,21 +110,29 @@ def _to_utm32(geometry):
     return transform(transformer.transform, geometry)
 
 
-def _tile_cells(geometry) -> list[tuple[int, int]]:
-    """Return (x_m, y_m) SW-corner metre origins for 1 km cells intersecting *geometry*.
+_ST_LOD2_URLS = [
+    "https://www.geodatenportal.sachsen-anhalt.de/gfds_webshare/download/LVermGeo/Geodatenportal/Online-Bereitstellung-LVermGeo/3D/LoD2-1.zip",
+    "https://www.geodatenportal.sachsen-anhalt.de/gfds_webshare/download/LVermGeo/Geodatenportal/Online-Bereitstellung-LVermGeo/3D/LoD2-2.zip",
+    "https://www.geodatenportal.sachsen-anhalt.de/gfds_webshare/download/LVermGeo/Geodatenportal/Online-Bereitstellung-LVermGeo/3D/LoD2-3.zip",
+    "https://www.geodatenportal.sachsen-anhalt.de/gfds_webshare/download/LVermGeo/Geodatenportal/Online-Bereitstellung-LVermGeo/3D/LoD2-4.zip",
+]
+
+
+def _tile_cells(geometry, tile_size: int) -> list[tuple[int, int]]:
+    """Return (x_m, y_m) SW-corner metre origins for *tile_size* cells intersecting *geometry*.
 
     geometry must already be in EPSG:25832.
     """
     west, south, east, north = geometry.bounds
-    x_start = math.floor(west / TILE_SIZE_M) * TILE_SIZE_M
-    x_end = math.floor(east / TILE_SIZE_M) * TILE_SIZE_M
-    y_start = math.floor(south / TILE_SIZE_M) * TILE_SIZE_M
-    y_end = math.floor(north / TILE_SIZE_M) * TILE_SIZE_M
+    x_start = math.floor(west / tile_size) * tile_size
+    x_end = math.floor(east / tile_size) * tile_size
+    y_start = math.floor(south / tile_size) * tile_size
+    y_end = math.floor(north / tile_size) * tile_size
     return [
         (x, y)
-        for x in range(x_start, x_end + TILE_SIZE_M, TILE_SIZE_M)
-        for y in range(y_start, y_end + TILE_SIZE_M, TILE_SIZE_M)
-        if geometry.intersects(box(x, y, x + TILE_SIZE_M, y + TILE_SIZE_M))
+        for x in range(x_start, x_end + tile_size, tile_size)
+        for y in range(y_start, y_end + tile_size, tile_size)
+        if geometry.intersects(box(x, y, x + tile_size, y + tile_size))
     ]
 
 
@@ -119,7 +142,17 @@ def _tile_record(dataset: str, x_m: int, y_m: int) -> dict[str, str]:
     url = (
         f"{endpoint}?request=GetCoverage&service=WCS&version=2.0.1"
         f"&coverageid={coverage_id}&FORMAT=image/tiff"
-        f"&SUBSET=x({x_m},{x_m + TILE_SIZE_M})"
-        f"&SUBSET=y({y_m},{y_m + TILE_SIZE_M})"
+        f"&SUBSET=x({x_m},{x_m + WCS_TILE_SIZE_M})"
+        f"&SUBSET=y({y_m},{y_m + WCS_TILE_SIZE_M})"
     )
     return {"tile_id": tile_id, "primary_url": url}
+
+
+def _dop20_tile_record(x_m: int, y_m: int) -> dict[str, str]:
+    east_km = x_m // 1000
+    north_km = y_m // 1000
+    tile_name = f"32{east_km}{north_km}"
+    return {
+        "tile_id": f"st_dop20_{tile_name}",
+        "primary_url": f"{_DOP20_BASE}/{tile_name}.tif",
+    }
