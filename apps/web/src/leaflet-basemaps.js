@@ -65,6 +65,13 @@ export const nrwHillshade = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms
   maxZoom: 19,
   attribution: "© Geobasis NRW"
 });
+export const hbDop = L.tileLayer.wms("https://geodienste.bremen.de/wms_dop20_2023", {
+  layers: "DOP20_2023_HB,DOP20_2023_BHV",
+  format: "image/jpeg",
+  transparent: false,
+  maxZoom: 20,
+  attribution: "© Landesamt GeoInformation Bremen"
+});
 export const niDop = L.tileLayer.wms("https://opendata.lgln.niedersachsen.de/doorman/noauth/dop_wms", {
   layers: "ni_dop20",
   format: "image/jpeg",
@@ -113,4 +120,11 @@ export const stDop = L.tileLayer.wms("https://www.geodatenportal.sachsen-anhalt.
   transparent: false,
   maxZoom: 20,
   attribution: "© LVermGeo Sachsen-Anhalt"
+});
+export const bwDop = L.tileLayer.wms("https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DOP_20_C", {
+  layers: "IMAGES_DOP_20_RGB",
+  format: "image/jpeg",
+  transparent: false,
+  maxZoom: 20,
+  attribution: "© LGL Baden-Württemberg"
 });
