@@ -153,8 +153,7 @@ def _download_result_files(
                 saved_path=str(target_path.resolve()),
             )
         )
-        tile_path = _maybe_extract_tif(target_path, dataset_dir) or target_path
-        downloaded_by_dataset.setdefault(result.dataset, []).append(tile_path)
+        downloaded_by_dataset.setdefault(result.dataset, []).extend(_expanded_download_paths(target_path, dataset_dir))
     return downloaded_files, downloaded_by_dataset, warnings_list
 
 
@@ -193,19 +192,36 @@ def _target_filename(url: str, tile_id: str | None) -> str:
     return Path(url).name or f"download{suffix}"
 
 
-def _maybe_extract_tif(zip_path: Path, dest_dir: Path) -> Path | None:
-    """Extract the first .tif from *zip_path* into *dest_dir* and return its path.
+def _expanded_download_paths(path: Path, dest_dir: Path) -> list[Path]:
+    extracted = _extract_supported_sources(path, dest_dir)
+    return extracted or [path]
 
-    Returns None if the file is not a ZIP or contains no GeoTIFF.
+
+def _extract_supported_sources(zip_path: Path, dest_dir: Path) -> list[Path]:
+    """Extract supported raster-like sources from *zip_path* into *dest_dir*.
+
+    Priority order:
+    1. GeoTIFF files (.tif/.tiff)
+    2. ASCII XYZ files (.xyz)
+    3. CSV files (kept as a last resort for XYZ-style products)
+
+    Returns an empty list if *zip_path* is not a ZIP or contains no supported
+    sources.
     """
     if zip_path.suffix.lower() != ".zip":
-        return None
+        return []
     with zipfile.ZipFile(zip_path) as zf:
-        tif_entries = [n for n in zf.namelist() if n.lower().endswith((".tif", ".tiff"))]
-        if not tif_entries:
-            return None
-        zf.extract(tif_entries[0], dest_dir)
-        return dest_dir / tif_entries[0]
+        names = zf.namelist()
+        for suffixes in ((".tif", ".tiff"), (".xyz",), (".csv",)):
+            matches = [name for name in names if name.lower().endswith(suffixes)]
+            if not matches:
+                continue
+            extracted_paths: list[Path] = []
+            for name in matches:
+                zf.extract(name, dest_dir)
+                extracted_paths.append(dest_dir / name)
+            return extracted_paths
+    return []
 
 
 def _download_file(url: str, target_path: Path) -> None:

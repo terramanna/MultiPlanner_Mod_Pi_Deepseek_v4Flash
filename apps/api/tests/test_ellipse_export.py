@@ -1,11 +1,14 @@
 from pathlib import Path
+import zipfile
 
 from multiplanner_api.downloads import (
     GRD_DRIVER,
     MAPINFO_WGS84_UTM32,
     WGS84_UTM32,
+    _expanded_download_paths,
     _export_for_ellipse,
     _export_grd,
+    _extract_supported_sources,
     _warp_vrt,
     _write_mapinfo_tab,
 )
@@ -176,3 +179,43 @@ def test_grd_export_writes_a_real_orthophoto_file(monkeypatch, tmp_path) -> None
     assert not warnings
     assert {Path(path).suffix for path in exports} == {".tif", ".TAB"}
     assert any(Path(path).name.endswith("_utm32.tif") for path in exports)
+
+
+def test_extract_supported_sources_prefers_all_tiffs_from_zip(tmp_path) -> None:
+    zip_path = tmp_path / "tiles.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("tile/a.tif", b"tif-a")
+        zf.writestr("tile/b.tif", b"tif-b")
+        zf.writestr("tile/c.xyz", b"x y z")
+
+    extracted = _extract_supported_sources(zip_path, tmp_path)
+
+    assert [path.as_posix() for path in extracted] == [
+        (tmp_path / "tile" / "a.tif").as_posix(),
+        (tmp_path / "tile" / "b.tif").as_posix(),
+    ]
+
+
+def test_extract_supported_sources_falls_back_to_xyz_files(tmp_path) -> None:
+    zip_path = tmp_path / "tiles.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("tile/a.xyz", b"x y z")
+        zf.writestr("tile/b.xyz", b"x y z")
+        zf.writestr("tile/c.csv", b"x,y,z")
+
+    extracted = _extract_supported_sources(zip_path, tmp_path)
+
+    assert [path.as_posix() for path in extracted] == [
+        (tmp_path / "tile" / "a.xyz").as_posix(),
+        (tmp_path / "tile" / "b.xyz").as_posix(),
+    ]
+
+
+def test_expanded_download_paths_returns_original_file_when_zip_has_no_supported_sources(tmp_path) -> None:
+    zip_path = tmp_path / "tiles.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("tile/readme.txt", b"hello")
+
+    expanded = _expanded_download_paths(zip_path, tmp_path)
+
+    assert expanded == [zip_path]
