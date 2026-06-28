@@ -27,6 +27,16 @@ export function renderNrwProbeShell() {
           <input id="nrwDomOpacity" type="range" min="0" max="100" value="55" class="nrw-slider">
           <span id="nrwDomOpacityVal" class="nrw-opacity-val">55%</span>
         </section>
+        <section class="nrw-section nrw-box">
+          <span class="nrw-box-title">nDOM50 over ortho</span>
+          <label class="nrw-check-row">
+            <input type="checkbox" id="nrwNdomOverlay">
+            <span>Show nDOM50 WMS over base layer</span>
+          </label>
+          <label class="nrw-label nrw-label-indent">nDOM50 opacity</label>
+          <input id="nrwNdomOpacity" type="range" min="0" max="100" value="60" class="nrw-slider">
+          <span id="nrwNdomOpacityVal" class="nrw-opacity-val">60%</span>
+        </section>
         <section class="nrw-section">
           <h3 class="nrw-heading">Point probe</h3>
           <label class="nrw-label" for="nrwProbeSource">Probe source</label>
@@ -67,6 +77,9 @@ export function panelRefs() {
     domOverlay: document.getElementById("nrwDomOverlay"),
     domOpacity: document.getElementById("nrwDomOpacity"),
     domOpacityVal: document.getElementById("nrwDomOpacityVal"),
+    ndomOverlay: document.getElementById("nrwNdomOverlay"),
+    ndomOpacity: document.getElementById("nrwNdomOpacity"),
+    ndomOpacityVal: document.getElementById("nrwNdomOpacityVal"),
     probeSource: document.getElementById("nrwProbeSource"),
     probeEnable: document.getElementById("nrwProbeEnable"),
     sampleNow: document.getElementById("nrwSampleNow"),
