@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import subprocess
+
+from pyproj.datadir import get_data_dir
 
 from multiplanner_api.config import load_settings
 from multiplanner_api.downloads import _download_file, _expanded_download_paths, _target_filename
@@ -146,6 +149,7 @@ def _xyz_to_geotiff(xyz_path: Path, crs: str) -> Path:
         check=True,
         capture_output=True,
         text=True,
+        env=_gdal_env(),
     )
     return tif_path
 
@@ -157,6 +161,7 @@ def _sample_height(sample_path: Path, lon: float, lat: float) -> float:
         check=True,
         capture_output=True,
         text=True,
+        env=_gdal_env(),
     )
     value = result.stdout.strip()
     if not value:
@@ -174,6 +179,7 @@ def _prepare_preview_path(sample_path: Path) -> Path:
         check=True,
         capture_output=True,
         text=True,
+        env=_gdal_env(),
     )
     return preview_path
 
@@ -185,6 +191,7 @@ def _tile_bounds_wgs84(sample_path: Path) -> tuple[float, float, float, float]:
         check=True,
         capture_output=True,
         text=True,
+        env=_gdal_env(),
     )
     import json
     info = json.loads(result.stdout)
@@ -199,3 +206,9 @@ def _gdal_exe(name: str) -> Path:
     if not executable.exists():
         raise ValueError(f"{name}.exe not found in {executable.parent}.")
     return executable
+
+
+def _gdal_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env.setdefault("PROJ_LIB", get_data_dir())
+    return env
