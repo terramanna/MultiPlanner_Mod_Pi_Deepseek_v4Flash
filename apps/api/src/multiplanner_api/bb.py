@@ -25,6 +25,7 @@ ETRS89_UTM33 = "EPSG:25833"
 TILE_SIZE_M = 1000
 MAX_TILES_PER_DATASET = 200
 PROVIDER_ID = "geobasis-bb"
+_BRANDENBURG_BBOX = (11.26, 51.36, 14.76, 53.56)  # W, S, E, N (WGS84)
 
 _WCS_CONFIGS: dict[str, dict[str, str]] = {
     "dgm1": {
@@ -47,7 +48,10 @@ def locate_tiles(
     geometry_type: str,
     timeout: int,
 ) -> list[dict[str, str]]:
-    geom_33 = _to_utm33(request_geometry(geometry, geometry_type))
+    geom_wgs84 = request_geometry(geometry, geometry_type)
+    if not geom_wgs84.intersects(box(*_BRANDENBURG_BBOX)):
+        return []
+    geom_33 = _to_utm33(geom_wgs84)
     cells = _tile_cells(geom_33)
     if len(cells) > MAX_TILES_PER_DATASET:
         raise ValueError(

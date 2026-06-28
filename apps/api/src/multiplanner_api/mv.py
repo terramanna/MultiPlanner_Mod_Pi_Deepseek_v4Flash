@@ -26,6 +26,7 @@ ETRS89_UTM33 = "EPSG:25833"
 TILE_SIZE_M = 1000
 MAX_TILES_PER_DATASET = 200
 PROVIDER_ID = "laiv-mv"
+_MV_BBOX = (10.59, 53.11, 14.41, 54.69)  # W, S, E, N (WGS84)
 
 _WCS_CONFIGS: dict[str, tuple[str, str]] = {
     "dgm1": ("https://www.geodaten-mv.de/dienste/dgm_wcs", "mv_dgm"),
@@ -41,7 +42,10 @@ def locate_tiles(
     geometry_type: str,
     timeout: int,
 ) -> list[dict[str, str]]:
-    geom_33 = _to_utm33(request_geometry(geometry, geometry_type))
+    geom_wgs84 = request_geometry(geometry, geometry_type)
+    if not geom_wgs84.intersects(box(*_MV_BBOX)):
+        return []
+    geom_33 = _to_utm33(geom_wgs84)
     cells = _tile_cells(geom_33)
     if len(cells) > MAX_TILES_PER_DATASET:
         raise ValueError(

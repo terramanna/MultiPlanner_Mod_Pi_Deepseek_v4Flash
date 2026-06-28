@@ -26,6 +26,7 @@ WCS_TILE_SIZE_M = 1000
 DOP20_TILE_SIZE_M = 2000
 MAX_TILES_PER_DATASET = 200
 PROVIDER_ID = "lvermgeo-st"
+_SAXONY_ANHALT_BBOX = (10.56, 51.15, 13.18, 53.05)  # W, S, E, N (WGS84)
 
 _ST_WCS_BASE = "https://www.geodatenportal.sachsen-anhalt.de/wss/service"
 _WCS_CONFIGS: dict[str, tuple[str, str]] = {
@@ -43,7 +44,10 @@ def locate_tiles(
     geometry_type: str,
     timeout: int,
 ) -> list[dict[str, str]]:
-    geom_32 = _to_utm32(request_geometry(geometry, geometry_type))
+    geom_wgs84 = request_geometry(geometry, geometry_type)
+    if not geom_wgs84.intersects(box(*_SAXONY_ANHALT_BBOX)):
+        return []
+    geom_32 = _to_utm32(geom_wgs84)
     if dataset == "lod2":
         return [
             {"tile_id": f"st_lod2_{i + 1}", "primary_url": url}

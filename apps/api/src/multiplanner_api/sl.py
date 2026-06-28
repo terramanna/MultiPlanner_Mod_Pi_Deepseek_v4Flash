@@ -23,6 +23,7 @@ ETRS89_UTM32 = "EPSG:25832"
 TILE_SIZE_M = 1000
 MAX_TILES_PER_DATASET = 200
 PROVIDER_ID = "lvgl-sl"
+_SAARLAND_BBOX = (6.36, 49.11, 7.40, 49.64)  # W, S, E, N (WGS84)
 
 _WCS_BASE = "https://geoportal.saarland.de/gdi-sl/inspireraster/inspirewcsel"
 _COVERAGE_ID = "EL.GridCoverage"
@@ -36,7 +37,10 @@ def locate_tiles(
     geometry_type: str,
     timeout: int,
 ) -> list[dict[str, str]]:
-    geom_32 = _to_utm32(request_geometry(geometry, geometry_type))
+    geom_wgs84 = request_geometry(geometry, geometry_type)
+    if not geom_wgs84.intersects(box(*_SAARLAND_BBOX)):
+        return []
+    geom_32 = _to_utm32(geom_wgs84)
     cells = _tile_cells(geom_32)
     if len(cells) > MAX_TILES_PER_DATASET:
         raise ValueError(

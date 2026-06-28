@@ -29,6 +29,7 @@ ETRS89_UTM32 = "EPSG:25832"
 TILE_SIZE_M = 1000
 MAX_TILES_PER_DATASET = 200
 PROVIDER_ID = "lgl-bw"
+_BW_BBOX = (7.51, 47.53, 10.49, 49.79)  # W, S, E, N (WGS84)
 DEFAULT_SOURCE_URL = "https://opengeodata.lgl-bw.de/"
 
 
@@ -40,7 +41,10 @@ def locate_tiles(
     geometry_type: str,
     timeout: int,
 ) -> list[dict[str, str]]:
-    geom_32 = _to_utm32(request_geometry(geometry, geometry_type))
+    geom_wgs84 = request_geometry(geometry, geometry_type)
+    if not geom_wgs84.intersects(box(*_BW_BBOX)):
+        return []
+    geom_32 = _to_utm32(geom_wgs84)
     cells = _tile_cells(geom_32)
     if len(cells) > MAX_TILES_PER_DATASET:
         raise ValueError(

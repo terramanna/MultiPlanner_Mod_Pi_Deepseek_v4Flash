@@ -26,6 +26,7 @@ ETRS89_UTM32 = "EPSG:25832"
 TILE_SIZE_M = 1000
 MAX_TILES_PER_DATASET = 200
 PROVIDER_ID = "hvbg-he"
+_HESSEN_BBOX = (7.77, 49.39, 10.24, 51.66)  # W, S, E, N (WGS84)
 
 _WCS_BASE = "https://inspirehessen.de/raster/{dataset}/ows"
 _COVERAGE_IDS: dict[str, str] = {"dgm1": "he_dgm1", "dom1": "dom1", "dop20": "he_dop20"}
@@ -39,7 +40,10 @@ def locate_tiles(
     geometry_type: str,
     timeout: int,
 ) -> list[dict[str, str]]:
-    geom_32 = _to_utm32(request_geometry(geometry, geometry_type))
+    geom_wgs84 = request_geometry(geometry, geometry_type)
+    if not geom_wgs84.intersects(box(*_HESSEN_BBOX)):
+        return []
+    geom_32 = _to_utm32(geom_wgs84)
     cells = _tile_cells(geom_32)
     if len(cells) > MAX_TILES_PER_DATASET:
         raise ValueError(
