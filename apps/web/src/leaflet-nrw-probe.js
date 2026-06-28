@@ -52,6 +52,7 @@ let currentBase = BASE_LAYERS.dop;
 let hoverTimer = null;
 let lastLatlng = null;
 let probeEnabled = false;
+let popup = null;
 
 currentBase.addTo(map);
 
@@ -87,12 +88,16 @@ async function probe(latlng) {
   if (!probeEnabled) return;
   lastLatlng = latlng;
   const source = refs.probeSource.value;
-  refs.probeResult.textContent = `Probing ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}…`;
+  popup?.remove();
+  popup = L.popup({ closeButton: true })
+    .setLatLng(latlng)
+    .setContent(`Probing ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}…`)
+    .addTo(map);
   try {
     const result = await _fetchProbe(source, latlng.lat, latlng.lng);
-    refs.probeResult.textContent = _formatResult(result, source, latlng.lat, latlng.lng);
+    popup.setContent(_formatResult(result, source, latlng.lat, latlng.lng));
   } catch (err) {
-    refs.probeResult.textContent = `Error: ${err.message}`;
+    popup.setContent(`<em style="color:#c00">Error: ${err.message}</em>`);
   }
 }
 
@@ -119,14 +124,15 @@ function _probeMode() {
 
 function _formatResult(r, source, lat, lon) {
   const fmt = (v) => (v != null ? `${v.toFixed(2)} m` : "—");
-  const target = source === "multi" ? "DGM1 + DOM1 + nDSM" : source.toUpperCase();
-  const lines = [`Lat ${lat.toFixed(6)}`, `Lon ${lon.toFixed(6)}`, `Mode ${_probeMode()}`, `Target ${target}`];
+  const row = (label, v) =>
+    `<tr><td><b>${label}</b></td><td style="padding-left:8px">${fmt(v)}</td></tr>`;
+  const head = `${lat.toFixed(5)}, ${lon.toFixed(5)} <small>(${_probeMode()})</small><br>`;
   if (source === "multi") {
-    lines.push(`DGM1:  ${fmt(r.dgm_m)}`, `DOM1:  ${fmt(r.dom_m)}`, `nDSM:  ${fmt(r.ndsm_m)}`);
-  } else {
-    lines.push(`${source.toUpperCase()}:  ${fmt(r.height_m)}`);
+    return head + `<table style="margin-top:4px;font-size:12px">` +
+      row("DGM1", r.dgm_m) + row("DOM1", r.dom_m) + row("nDSM", r.ndsm_m) +
+      `</table>`;
   }
-  return lines.join("\n");
+  return head + `<b>${source.toUpperCase()}</b>: ${fmt(r.height_m)}`;
 }
 
 // --- Event wiring ---
@@ -138,7 +144,7 @@ refs.ndomOpacity.addEventListener("input", () => setNdomOpacity(Number(refs.ndom
 refs.probeEnable.addEventListener("change", () => {
   probeEnabled = refs.probeEnable.checked;
   map.getContainer().classList.toggle("nrw-probe-cursor", probeEnabled);
-  if (!probeEnabled) refs.probeResult.textContent = "";
+  if (!probeEnabled) { popup?.remove(); popup = null; }
 });
 
 refs.sampleNow.addEventListener("click", () => {

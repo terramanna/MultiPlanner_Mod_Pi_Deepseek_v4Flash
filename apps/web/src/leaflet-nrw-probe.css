@@ -5,6 +5,28 @@
   overflow: hidden;
 }
 
+.nrw-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.nrw-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #162332;
+  letter-spacing: 0.01em;
+}
+
+.nrw-version {
+  font-size: 11px;
+  color: #9ca3af;
+  font-family: "Consolas", "Courier New", monospace;
+}
+
 .nrw-panel {
   width: 340px;
   min-width: 280px;
@@ -132,16 +154,6 @@ button.secondary {
 
 button.secondary:hover {
   background: #e5e7eb;
-}
-
-.nrw-probe-result {
-  margin-top: 10px;
-  font-size: 12px;
-  color: #16a34a;
-  font-family: "Consolas", "Courier New", monospace;
-  white-space: pre;
-  line-height: 1.65;
-  min-height: 40px;
 }
 
 .nrw-probe-cursor {

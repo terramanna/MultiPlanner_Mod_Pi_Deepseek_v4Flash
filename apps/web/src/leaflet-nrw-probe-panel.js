@@ -2,6 +2,10 @@ export function renderNrwProbeShell() {
   return `
     <div class="nrw-layout">
       <aside class="nrw-panel" id="nrwPanel">
+        <div class="nrw-header">
+          <span class="nrw-title">NRW Terrain Inspector</span>
+          <span class="nrw-version">v1.0</span>
+        </div>
         <section class="nrw-section">
           <label class="nrw-label" for="nrwLayerSelect">Map layer</label>
           <select id="nrwLayerSelect" class="nrw-select">
@@ -51,7 +55,6 @@ export function renderNrwProbeShell() {
             </label>
           </div>
           <button id="nrwSampleNow" class="secondary">Sample now</button>
-          <pre id="nrwProbeResult" class="nrw-probe-result"></pre>
         </section>
       </aside>
       <div id="nrwMap" class="nrw-map"></div>
@@ -70,6 +73,5 @@ export function panelRefs() {
     probeSource: document.getElementById("nrwProbeSource"),
     probeEnable: document.getElementById("nrwProbeEnable"),
     sampleNow: document.getElementById("nrwSampleNow"),
-    probeResult: document.getElementById("nrwProbeResult"),
   };
 }
