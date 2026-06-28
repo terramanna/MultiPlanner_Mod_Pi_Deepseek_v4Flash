@@ -37,12 +37,6 @@ const BASE_LAYERS = {
   }),
 };
 
-// Separate overlay instance so it can coexist with the dom1 base layer.
-const DOM_OVERLAY = L.tileLayer(
-  `${API}/api/v1/tiles/${PROVIDER}/dom1/{z}/{x}/{y}.png`,
-  { maxZoom: 20, opacity: 0.55 }
-);
-
 // Official NRW normalised surface model (relative height above terrain).
 const NDOM_OVERLAY = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms_nw_ndom", {
   layers: "nw_ndom",
@@ -67,26 +61,12 @@ function switchBase(key) {
   currentBase = BASE_LAYERS[key];
   currentBase.setOpacity(refs.baseOpacity.value / 100);
   currentBase.addTo(map);
-  if (map.hasLayer(DOM_OVERLAY)) DOM_OVERLAY.bringToFront();
   if (map.hasLayer(NDOM_OVERLAY)) NDOM_OVERLAY.bringToFront();
 }
 
 function setBaseOpacity(pct) {
   currentBase.setOpacity(pct / 100);
   refs.baseOpacityVal.textContent = `${pct}%`;
-}
-
-function toggleDomOverlay(enabled) {
-  if (enabled) {
-    DOM_OVERLAY.addTo(map);
-  } else {
-    map.removeLayer(DOM_OVERLAY);
-  }
-}
-
-function setDomOpacity(pct) {
-  DOM_OVERLAY.setOpacity(pct / 100);
-  refs.domOpacityVal.textContent = `${pct}%`;
 }
 
 function toggleNdomOverlay(enabled) {
@@ -152,8 +132,6 @@ function _formatResult(r, source, lat, lon) {
 // --- Event wiring ---
 refs.layerSelect.addEventListener("change", () => switchBase(refs.layerSelect.value));
 refs.baseOpacity.addEventListener("input", () => setBaseOpacity(Number(refs.baseOpacity.value)));
-refs.domOverlay.addEventListener("change", () => toggleDomOverlay(refs.domOverlay.checked));
-refs.domOpacity.addEventListener("input", () => setDomOpacity(Number(refs.domOpacity.value)));
 refs.ndomOverlay.addEventListener("change", () => toggleNdomOverlay(refs.ndomOverlay.checked));
 refs.ndomOpacity.addEventListener("input", () => setNdomOpacity(Number(refs.ndomOpacity.value)));
 

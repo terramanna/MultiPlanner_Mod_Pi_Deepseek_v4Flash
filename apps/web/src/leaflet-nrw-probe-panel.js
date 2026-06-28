@@ -18,16 +18,6 @@ export function renderNrwProbeShell() {
           <span id="nrwBaseOpacityVal" class="nrw-opacity-val">100%</span>
         </section>
         <section class="nrw-section nrw-box">
-          <span class="nrw-box-title">DOM over ortho</span>
-          <label class="nrw-check-row">
-            <input type="checkbox" id="nrwDomOverlay">
-            <span>Show DOM hillshade over NRW DOP</span>
-          </label>
-          <label class="nrw-label nrw-label-indent">DOM hillshade opacity</label>
-          <input id="nrwDomOpacity" type="range" min="0" max="100" value="55" class="nrw-slider">
-          <span id="nrwDomOpacityVal" class="nrw-opacity-val">55%</span>
-        </section>
-        <section class="nrw-section nrw-box">
           <span class="nrw-box-title">nDOM50 over ortho</span>
           <label class="nrw-check-row">
             <input type="checkbox" id="nrwNdomOverlay">
@@ -74,9 +64,6 @@ export function panelRefs() {
     layerSelect: document.getElementById("nrwLayerSelect"),
     baseOpacity: document.getElementById("nrwBaseOpacity"),
     baseOpacityVal: document.getElementById("nrwBaseOpacityVal"),
-    domOverlay: document.getElementById("nrwDomOverlay"),
-    domOpacity: document.getElementById("nrwDomOpacity"),
-    domOpacityVal: document.getElementById("nrwDomOpacityVal"),
     ndomOverlay: document.getElementById("nrwNdomOverlay"),
     ndomOpacity: document.getElementById("nrwNdomOpacity"),
     ndomOpacityVal: document.getElementById("nrwNdomOpacityVal"),
