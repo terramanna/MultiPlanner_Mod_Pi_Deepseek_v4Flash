@@ -21,6 +21,9 @@ ETRS89_UTM33 = "EPSG:25833"
 TILE_KM = 2
 MAX_TILES_PER_DATASET = 100
 PROVIDER_ID = "geosn-sn"
+# Loose WGS84 bounding box for Saxony.  locate_tiles returns [] for points
+# outside this box so auto-provider probes do not attempt spurious downloads.
+_SAXONY_BBOX = (11.8, 50.1, 15.1, 51.7)  # W, S, E, N
 
 
 def locate_tiles(
@@ -33,7 +36,10 @@ def locate_tiles(
 ) -> list[dict[str, str]]:
     base_url = config["base_url"]
     file_prefix = config.get("file_prefix", dataset)
-    geom_33 = _to_utm33(request_geometry(geometry, geometry_type))
+    geom_wgs84 = request_geometry(geometry, geometry_type)
+    if not geom_wgs84.intersects(box(*_SAXONY_BBOX)):
+        return []
+    geom_33 = _to_utm33(geom_wgs84)
     candidates = tile_coordinates(geom_33)
     if len(candidates) > MAX_TILES_PER_DATASET:
         raise ValueError(

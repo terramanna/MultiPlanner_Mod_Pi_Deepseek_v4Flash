@@ -124,6 +124,19 @@ def test_geosn_locate_dop20_tiles_uses_rgbi_prefix_in_url() -> None:
     assert tile["primary_url"].endswith("_2_sn_tiff.zip")
 
 
+def test_geosn_locate_tiles_returns_empty_for_point_outside_saxony() -> None:
+    # 50.9°N 10.88°E is in Thüringen — GeoSN must not return a tile for it.
+    config = SERVICE_PROVIDERS["geosn-sn"]["datasets"]["dgm1"]
+    tiles = locate_tiles(
+        "dgm1",
+        config=config,
+        geometry="10.88,50.9",
+        geometry_type="esriGeometryPoint",
+        timeout=1,
+    )
+    assert tiles == []
+
+
 def test_geosn_dop20_known_tile_urls_match() -> None:
     # All four tiles verified by user from batch download listing
     from multiplanner_api.geosn import _tile_record
