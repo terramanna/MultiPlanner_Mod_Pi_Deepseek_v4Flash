@@ -23,7 +23,7 @@ pre { margin: 0; white-space: pre-wrap; font: 12px/1.5 Consolas, monospace; }
 #leafletMap.is-site-placement,
 #leafletMap.is-site-placement .leaflet-pane,
 #leafletMap.is-site-placement .leaflet-tile {
-  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M4 2v20l5-5 4 11 4-2-4-10h7z' fill='white' stroke='%2314273a' stroke-width='2'/%3E%3Ccircle cx='4' cy='2' r='3' fill='%2300a6d6' stroke='white' stroke-width='1.5'/%3E%3C/svg%3E") 4 2, crosshair !important;
+  cursor: default !important;
 }
 .prototype-network-filter { margin-top: 6px; }
 .prototype-network-filter input { width: 100%; box-sizing: border-box; }
