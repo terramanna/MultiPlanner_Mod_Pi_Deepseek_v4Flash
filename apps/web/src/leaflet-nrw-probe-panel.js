@@ -3,7 +3,7 @@ export function renderNrwProbeShell() {
     <div class="nrw-layout">
       <aside class="nrw-panel" id="nrwPanel">
         <div class="nrw-header">
-          <span class="nrw-title">NRW Terrain Inspector</span>
+          <span class="nrw-title">Terrain Inspector</span>
           <span class="nrw-version">v1.0</span>
         </div>
         <section class="nrw-section">
