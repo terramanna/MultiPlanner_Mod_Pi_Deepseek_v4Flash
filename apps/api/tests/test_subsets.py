@@ -159,7 +159,7 @@ def test_download_subset_returns_absolute_saved_paths(monkeypatch, tmp_path) -> 
 def test_download_subset_retries_tiff_downloads_without_ssl_verification(monkeypatch, tmp_path) -> None:
     calls = []
     patch_download_settings(monkeypatch, tmp_path)
-    monkeypatch.setattr("multiplanner_api.downloads.requests.get", fake_retrying_get(calls))
+    monkeypatch.setattr("multiplanner_api.downloads.requests.Session", fake_retrying_session(calls, fail_first=True))
     response = download_subset(corridor_download_request("ssl-fallback"))
     target = tmp_path / "cache" / "saved_subsets" / "ssl-fallback" / "dgm1" / "tile-a.tif"
     assert calls == [True, False]
@@ -167,14 +167,40 @@ def test_download_subset_retries_tiff_downloads_without_ssl_verification(monkeyp
     assert target.read_bytes() == b"tile-bytes"
 
 
-def fake_retrying_get(calls: list[bool]):
-    def fake_get(url, *, stream, timeout, verify):
-        calls.append(verify)
-        if verify:
-            raise requests.exceptions.SSLError("certificate verify failed")
-        return FakeResponse()
+def test_download_subset_ignores_environment_proxies(monkeypatch, tmp_path) -> None:
+    trust_env_values = []
+    patch_download_settings(monkeypatch, tmp_path)
+    monkeypatch.setattr("multiplanner_api.downloads.requests.Session", fake_retrying_session([], trust_env_values))
+    response = download_subset(corridor_download_request("proxy-bypass"))
+    assert response.file_count == 1
+    assert trust_env_values == [False]
 
-    return fake_get
+
+def fake_retrying_session(
+    calls: list[bool],
+    trust_env_values: list[bool] | None = None,
+    *,
+    fail_first: bool = False,
+):
+    class FakeSession:
+        def __init__(self):
+            self.trust_env = True
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def get(self, url, *, stream, timeout, verify):
+            if trust_env_values is not None:
+                trust_env_values.append(self.trust_env)
+            calls.append(verify)
+            if fail_first and verify and len(calls) == 1:
+                raise requests.exceptions.SSLError("certificate verify failed")
+            return FakeResponse()
+
+    return FakeSession
 
 
 class FakeResponse:

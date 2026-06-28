@@ -78,7 +78,7 @@ def load_index(dataset: str, config: dict[str, Any], *, timeout: int) -> dict[tu
 
 def _get_catalog(url: str, timeout: int):
     try:
-        return requests.get(url, timeout=timeout, verify=True)
+        return _catalog_request(url, timeout, verify=True)
     except requests.exceptions.SSLError:
         warnings.warn(
             f"SSL verification failed for {url}; retrying without certificate verification.",
@@ -86,7 +86,13 @@ def _get_catalog(url: str, timeout: int):
         )
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", InsecureRequestWarning)
-            return requests.get(url, timeout=timeout, verify=False)
+            return _catalog_request(url, timeout, verify=False)
+
+
+def _catalog_request(url: str, timeout: int, *, verify: bool):
+    with requests.Session() as session:
+        session.trust_env = False
+        return session.get(url, timeout=timeout, verify=verify)
 
 
 def index_path(dataset: str) -> Path:

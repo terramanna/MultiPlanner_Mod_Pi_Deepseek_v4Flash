@@ -35,12 +35,8 @@ def test_catalog_uses_the_current_tile_version() -> None:
 def test_catalogue_index_is_cached_until_its_refresh_is_due(monkeypatch, tmp_path) -> None:
     requests = []
 
-    def get_catalog(*_args, **_kwargs):
-        requests.append(True)
-        return SimpleNamespace(text=CATALOG, raise_for_status=lambda: None)
-
     monkeypatch.setenv("MULTIPLANNER_CACHE_ROOT", str(tmp_path))
-    monkeypatch.setattr("multiplanner_api.nrw.requests.get", get_catalog)
+    monkeypatch.setattr("multiplanner_api.nrw.requests.Session", fake_catalog_session(requests))
     config = SERVICE_PROVIDERS["geobasis-nrw"]["datasets"]["dgm1"]
 
     first = load_index("dgm1", config, timeout=1)
@@ -53,17 +49,45 @@ def test_catalogue_index_is_cached_until_its_refresh_is_due(monkeypatch, tmp_pat
 def test_catalogue_index_retries_without_ssl_verification(monkeypatch, tmp_path) -> None:
     verify_values = []
 
-    def get_catalog(*_args, **kwargs):
-        verify_values.append(kwargs["verify"])
-        if kwargs["verify"]:
-            raise requests.exceptions.SSLError("certificate verify failed")
-        return SimpleNamespace(text=CATALOG, raise_for_status=lambda: None)
-
     monkeypatch.setenv("MULTIPLANNER_CACHE_ROOT", str(tmp_path))
-    monkeypatch.setattr("multiplanner_api.nrw.requests.get", get_catalog)
+    monkeypatch.setattr("multiplanner_api.nrw.requests.Session", fake_catalog_session(verify_values, fail_first=True))
     config = SERVICE_PROVIDERS["geobasis-nrw"]["datasets"]["dgm1"]
 
     index = load_index("dgm1", config, timeout=1)
 
     assert verify_values == [True, False]
     assert index[(395, 5798)]["version"] == "2024"
+
+
+def test_catalogue_index_ignores_environment_proxies(monkeypatch, tmp_path) -> None:
+    trust_env_values = []
+    monkeypatch.setenv("MULTIPLANNER_CACHE_ROOT", str(tmp_path))
+    monkeypatch.setattr("multiplanner_api.nrw.requests.Session", fake_catalog_session([], trust_env_values=trust_env_values))
+    config = SERVICE_PROVIDERS["geobasis-nrw"]["datasets"]["dgm1"]
+
+    index = load_index("dgm1", config, timeout=1)
+
+    assert index[(395, 5798)]["version"] == "2024"
+    assert trust_env_values == [False]
+
+
+def fake_catalog_session(calls: list[bool], trust_env_values: list[bool] | None = None, *, fail_first: bool = False):
+    class FakeSession:
+        def __init__(self):
+            self.trust_env = True
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def get(self, *_args, **kwargs):
+            if trust_env_values is not None:
+                trust_env_values.append(self.trust_env)
+            calls.append(kwargs["verify"])
+            if fail_first and kwargs["verify"] and len(calls) == 1:
+                raise requests.exceptions.SSLError("certificate verify failed")
+            return SimpleNamespace(text=CATALOG, raise_for_status=lambda: None)
+
+    return FakeSession

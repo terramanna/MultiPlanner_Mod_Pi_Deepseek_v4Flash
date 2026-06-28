@@ -240,12 +240,14 @@ def _stream_download_file(url: str, target_path: Path, *, verify: bool) -> None:
     with warnings.catch_warnings():
         if not verify:
             warnings.simplefilter("ignore", InsecureRequestWarning)
-        with requests.get(url, stream=True, timeout=120, verify=verify) as response:
-            response.raise_for_status()
-            with target_path.open("wb") as handle:
-                for chunk in response.iter_content(chunk_size=1024 * 256):
-                    if chunk:
-                        handle.write(chunk)
+        with requests.Session() as session:
+            session.trust_env = False
+            with session.get(url, stream=True, timeout=120, verify=verify) as response:
+                response.raise_for_status()
+                with target_path.open("wb") as handle:
+                    for chunk in response.iter_content(chunk_size=1024 * 256):
+                        if chunk:
+                            handle.write(chunk)
 
 
 def _export_for_ellipse(
