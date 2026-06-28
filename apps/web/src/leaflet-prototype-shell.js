@@ -81,7 +81,22 @@ function renderSelection() {
 
 function renderProbeControls() {
   return `<section class="prototype-probe">
-    <button id="probeToggle" class="secondary" type="button">Probe DOM at click</button>
+    <h2>Point probe</h2>
+    <div class="probe-mode-row">
+      <label class="probe-mode-cell">
+        <input type="checkbox" id="probeEnable">
+        <span class="probe-mode-label">Enable</span>
+      </label>
+      <label class="probe-mode-cell">
+        <input type="radio" name="protoProbeMode" value="hover" id="probeModeHover">
+        <span class="probe-mode-label">Hover</span>
+      </label>
+      <label class="probe-mode-cell">
+        <input type="radio" name="protoProbeMode" value="manual" id="probeModeManual" checked>
+        <span class="probe-mode-label">Manual</span>
+      </label>
+    </div>
+    <button id="probeSampleNow" class="secondary" type="button" disabled>Sample now</button>
     <span id="probeStatus" class="prototype-status"></span>
   </section>`;
 }

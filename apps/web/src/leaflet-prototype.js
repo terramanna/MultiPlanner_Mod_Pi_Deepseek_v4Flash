@@ -48,6 +48,7 @@ import {
   nrwTopo,
   byTopo,
   nrwHillshade,
+  nrwNdom,
   globalHillshade,
 } from "./leaflet-basemaps.js";
 
@@ -103,7 +104,7 @@ L.control.layers(
     "NRW Topo (DTK)": nrwTopo,
     "Bayern Topo (DTK25)": byTopo
   },
-  { "Hillshade (global, ESRI)": globalHillshade, "NRW Hillshade (1m DGM)": nrwHillshade, "Hessen DGM1 (AdV-Farbe)": heDgm, "Hessen DOM1 (AdV-Farbe)": heDom, "Saarland DOM1 shaded [eval]": slDom },
+  { "Hillshade (global, ESRI)": globalHillshade, "NRW Hillshade (1m DGM)": nrwHillshade, "NRW nDOM50 (relative height)": nrwNdom, "Hessen DGM1 (AdV-Farbe)": heDgm, "Hessen DOM1 (AdV-Farbe)": heDom, "Saarland DOM1 shaded [eval]": slDom },
   { position: "topright" }
 ).addTo(map);
 L.control.scale({ imperial: false, position: "bottomleft" }).addTo(map);
@@ -244,11 +245,22 @@ networkToggle.addEventListener("change", async () => {
   if (networkToggle.checked) { await networkOverlay.enable(); } else { networkOverlay.disable(); }
 });
 networkFilter.addEventListener("input", () => networkOverlay.filter(networkFilter.value));
-document.getElementById("probeToggle").addEventListener("click", () => {
+const probeEnable = document.getElementById("probeEnable");
+const probeSampleNow = document.getElementById("probeSampleNow");
+probeEnable.addEventListener("change", () => {
   const active = pointProbe.toggle();
-  document.getElementById("probeToggle").classList.toggle("is-active", active);
-  document.getElementById("probeStatus").textContent = active ? "Click the map to read DOM height." : "";
+  const hover = document.getElementById("probeModeHover").checked;
+  document.getElementById("probeStatus").textContent = active ? (hover ? "Move cursor to probe." : "Click map to probe.") : "";
+  probeSampleNow.disabled = !active;
 });
+document.querySelectorAll('input[name="protoProbeMode"]').forEach((radio) => {
+  radio.addEventListener("change", () => {
+    const hover = document.getElementById("probeModeHover").checked;
+    pointProbe.setHoverMode(hover);
+    if (pointProbe.isActive()) document.getElementById("probeStatus").textContent = hover ? "Move cursor to probe." : "Click map to probe.";
+  });
+});
+probeSampleNow.addEventListener("click", () => pointProbe.sampleNow());
 
 function monitorProviderSelection() {
   if (state.providers.length && providerSelect.value !== state.provider) {

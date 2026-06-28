@@ -1,10 +1,20 @@
 import L from "leaflet";
 
-// Probe mode: toggle with the Probe DOM button; clicking the map reads DOM
-// height at that point via the API instead of placing a site marker.
+const HOVER_DELAY_MS = 400;
+
 export function createPointProbe(map, apiBaseUrl, getProvider) {
   let active = false;
   let popup = null;
+  let hoverMode = false;
+  let hoverTimer = null;
+  let lastLatlng = null;
+
+  map.on("mousemove", (e) => {
+    if (!active || !hoverMode) return;
+    lastLatlng = e.latlng;
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(() => probe(e.latlng), HOVER_DELAY_MS);
+  });
 
   function toggle() {
     active = !active;
@@ -12,11 +22,22 @@ export function createPointProbe(map, apiBaseUrl, getProvider) {
     if (!active) {
       popup?.remove();
       popup = null;
+      clearTimeout(hoverTimer);
     }
     return active;
   }
 
+  function setHoverMode(enabled) {
+    hoverMode = enabled;
+    clearTimeout(hoverTimer);
+  }
+
+  function sampleNow() {
+    if (active && lastLatlng) probe(lastLatlng);
+  }
+
   async function probe(latlng) {
+    lastLatlng = latlng;
     popup?.remove();
     popup = L.popup({ closeButton: true })
       .setLatLng(latlng)
@@ -34,7 +55,7 @@ export function createPointProbe(map, apiBaseUrl, getProvider) {
     return active;
   }
 
-  return { toggle, probe, isActive };
+  return { toggle, probe, isActive, setHoverMode, sampleNow };
 }
 
 async function _fetchProbe(apiBaseUrl, provider, lat, lon) {
