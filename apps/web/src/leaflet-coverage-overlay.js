@@ -3,6 +3,12 @@ import { loadProviderCoverageCache, saveProviderCoverageCache } from "./provider
 import { coverageShouldShow } from "./provider-selection.js";
 
 const BKG_STATE_BOUNDARY_URL = "https://sgx.geodatenzentrum.de/wfs_vg250?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=vg250:vg250_lan&outputFormat=application%2Fjson&SRSNAME=EPSG%3A4326&COUNT=20";
+const DEFAULT_HIDE_KM = 5;
+
+function viewportWidthKm(map) {
+  const b = map.getBounds();
+  return map.distance(b.getNorthWest(), b.getNorthEast()) / 1000;
+}
 
 /**
  * Returns { loadProviderCoverage, updateCoverageOverlay } bound to the given
@@ -10,12 +16,16 @@ const BKG_STATE_BOUNDARY_URL = "https://sgx.geodatenzentrum.de/wfs_vg250?SERVICE
  */
 export function createCoverageOverlay(map, state, providerCoverage, coverageToggle, downloadStatus) {
   function updateCoverageOverlay() {
+    const viewKm = viewportWidthKm(map);
     for (const [provider, layer] of Object.entries(state.coverageLayers)) {
-      const shouldShow = coverageShouldShow(state.provider, provider, coverageToggle.checked);
+      const threshold = providerCoverage[provider]?.hideKmThreshold ?? DEFAULT_HIDE_KM;
+      const shouldShow = viewKm > threshold && coverageShouldShow(state.provider, provider, coverageToggle.checked);
       if (shouldShow && !map.hasLayer(layer)) layer.addTo(map);
       if (!shouldShow && map.hasLayer(layer)) map.removeLayer(layer);
     }
   }
+
+  map.on("zoomend", updateCoverageOverlay);
 
   function applyProviderCoverage(featuresByProvider) {
     for (const layer of Object.values(state.coverageLayers)) {
