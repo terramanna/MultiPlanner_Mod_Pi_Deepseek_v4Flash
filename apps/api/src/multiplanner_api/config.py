@@ -22,7 +22,7 @@ def load_settings() -> Settings:
         origin.strip()
         for origin in os.getenv(
             "MULTIPLANNER_CORS_ORIGIN",
-            "http://127.0.0.1:5173,http://127.0.0.1:5186",
+            "http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:5175,http://127.0.0.1:5186",
         ).split(",")
         if origin.strip()
     )
