@@ -12,6 +12,7 @@ import struct
 import numpy as np
 from pyproj.datadir import get_data_dir
 
+from multiplanner_api.cache_eviction import evict_lru
 from multiplanner_api.config import load_settings
 from multiplanner_api.downloads import _download_file, _expanded_download_paths, _target_filename
 from multiplanner_api.models import BboxGeometryInput, LocateSubsetRequest, TileSummary
@@ -43,6 +44,7 @@ def render_cached_tile(provider: str, dataset: str, z: int, x: int, y: int) -> P
         if not source_paths:
             raise ValueError(f"No {dataset} coverage for tile {z}/{x}/{y}.")
         _render_tile_png(source_paths, dataset, z, x, y, target_path)
+    _evict_tile_cache()
     return target_path
 
 
@@ -79,7 +81,18 @@ def _download_tile_sources(provider: str, dataset: str, tile: TileSummary) -> li
     target_path = cache_dir / _target_filename(tile.primary_url or "", tile.tile_id)
     if not target_path.exists():
         _download_file(tile.primary_url or "", target_path)
+        _evict_source_cache()
     return [path.resolve() for path in _expanded_download_paths(target_path, cache_dir) if path.suffix.lower() in {".tif", ".tiff"}]
+
+
+def _evict_source_cache() -> None:
+    s = load_settings()
+    evict_lru(Path(s.cache_root) / "raster_tile_sources", s.source_cache_max_bytes)
+
+
+def _evict_tile_cache() -> None:
+    s = load_settings()
+    evict_lru(Path(s.cache_root) / "raster_tiles", s.tile_cache_max_bytes)
 
 
 def _render_tile_png(source_paths: list[Path], dataset: str, z: int, x: int, y: int, target_path: Path) -> None:

@@ -6,6 +6,7 @@ import subprocess
 
 from pyproj.datadir import get_data_dir
 
+from multiplanner_api.cache_eviction import evict_lru
 from multiplanner_api.config import load_settings
 from multiplanner_api.downloads import _download_file, _expanded_download_paths, _target_filename
 # CRS for providers whose tiles are ASCII XYZ (no embedded CRS).
@@ -118,6 +119,8 @@ def _prepare_sample_path(request: PointProbeRequest, tile: TileSummary) -> Path:
     target_path = cache_dir / _target_filename(tile.primary_url or "", tile.tile_id)
     if not target_path.exists():
         _download_file(tile.primary_url or "", target_path)
+        s = load_settings()
+        evict_lru(Path(s.cache_root) / "raster_tile_sources", s.source_cache_max_bytes)
     return _resolve_sample_path(_expanded_download_paths(target_path, cache_dir), request.provider)
 
 

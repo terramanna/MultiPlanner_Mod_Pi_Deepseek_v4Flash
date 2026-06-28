@@ -8,6 +8,8 @@ class Settings:
     provider_mode: str
     default_crs: str
     cache_root: str
+    source_cache_max_bytes: int
+    tile_cache_max_bytes: int
     output_dir: str
     cors_origins: tuple[str, ...]
     ellipse_gdal_dir: str
@@ -15,6 +17,14 @@ class Settings:
     geocoder_countrycodes: str
     geocoder_email: str
     network_db_path: str
+
+
+def _parse_cache_gb(env_var: str, default_gb: float) -> int:
+    try:
+        gb = float(os.getenv(env_var, str(default_gb)))
+    except ValueError:
+        gb = default_gb
+    return max(0, int(gb * 1024 ** 3))
 
 
 def load_settings() -> Settings:
@@ -31,6 +41,8 @@ def load_settings() -> Settings:
         provider_mode=os.getenv("MULTIPLANNER_PROVIDER_MODE", "public-open-data"),
         default_crs=os.getenv("MULTIPLANNER_DEFAULT_CRS", "EPSG:4326"),
         cache_root=os.getenv("MULTIPLANNER_CACHE_ROOT", "./data/cache"),
+        source_cache_max_bytes=_parse_cache_gb("MULTIPLANNER_SOURCE_CACHE_MAX_GB", 20.0),
+        tile_cache_max_bytes=_parse_cache_gb("MULTIPLANNER_TILE_CACHE_MAX_GB", 5.0),
         output_dir=os.getenv("MULTIPLANNER_OUTPUT_DIR", ""),
         cors_origins=cors_origins,
         ellipse_gdal_dir=os.getenv(
