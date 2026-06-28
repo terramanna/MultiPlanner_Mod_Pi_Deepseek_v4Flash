@@ -82,6 +82,13 @@ function renderSelection() {
 function renderProbeControls() {
   return `<section class="prototype-probe">
     <h2>Point probe</h2>
+    <label for="probeDataset">Probe type</label>
+    <select id="probeDataset">
+      <option value="multi">DGM + DOM + nDOM</option>
+      <option value="dgm1">DGM only</option>
+      <option value="dom1">DOM only</option>
+      <option value="ndsm">nDOM only</option>
+    </select>
     <div class="probe-mode-row">
       <label class="probe-mode-cell">
         <input type="checkbox" id="probeEnable">

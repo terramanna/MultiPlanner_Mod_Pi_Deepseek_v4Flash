@@ -44,7 +44,23 @@ _DATASET_CONFIG: dict[str, dict[str, str]] = {
         "href_prefix": "dgm2_",
         "cache_file": "tlbg_th_dgm.json",
     },
+    "dgm1": {
+        "atom_url": (
+            f"{_BASE}/dienste/atom_th_hoehendaten_dgm"
+            "?type=dataset&id=14418d25-fcd7-4a3f-99a9-e3059a2772af"
+        ),
+        "href_prefix": "dgm2_",
+        "cache_file": "tlbg_th_dgm.json",
+    },
     "dom": {
+        "atom_url": (
+            f"{_BASE}/dienste/atom_th_hoehendaten_dom"
+            "?type=dataset&id=3b5d8d9c-775d-4617-8dfe-71480d6472a6"
+        ),
+        "href_prefix": "dom2_",
+        "cache_file": "tlbg_th_dom.json",
+    },
+    "dom1": {
         "atom_url": (
             f"{_BASE}/dienste/atom_th_hoehendaten_dom"
             "?type=dataset&id=3b5d8d9c-775d-4617-8dfe-71480d6472a6"

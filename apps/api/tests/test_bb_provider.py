@@ -15,7 +15,7 @@ POTSDAM_POINT = "13.0622,52.3906"
 
 
 def test_geobasis_bb_provider_dataset_names() -> None:
-    assert provider_dataset_names("geobasis-bb") == ("dgm1", "bdom", "lod2")
+    assert provider_dataset_names("geobasis-bb") == ("dgm1", "dom1", "bdom", "lod2")
 
 
 def test_tile_cells_single_point_returns_one_cell() -> None:

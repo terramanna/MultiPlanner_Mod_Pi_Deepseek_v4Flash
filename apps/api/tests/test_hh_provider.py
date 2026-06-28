@@ -37,7 +37,7 @@ def _mock_response(features):
 
 
 def test_lgv_hh_provider_lists_datasets() -> None:
-    assert provider_dataset_names("lgv-hh") == ("dgm1", "bdom", "lod2")
+    assert provider_dataset_names("lgv-hh") == ("dgm1", "dom1", "bdom", "lod2")
 
 
 def test_tile_record_url_and_id() -> None:

@@ -89,7 +89,7 @@ def _mock_response(xml_text: str):
 # --- provider registry ---
 
 def test_tlbg_th_provider_lists_dgm_dom_lod2() -> None:
-    assert set(provider_dataset_names("tlbg-th")) == {"dgm", "dom", "lod2"}
+    assert set(provider_dataset_names("tlbg-th")) == {"dgm", "dgm1", "dom", "dom1", "lod2"}
 
 
 # --- _parse_bbox ---

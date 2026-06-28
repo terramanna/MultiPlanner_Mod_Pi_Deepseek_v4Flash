@@ -36,6 +36,10 @@ _BULK_TILES: dict[str, dict] = {
         "tile_id": "hh_bdom_HH",
         "primary_url": f"{_BDOM_BASE}/dom1_hh_2022-11-21.zip",
     },
+    "dom1": {
+        "tile_id": "hh_bdom_HH",
+        "primary_url": f"{_BDOM_BASE}/dom1_hh_2022-11-21.zip",
+    },
     "lod2": {
         "tile_id": "hh_lod2_HH",
         "primary_url": f"{_LOD2_BASE}/lod2-de_hh_2016-11-22_21283_snap_1.GML",

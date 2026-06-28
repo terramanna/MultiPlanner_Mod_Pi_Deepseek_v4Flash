@@ -134,8 +134,15 @@ def _load_index(dataset: str, *, timeout: int) -> list[dict]:
     cfg = _DATASET_CONFIG[dataset]
     response = requests.get(_geojson_url(dataset), timeout=timeout)
     response.raise_for_status()
+    try:
+        payload = response.json()
+    except ValueError:
+        raise ValueError(
+            f"SH {dataset} index returned non-JSON body "
+            f"({response.status_code}): {response.text[:120]!r}"
+        ) from None
     entries = _parse_geojson(
-        response.json(),
+        payload,
         id_field=cfg["id_field"],
         url_field=cfg["url_field"],
     )

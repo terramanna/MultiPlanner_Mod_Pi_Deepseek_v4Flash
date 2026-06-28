@@ -129,7 +129,7 @@ function _formatResult(r, source, lat, lon) {
   const head = `${lat.toFixed(5)}, ${lon.toFixed(5)} <small>(${_probeMode()})</small><br>`;
   if (source === "multi") {
     return head + `<table style="margin-top:4px;font-size:12px">` +
-      row("DGM1", r.dgm_m) + row("DOM1", r.dom_m) + row("nDSM", r.ndsm_m) +
+      row("DGM1", r.dgm_m) + row("DOM1", r.dom_m) + row("nDOM", r.ndsm_m) +
       `</table>`;
   }
   return head + `<b>${source.toUpperCase()}</b>: ${fmt(r.height_m)}`;

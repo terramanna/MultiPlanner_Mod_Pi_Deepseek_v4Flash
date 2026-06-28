@@ -106,3 +106,78 @@ def test_hh_crs_is_utm32():
 
 def test_be_crs_is_utm33():
     assert point_probe._PROVIDER_XYZ_CRS["gdi-be"] == "EPSG:25833"
+
+
+def test_elevation_api_registered_for_bb_and_be():
+    assert "geobasis-bb" in point_probe._ELEVATION_API
+    assert "gdi-be" in point_probe._ELEVATION_API
+    for url, crs in point_probe._ELEVATION_API.values():
+        assert url.startswith("https://")
+        assert crs.startswith("EPSG:")
+
+
+def test_probe_elevation_api_calls_correct_url(monkeypatch):
+    captured = {}
+
+    def fake_get(url, params, timeout):
+        captured["url"] = url
+        captured["params"] = params
+        return SimpleNamespace(text="35.29", raise_for_status=lambda: None)
+
+    monkeypatch.setattr(point_probe.requests, "get", fake_get)
+    result = point_probe._probe_elevation_api(
+        "https://isk.geobasis-bb.de/elevation/latlon/point", "EPSG:25833", 13.0622, 52.3906
+    )
+    assert abs(result - 35.29) < 0.01
+    assert "coordinates" in captured["params"]
+    # coordinate string should contain UTM33 easting (~369000) and northing (~5806000)
+    coords = captured["params"]["coordinates"]
+    east, north = (float(v) for v in coords.split(","))
+    assert 368_000 < east < 370_000
+    assert 5_805_000 < north < 5_807_000
+
+
+def test_probe_elevation_api_raises_on_empty_response(monkeypatch):
+    monkeypatch.setattr(
+        point_probe.requests, "get",
+        lambda *a, **k: SimpleNamespace(text="  ", raise_for_status=lambda: None),
+    )
+    try:
+        point_probe._probe_elevation_api(
+            "https://isk.geobasis-bb.de/elevation/latlon/point", "EPSG:25833", 13.0622, 52.3906
+        )
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "empty response" in str(exc)
+
+
+def test_elevation_api_for_point_returns_api_for_bb_coord():
+    # 52.20, 12.96 is inside BB bbox (11.26–14.76, 51.36–53.56)
+    result = point_probe._elevation_api_for_point(12.963, 52.197)
+    assert result is not None
+    api_url, crs = result
+    assert "isk.geobasis-bb.de" in api_url
+    assert crs == "EPSG:25833"
+
+
+def test_elevation_api_for_point_returns_none_outside_coverage():
+    # Munich (11.58, 48.14) is not within BB or BE bbox
+    result = point_probe._elevation_api_for_point(11.58, 48.14)
+    assert result is None
+
+
+def test_auto_dgm1_probe_uses_elevation_api_for_bb_point(monkeypatch):
+    """Auto probe at a BB coordinate should hit the elevation API, not WCS tile download."""
+    captured = {}
+
+    def fake_get(url, params, timeout):
+        captured["url"] = url
+        captured["params"] = params
+        return SimpleNamespace(text="42.5", raise_for_status=lambda: None)
+
+    monkeypatch.setattr(point_probe.requests, "get", fake_get)
+    from multiplanner_api.models import PointProbeRequest
+    req = PointProbeRequest(provider="auto", dataset="dgm1", lon=12.963, lat=52.197)
+    result = point_probe.probe_point(req)
+    assert abs(result.height_m - 42.5) < 0.01
+    assert "isk.geobasis-bb.de" in captured["url"]

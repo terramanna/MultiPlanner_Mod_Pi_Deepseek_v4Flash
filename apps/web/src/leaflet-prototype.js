@@ -49,6 +49,7 @@ import {
   byTopo,
   nrwHillshade,
   nrwNdom,
+  bbBdom,
   globalHillshade,
 } from "./leaflet-basemaps.js";
 
@@ -104,7 +105,7 @@ L.control.layers(
     "NRW Topo (DTK)": nrwTopo,
     "Bayern Topo (DTK25)": byTopo
   },
-  { "Hillshade (global, ESRI)": globalHillshade, "NRW Hillshade (1m DGM)": nrwHillshade, "NRW nDOM50 (relative height)": nrwNdom, "Hessen DGM1 (AdV-Farbe)": heDgm, "Hessen DOM1 (AdV-Farbe)": heDom, "Saarland DOM1 shaded [eval]": slDom },
+  { "Hillshade (global, ESRI)": globalHillshade, "NRW Hillshade (1m DGM)": nrwHillshade, "NRW nDOM50 (relative height)": nrwNdom, "BB bDOM (relative height)": bbBdom, "Hessen DGM1 (AdV-Farbe)": heDgm, "Hessen DOM1 (AdV-Farbe)": heDom, "Saarland DOM1 shaded [eval]": slDom },
   { position: "topright" }
 ).addTo(map);
 L.control.scale({ imperial: false, position: "bottomleft" }).addTo(map);
@@ -183,7 +184,11 @@ configureVariant();
 refreshReadout();
 bootstrapApi();
 loadProviderCoverage();
-const pointProbe = createPointProbe(map, apiBaseUrl, () => state.provider);
+const pointProbe = createPointProbe(
+  map, apiBaseUrl,
+  () => state.provider,
+  () => document.getElementById("probeDataset")?.value ?? "multi"
+);
 const networkOverlay = createNetworkOverlay(map, apiBaseUrl, {
   onSiteA: (p) => { state.activeSite = "A"; placeSample({ lat: p.lat, lon: p.lon }, false); },
   onSiteB: (p) => { state.activeSite = "B"; placeSample({ lat: p.lat, lon: p.lon }, false); },

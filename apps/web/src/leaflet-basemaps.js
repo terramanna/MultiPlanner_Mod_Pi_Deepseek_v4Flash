@@ -73,6 +73,14 @@ export const nrwNdom = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms_nw_n
   maxZoom: 20,
   attribution: "© Geobasis NRW"
 });
+export const bbBdom = L.tileLayer.wms("https://isk.geobasis-bb.de/mapproxy/bdom/service/wms", {
+  layers: "bebb_bdom",
+  format: "image/png",
+  transparent: true,
+  opacity: 0.6,
+  maxZoom: 20,
+  attribution: "© GeoBasis-DE/LGB, dl-de/by-2-0"
+});
 export const globalHillshade = L.tileLayer(
   "https://services.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
   { maxZoom: 19, attribution: "Esri, USGS, NOAA", opacity: 0.45 }

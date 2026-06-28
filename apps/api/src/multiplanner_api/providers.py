@@ -121,6 +121,7 @@ SERVICE_PROVIDERS = {
         "adapter": "geobasis_bb_wcs",
         "datasets": {
             "dgm1": {},
+            "dom1": {},
             "bdom": {},
             "lod2": {},
         },
@@ -170,6 +171,7 @@ SERVICE_PROVIDERS = {
         "adapter": "lgv_hh_ogc",
         "datasets": {
             "dgm1": {},
+            "dom1": {},
             "bdom": {},
             "lod2": {},
         },
@@ -215,7 +217,9 @@ SERVICE_PROVIDERS = {
         "adapter": "tlbg_th_atom",
         "datasets": {
             "dgm": {},
+            "dgm1": {},
             "dom": {},
+            "dom1": {},
             "lod2": {},
         },
     },

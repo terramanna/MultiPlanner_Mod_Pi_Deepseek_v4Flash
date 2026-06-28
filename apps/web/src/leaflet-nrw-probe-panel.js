@@ -12,7 +12,7 @@ export function renderNrwProbeShell() {
             <option value="dop">NRW DOP imagery</option>
             <option value="dgm1">NRW DGM1 hillshade (local)</option>
             <option value="dom1">NRW DOM1 grayscale (local)</option>
-            <option value="ndsm">NRW nDSM colour (local)</option>
+            <option value="ndsm">NRW nDOM colour (local)</option>
             <option value="streets">Streets (OSM)</option>
           </select>
         </section>
@@ -35,10 +35,10 @@ export function renderNrwProbeShell() {
           <h3 class="nrw-heading">Point probe</h3>
           <label class="nrw-label" for="nrwProbeSource">Probe source</label>
           <select id="nrwProbeSource" class="nrw-select">
-            <option value="multi">DGM1 + DOM1 + nDSM</option>
+            <option value="multi">DGM1 + DOM1 + nDOM</option>
             <option value="dgm1">DGM1 only</option>
             <option value="dom1">DOM1 only</option>
-            <option value="ndsm">nDSM only</option>
+            <option value="ndsm">nDOM only</option>
           </select>
           <div class="probe-mode-row">
             <label class="probe-mode-cell">

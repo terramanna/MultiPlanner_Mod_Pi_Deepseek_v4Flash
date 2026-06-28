@@ -2,7 +2,7 @@ import L from "leaflet";
 
 const HOVER_DELAY_MS = 400;
 
-export function createPointProbe(map, apiBaseUrl, getProvider) {
+export function createPointProbe(map, apiBaseUrl, getProvider, getDataset = () => "multi") {
   let active = false;
   let popup = null;
   let hoverMode = false;
@@ -44,8 +44,11 @@ export function createPointProbe(map, apiBaseUrl, getProvider) {
       .setContent("Probing…")
       .addTo(map);
     try {
-      const result = await _fetchProbe(apiBaseUrl, getProvider(), latlng.lat, latlng.lng);
-      popup.setContent(_formatResult(result));
+      const dataset = getDataset();
+      const result = dataset === "multi"
+        ? await _fetchMultiProbe(apiBaseUrl, getProvider(), latlng.lat, latlng.lng)
+        : await _fetchSingleProbe(apiBaseUrl, getProvider(), dataset, latlng.lat, latlng.lng);
+      popup.setContent(_formatResult(result, dataset));
     } catch (err) {
       popup.setContent(`<em>${err.message}</em>`);
     }
@@ -58,7 +61,7 @@ export function createPointProbe(map, apiBaseUrl, getProvider) {
   return { toggle, probe, isActive, setHoverMode, sampleNow };
 }
 
-async function _fetchProbe(apiBaseUrl, provider, lat, lon) {
+async function _fetchMultiProbe(apiBaseUrl, provider, lat, lon) {
   const response = await fetch(`${apiBaseUrl}/api/v1/probe/multi`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -71,16 +74,32 @@ async function _fetchProbe(apiBaseUrl, provider, lat, lon) {
   return response.json();
 }
 
-function _formatResult(r) {
+async function _fetchSingleProbe(apiBaseUrl, provider, dataset, lat, lon) {
+  const response = await fetch(`${apiBaseUrl}/api/v1/probe/point`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ provider, dataset, lat, lon }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.detail ?? response.statusText);
+  }
+  return response.json();
+}
+
+function _formatResult(r, dataset) {
   const fmt = (v) => (v != null ? `${v.toFixed(2)} m` : "—");
   const row = (label, v, err) =>
     `<tr><td><b>${label}</b></td><td style="padding-left:10px">${err ? `<em style="color:#c00">${err}</em>` : fmt(v)}</td></tr>`;
-  return (
-    `${r.provider}<br/>${r.lat.toFixed(6)}, ${r.lon.toFixed(6)}<br/>` +
-    `<table style="margin-top:4px">` +
-    row("DGM", r.dgm_m, r.dgm_error) +
-    row("DOM", r.dom_m, r.dom_error) +
-    row("nDSM", r.ndsm_m, null) +
-    `</table>`
-  );
+  const head = `${r.provider}<br/>${r.lat.toFixed(6)}, ${r.lon.toFixed(6)}<br/>`;
+  if (dataset === "multi") {
+    return head +
+      `<table style="margin-top:4px">` +
+      row("DGM", r.dgm_m, r.dgm_error) +
+      row("DOM", r.dom_m, r.dom_error) +
+      row("nDOM", r.ndsm_m, null) +
+      `</table>`;
+  }
+  const label = dataset === "dgm1" ? "DGM" : dataset === "dom1" ? "DOM" : "nDOM";
+  return head + `<b>${label}</b>: ${fmt(r.height_m)}`;
 }

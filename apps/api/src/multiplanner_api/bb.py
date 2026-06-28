@@ -36,6 +36,10 @@ _WCS_CONFIGS: dict[str, dict[str, str]] = {
         "endpoint": "https://isk.geobasis-bb.de/ows/bdom_wcs",
         "coverage_id": "bb_bdom",
     },
+    "dom1": {
+        "endpoint": "https://isk.geobasis-bb.de/ows/bdom_wcs",
+        "coverage_id": "bb_bdom",
+    },
 }
 _LOD2_BASE = "https://data.geobasis-bb.de/geobasis/daten/3d_gebaeude/lod2_gml/"
 
