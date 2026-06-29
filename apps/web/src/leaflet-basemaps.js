@@ -73,8 +73,11 @@ export const nrwNdom = L.tileLayer.wms("https://www.wms.nrw.de/geobasis/wms_nw_n
   maxZoom: 20,
   attribution: "© Geobasis NRW"
 });
-export const bbBdom = L.tileLayer.wms("https://isk.geobasis-bb.de/mapproxy/bdom/service/wms", {
-  layers: "bebb_bdom",
+// INSPIRE elevation DOM for BB+BE — absolute heights above sea level (NOT normalised).
+// Visualises terrain + buildings as a hypsometric colour ramp; looks flat over wide areas.
+export const bbInspireDom = L.tileLayer.wms("https://inspire.brandenburg.de/services/el_dom1_wms", {
+  layers: "EL.ElevationGridCoverage",
+  styles: "inspire_common:DEFAULT",
   format: "image/png",
   transparent: true,
   opacity: 0.6,

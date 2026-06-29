@@ -8,6 +8,7 @@ import "./leaflet-prototype.css";
 import { retryUntilReady } from "./bootstrap-retry.js";
 import { createPointProbe } from "./leaflet-point-probe.js";
 import { createNetworkOverlay } from "./leaflet-network-overlay.js";
+import { createLod2Layer } from "./leaflet-bb-lod2.js";
 import { clearLeafletSelection } from "./leaflet-selection.js";
 import { requestLeafletSubset } from "./leaflet-subset-request.js";
 import { bindPersistedInput } from "./persisted-input.js";
@@ -49,7 +50,7 @@ import {
   byTopo,
   nrwHillshade,
   nrwNdom,
-  bbBdom,
+  bbInspireDom,
   globalHillshade,
 } from "./leaflet-basemaps.js";
 
@@ -82,6 +83,8 @@ app.innerHTML = renderPrototypeShell(variant);
 const map = L.map("leafletMap", { zoomControl: true }).setView([51.1657, 10.4515], 6);
 map.getContainer().classList.add("is-site-placement");
 streets.addTo(map);
+const bbLod2Layer = createLod2Layer(map);
+
 L.control.layers(
   {
     Streets: streets,
@@ -105,7 +108,16 @@ L.control.layers(
     "NRW Topo (DTK)": nrwTopo,
     "Bayern Topo (DTK25)": byTopo
   },
-  { "Hillshade (global, ESRI)": globalHillshade, "NRW Hillshade (1m DGM)": nrwHillshade, "NRW nDOM50 (relative height)": nrwNdom, "BB bDOM (relative height)": bbBdom, "Hessen DGM1 (AdV-Farbe)": heDgm, "Hessen DOM1 (AdV-Farbe)": heDom, "Saarland DOM1 shaded [eval]": slDom },
+  {
+    "Hillshade (global, ESRI)": globalHillshade,
+    "NRW Hillshade (1m DGM)": nrwHillshade,
+    "NRW nDOM50 (relative height)": nrwNdom,
+    "BB DOM (absolute elevation)": bbInspireDom,
+    "BB LoD2 Buildings (height ≥14)": bbLod2Layer,
+    "Hessen DGM1 (AdV-Farbe)": heDgm,
+    "Hessen DOM1 (AdV-Farbe)": heDom,
+    "Saarland DOM1 shaded [eval]": slDom,
+  },
   { position: "topright" }
 ).addTo(map);
 L.control.scale({ imperial: false, position: "bottomleft" }).addTo(map);
