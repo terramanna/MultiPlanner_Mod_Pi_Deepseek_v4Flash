@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { requestLeafletSubset } from "../src/leaflet-subset-request.js";
+import { missingDownloadPrompt, requestLeafletSubset } from "../src/leaflet-subset-request.js";
 
 function fakeDocument() {
   const tileList = { innerHTML: "", textContent: "" };
@@ -72,8 +72,18 @@ function downloadPayload() {
     selection_name: "point_n52_3200_e7_4600_1m_merge",
     output_dir: "cache/saved_subsets/point_n52_3200_e7_4600_1m_merge",
     files: [],
+    failed_downloads: [],
     exports: [],
     warnings: [],
+  };
+}
+
+function failedDownloadPayload() {
+  return {
+    ...downloadPayload(),
+    failed_downloads: [
+      { provider: "geobasis-nrw", dataset: "dgm1", tile_id: "tile-b", reason: "network timeout" },
+    ],
   };
 }
 
@@ -120,4 +130,60 @@ assert.deepEqual(statusMessages, [
   "Saving downloaded files to the selected folder...",
   "Saved 0 source files and 0 GRD exports to downloads\\point_n52_3200_e7_4600_1m_merge.",
 ]);
+assert.equal(downloadContext.openDownloadFolderButton.hidden, false);
+assert.equal(downloadContext.state.lastDownloadedOutputDir, "cache/saved_subsets/point_n52_3200_e7_4600_1m_merge");
 globalThis.window = originalWindow;
+
+const autoOpenRequests = [];
+globalThis.window = {
+  showDirectoryPicker: async () => fakeDirectoryHandle(),
+};
+const autoOpenResponses = [
+  { ok: true, json: async () => previewPayload() },
+  fakeStreamResponse(downloadPayload()),
+];
+const { context: autoOpenContext } = recordingDownloadContext(autoOpenResponses);
+autoOpenContext.openFolderAfterDownload.checked = true;
+autoOpenContext.fetch = async (url) => {
+  autoOpenRequests.push(url);
+  if (url.endsWith("/api/v1/subsets/open-folder")) return { ok: true, json: async () => ({ status: "opened" }) };
+  return autoOpenResponses.shift();
+};
+await requestLeafletSubset(autoOpenContext, true);
+assert.equal(autoOpenContext.openDownloadFolderButton.hidden, false);
+assert.equal(autoOpenRequests.some((url) => url.endsWith("/api/v1/subsets/open-folder")), true);
+globalThis.window = originalWindow;
+
+globalThis.window = {
+  showDirectoryPicker: async () => fakeDirectoryHandle(),
+};
+const { context: pyramidContext, statusMessages: pyramidMessages } = recordingDownloadContext([
+  { ok: true, json: async () => previewPayload() },
+  fakeStreamResponse(downloadPayload()),
+]);
+pyramidContext.selectedExportProfile = () => "ellipse_mapinfo_tab_pyramids";
+await requestLeafletSubset(pyramidContext, true);
+assert.match(pyramidMessages.at(-1), /GeoTIFF \+ TAB \+ pyramid exports/);
+globalThis.window = originalWindow;
+
+const prompts = [];
+globalThis.window = {
+  showDirectoryPicker: async () => fakeDirectoryHandle(),
+};
+const { context: failedDownloadContext } = recordingDownloadContext([
+  { ok: true, json: async () => previewPayload() },
+  fakeStreamResponse(failedDownloadPayload()),
+]);
+failedDownloadContext.confirm = (message) => {
+  prompts.push(message);
+  return false;
+};
+await requestLeafletSubset(failedDownloadContext, true);
+assert.match(prompts[0], /geobasis-nrw\/dgm1\/tile-b/);
+assert.match(failedDownloadContext.downloadStatus.textContent, /Download stopped\. Missing 1 identified file/);
+globalThis.window = originalWindow;
+
+assert.match(
+  missingDownloadPrompt([{ provider: "p", dataset: "d", tile_id: "t" }]),
+  /Retry the missing files now/,
+);

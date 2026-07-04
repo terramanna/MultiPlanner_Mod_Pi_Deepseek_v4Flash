@@ -240,6 +240,182 @@ dd,
   font-weight: 600;
 }
 
+.link-profile-window {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  z-index: 3;
+  width: min(520px, calc(100vw - 408px));
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid rgba(132, 173, 201, 0.28);
+  border-radius: 8px;
+  background: rgba(7, 17, 25, 0.92);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(10px);
+}
+
+.link-profile-window[hidden] {
+  display: none;
+}
+
+.profile-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.profile-header h2 {
+  margin: 2px 0 0;
+  font-size: 1.2rem;
+}
+
+.profile-kicker {
+  color: #89b4d4;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.profile-close {
+  padding: 6px 10px;
+}
+
+.profile-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.profile-summary span {
+  padding: 6px 8px;
+  border: 1px solid rgba(132, 173, 201, 0.2);
+  border-radius: 6px;
+  background: rgba(13, 31, 47, 0.72);
+  color: #c6d9e9;
+  font-size: 0.88rem;
+}
+
+.profile-source-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 10px 0 0;
+  border: 0;
+}
+
+.profile-source-options legend,
+.profile-control-grid span {
+  color: #89b4d4;
+  font-size: 0.82rem;
+}
+
+.profile-source-options label {
+  display: grid;
+  gap: 4px;
+  min-height: 64px;
+  padding: 10px;
+  border: 1px solid rgba(145, 191, 223, 0.34);
+  border-radius: 8px;
+  background: rgba(13, 31, 47, 0.62);
+}
+
+.profile-source-options label:has(input:checked) {
+  border-color: rgba(118, 207, 255, 0.95);
+  background: rgba(22, 61, 92, 0.88);
+}
+
+.profile-source-options label.is-disabled {
+  opacity: 0.42;
+}
+
+.profile-source-options input {
+  margin: 0;
+}
+
+.profile-source-options small {
+  color: #c6d9e9;
+}
+
+.profile-control-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.profile-control-grid label {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-control-grid input,
+.profile-control-grid select {
+  min-width: 0;
+  border: 1px solid rgba(145, 191, 223, 0.45);
+  border-radius: 8px;
+  background: rgba(8, 20, 31, 0.5);
+  color: #edf4fb;
+  font: inherit;
+  padding: 9px 10px;
+}
+
+.profile-calculate {
+  margin-top: 12px;
+  width: 100%;
+}
+
+.profile-chart {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  border: 1px solid rgba(132, 173, 201, 0.18);
+  border-radius: 8px;
+  background: rgba(5, 13, 20, 0.68);
+}
+
+.profile-chart text {
+  fill: #c6d9e9;
+  font-size: 13px;
+}
+
+.profile-axis {
+  stroke: rgba(198, 217, 233, 0.34);
+  stroke-width: 1;
+}
+
+.profile-fresnel-fill {
+  fill: rgba(108, 210, 255, 0.18);
+}
+
+.profile-fresnel-line {
+  fill: none;
+  stroke: rgba(118, 207, 255, 0.82);
+  stroke-width: 1.5;
+}
+
+.profile-link-line {
+  fill: none;
+  stroke: #8cff7a;
+  stroke-width: 3;
+}
+
+.profile-terrain-line {
+  fill: none;
+  stroke: #f2c94c;
+  stroke-width: 2.5;
+}
+
+.profile-status {
+  margin-top: 10px;
+  color: #c6d9e9;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
 @media (max-width: 920px) {
   .shell {
     grid-template-columns: 1fr;
@@ -249,5 +425,19 @@ dd,
   .panel {
     border-right: 0;
     border-bottom: 1px solid rgba(139, 178, 207, 0.25);
+  }
+
+  .link-profile-window {
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: 12px;
+    width: auto;
+    max-height: 58vh;
+  }
+
+  .profile-source-options,
+  .profile-control-grid {
+    grid-template-columns: 1fr;
   }
 }

@@ -85,7 +85,7 @@ def test_query_ogc_api_passes_bbox_param(monkeypatch) -> None:
         captured["params"] = params
         return _mock_response([SAMPLE_FEATURE])
 
-    monkeypatch.setattr("multiplanner_api.hh.requests.get", fake_get)
+    monkeypatch.setattr("multiplanner_api.hh.get_with_ssl_fallback", fake_get)
     features = _query_ogc_api(9.9, 53.4, 10.1, 53.6, timeout=5)
     assert features == [SAMPLE_FEATURE]
     assert "9.9" in captured["params"]["bbox"]
@@ -94,7 +94,7 @@ def test_query_ogc_api_passes_bbox_param(monkeypatch) -> None:
 
 def test_locate_tiles_point_geometry_returns_one_tile(monkeypatch) -> None:
     monkeypatch.setattr(
-        "multiplanner_api.hh.requests.get",
+        "multiplanner_api.hh.get_with_ssl_fallback",
         lambda *a, **kw: _mock_response([SAMPLE_FEATURE]),
     )
     config = SERVICE_PROVIDERS["lgv-hh"]["datasets"]["dgm1"]
@@ -110,7 +110,7 @@ def test_locate_tiles_envelope_geometry(monkeypatch) -> None:
                     "properties": {**SAMPLE_FEATURE["properties"],
                                    "dateiname_dgm_1": "DGM1_32560_5928_2_FHH.xyz"}}]
     monkeypatch.setattr(
-        "multiplanner_api.hh.requests.get",
+        "multiplanner_api.hh.get_with_ssl_fallback",
         lambda *a, **kw: _mock_response(two_features),
     )
     geom = json.dumps({"xmin": 9.9, "ymin": 53.4, "xmax": 10.2, "ymax": 53.6})
@@ -122,7 +122,7 @@ def test_locate_tiles_envelope_geometry(monkeypatch) -> None:
 
 def test_summarize_tiles_has_correct_provider_and_dataset(monkeypatch) -> None:
     monkeypatch.setattr(
-        "multiplanner_api.hh.requests.get",
+        "multiplanner_api.hh.get_with_ssl_fallback",
         lambda *a, **kw: _mock_response([SAMPLE_FEATURE]),
     )
     config = SERVICE_PROVIDERS["lgv-hh"]["datasets"]["dgm1"]
@@ -144,7 +144,7 @@ def test_locate_tiles_raises_for_oversized_area(monkeypatch) -> None:
         for i in range(101)
     ]
     monkeypatch.setattr(
-        "multiplanner_api.hh.requests.get",
+        "multiplanner_api.hh.get_with_ssl_fallback",
         lambda *a, **kw: _mock_response(big_response),
     )
     config = SERVICE_PROVIDERS["lgv-hh"]["datasets"]["dgm1"]

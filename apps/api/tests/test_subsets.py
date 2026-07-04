@@ -1,9 +1,11 @@
 from pathlib import Path
 from types import SimpleNamespace
+import zipfile
 
 import requests
 from fastapi.testclient import TestClient
 
+from multiplanner_api import ellipse_exports
 from multiplanner_api.downloads import download_subset
 from multiplanner_api.main import app
 from multiplanner_api.models import CorridorGeometryInput, DownloadSubsetRequest, LocateSubsetRequest
@@ -32,6 +34,14 @@ def tile_dict(provider: str, dataset: str) -> dict[str, object]:
 def single_tile_response() -> SimpleNamespace:
     tile = SimpleNamespace(tile_id="tile-a", primary_url="https://example.invalid/tile-a.tif")
     return SimpleNamespace(results=[SimpleNamespace(dataset="dgm1", tiles=[tile])])
+
+
+def two_tile_response() -> SimpleNamespace:
+    tiles = [
+        SimpleNamespace(tile_id="tile-a", primary_url="https://example.invalid/tile-a.tif"),
+        SimpleNamespace(tile_id="tile-b", primary_url="https://example.invalid/tile-b.tif"),
+    ]
+    return SimpleNamespace(results=[SimpleNamespace(dataset="dgm1", tiles=tiles)])
 
 
 def fake_locate_response(request) -> dict[str, object]:
@@ -167,6 +177,19 @@ def test_download_subset_retries_tiff_downloads_without_ssl_verification(monkeyp
     assert target.read_bytes() == b"tile-bytes"
 
 
+def test_download_subset_retries_transient_tile_download_once(monkeypatch, tmp_path) -> None:
+    calls = []
+    patch_download_settings(monkeypatch, tmp_path)
+    monkeypatch.setattr("multiplanner_api.downloads.requests.Session", fake_timeout_once_session(calls))
+
+    response = download_subset(corridor_download_request("timeout-retry"))
+
+    target = tmp_path / "cache" / "saved_subsets" / "timeout-retry" / "dgm1" / "tile-a.tif"
+    assert calls == [True, True]
+    assert response.file_count == 1
+    assert target.read_bytes() == b"tile-bytes"
+
+
 def test_download_subset_ignores_environment_proxies(monkeypatch, tmp_path) -> None:
     trust_env_values = []
     patch_download_settings(monkeypatch, tmp_path)
@@ -174,6 +197,136 @@ def test_download_subset_ignores_environment_proxies(monkeypatch, tmp_path) -> N
     response = download_subset(corridor_download_request("proxy-bypass"))
     assert response.file_count == 1
     assert trust_env_values == [False]
+
+
+def test_download_subset_reports_missing_files_and_skips_export(monkeypatch, tmp_path) -> None:
+    patch_download_settings(monkeypatch, tmp_path)
+    monkeypatch.setattr("multiplanner_api.downloads.locate_subsets", lambda _request: two_tile_response())
+
+    def fake_download(url, target_path):
+        if url.endswith("tile-b.tif"):
+            raise RuntimeError("network timeout")
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_bytes(b"tile-bytes")
+
+    monkeypatch.setattr("multiplanner_api.downloads._download_file", fake_download)
+    response = download_subset(corridor_download_request("partial-download"))
+
+    assert response.expected_file_count == 2
+    assert response.file_count == 1
+    assert response.failed_downloads[0].tile_id == "tile-b"
+    assert response.exports == []
+    assert "Export skipped because 1 identified source file(s) failed to download." in response.warnings
+
+
+def test_download_subset_returns_export_conversion_warnings(monkeypatch, tmp_path) -> None:
+    patch_download_settings(monkeypatch, tmp_path)
+
+    def fake_download(_url, target_path):
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_bytes(b"tile-bytes")
+
+    monkeypatch.setattr("multiplanner_api.downloads._download_file", fake_download)
+    monkeypatch.setattr(
+        "multiplanner_api.downloads._export_subset",
+        lambda *_args: ([], ["UTM32N GeoTIFF + TAB export failed for dgm1: conversion stopped."]),
+    )
+
+    response = download_subset(corridor_download_request("export-warning"))
+
+    assert response.file_count == 1
+    assert response.exports == []
+    assert response.warnings == ["UTM32N GeoTIFF + TAB export failed for dgm1: conversion stopped."]
+
+
+def test_download_subset_warns_when_bw_package_has_missing_child_rasters(monkeypatch, tmp_path) -> None:
+    patch_download_settings(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        "multiplanner_api.downloads.locate_subsets",
+        lambda _request: SimpleNamespace(
+            results=[
+                SimpleNamespace(
+                    dataset="dom1",
+                    tiles=[
+                        SimpleNamespace(
+                            tile_id="bw_dom1_475_5288",
+                            primary_url="https://opengeodata.lgl-bw.de/data/dom1/dom1_32_475_5288_2_bw.zip",
+                        )
+                    ],
+                )
+            ]
+        ),
+    )
+
+    def fake_download(_url, target_path):
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(target_path, "w") as zf:
+            zf.writestr("dom1_32_475_5288_1_bw_2020.tif", b"tif")
+            zf.writestr("dom1_32_476_5288_1_bw_2020.tif", b"tif")
+
+    monkeypatch.setattr("multiplanner_api.downloads._download_file", fake_download)
+    monkeypatch.setattr("multiplanner_api.downloads._export_subset", lambda *_args: (["export.tif"], []))
+
+    response = download_subset(DownloadSubsetRequest(provider="lgl-bw", datasets=["dom1"], selection_name="partial-bw", geometry=corridor_geometry()))
+
+    assert response.exports == ["export.tif"]
+    assert response.warnings == [
+        "lgl-bw/dom1/bw_dom1_475_5288 package contains 2 of 4 expected raster file(s); exported mosaic may have gaps."
+    ]
+
+
+def test_ascii_zip_sources_are_converted_before_export(monkeypatch, tmp_path) -> None:
+    source = tmp_path / "dgm1_32_513_5402_1_bw_2023.xyz"
+    source.write_text("513000 5402000 250\n", encoding="ascii")
+    commands = []
+
+    def fake_run_gdal(command, _environment):
+        commands.append(command)
+        Path(command[-1]).write_bytes(b"tif")
+
+    monkeypatch.setattr(ellipse_exports, "_run_gdal", fake_run_gdal)
+    result = ellipse_exports._prepare_export_source(source, tmp_path / "gdal_translate.exe", {})
+
+    assert result.name == "dgm1_32_513_5402_1_bw_2023.xyz.tif"
+    assert commands[0][commands[0].index("-a_srs") + 1] == "EPSG:25832"
+
+
+def test_ellipse_export_with_pyramids_runs_gdaladdo(monkeypatch, tmp_path) -> None:
+    source = tmp_path / "tile.tif"
+    source.write_bytes(b"tif")
+    commands = []
+
+    def fake_run_gdal(command, _environment):
+        commands.append(command)
+        if command[0].endswith("gdalbuildvrt.exe"):
+            Path(command[1]).write_text("vrt", encoding="ascii")
+        elif command[0].endswith("gdalwarp.exe"):
+            Path(command[-1]).write_bytes(b"tif")
+        elif command[0].endswith("gdalinfo.exe"):
+            return SimpleNamespace(stdout='{"coordinateSystem":{"wkt":"ID[\\"EPSG\\",32632]"},"size":[10,10],"cornerCoordinates":{"upperLeft":[0,10],"upperRight":[10,10],"lowerRight":[10,0],"lowerLeft":[0,0]}}')
+        return SimpleNamespace(stdout="")
+
+    monkeypatch.setattr(ellipse_exports, "_run_gdal", fake_run_gdal)
+
+    export_dir = tmp_path / "export"
+    export_dir.mkdir()
+    environment = {}
+    exports = ellipse_exports._export_ellipse_dataset(
+        "dgm1",
+        [source],
+        export_dir,
+        tmp_path / "gdalbuildvrt.exe",
+        tmp_path / "gdalwarp.exe",
+        tmp_path / "gdalinfo.exe",
+        tmp_path / "gdaladdo.exe",
+        environment,
+        "demo",
+        True,
+    )
+
+    assert any(command[0].endswith("gdaladdo.exe") for command in commands)
+    assert exports[0].endswith(".tif")
+    assert exports[1].endswith(".TAB")
 
 
 def fake_retrying_session(
@@ -198,6 +351,26 @@ def fake_retrying_session(
             calls.append(verify)
             if fail_first and verify and len(calls) == 1:
                 raise requests.exceptions.SSLError("certificate verify failed")
+            return FakeResponse()
+
+    return FakeSession
+
+
+def fake_timeout_once_session(calls: list[bool]):
+    class FakeSession:
+        def __init__(self):
+            self.trust_env = True
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def get(self, url, *, stream, timeout, verify):
+            calls.append(verify)
+            if len(calls) == 1:
+                raise requests.exceptions.ReadTimeout("read timed out")
             return FakeResponse()
 
     return FakeSession

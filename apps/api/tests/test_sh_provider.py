@@ -267,7 +267,7 @@ def test_load_index_uses_cached_file(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr("multiplanner_api.sh._cache_path", lambda dataset: cache_file)
     fetch_called = []
     monkeypatch.setattr(
-        "multiplanner_api.sh.requests.get",
+        "multiplanner_api.sh.get_with_ssl_fallback",
         lambda *a, **kw: fetch_called.append(1) or _mock_geojson_response([]),
     )
     result = _load_index("dgm1", timeout=5)
@@ -279,7 +279,7 @@ def test_load_index_fetches_when_cache_missing(monkeypatch, tmp_path) -> None:
     cache_file = tmp_path / "geodaten_sh_dgm1.json"
     monkeypatch.setattr("multiplanner_api.sh._cache_path", lambda dataset: cache_file)
     monkeypatch.setattr(
-        "multiplanner_api.sh.requests.get",
+        "multiplanner_api.sh.get_with_ssl_fallback",
         lambda *a, **kw: _mock_geojson_response([SAMPLE_GEOJSON_FEATURE]),
     )
     result = _load_index("dgm1", timeout=5)
@@ -297,7 +297,7 @@ def test_load_index_refetches_stale_cache(monkeypatch, tmp_path) -> None:
     os.utime(cache_file, (stale_mtime, stale_mtime))
     monkeypatch.setattr("multiplanner_api.sh._cache_path", lambda dataset: cache_file)
     monkeypatch.setattr(
-        "multiplanner_api.sh.requests.get",
+        "multiplanner_api.sh.get_with_ssl_fallback",
         lambda *a, **kw: _mock_geojson_response([SAMPLE_GEOJSON_FEATURE]),
     )
     result = _load_index("dgm1", timeout=5)

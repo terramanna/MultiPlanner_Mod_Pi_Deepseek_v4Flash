@@ -20,6 +20,8 @@ from multiplanner_api.models import (
     LocateSubsetRequest,
     LocateSubsetResponse,
     OpenFolderRequest,
+    PathProfileRequest,
+    PathProfileResponse,
     MultiProbeRequest,
     MultiProbeResponse,
     PointProbeRequest,
@@ -29,6 +31,7 @@ from multiplanner_api.models import (
     TilePreviewResponse,
 )
 from multiplanner_api.network_overlay import load_network_geojson
+from multiplanner_api.path_profile import build_path_profile
 from multiplanner_api.point_probe import preview_tile, probe_point, probe_point_multi
 from multiplanner_api.providers import SERVICE_PROVIDERS
 from multiplanner_api.raster_tiles import render_cached_tile
@@ -68,9 +71,15 @@ def read_config() -> ConfigResponse:
 
 
 @app.get("/api/v1/search/places", response_model=SearchPlacesResponse)
-def search_place_candidates(q: str) -> SearchPlacesResponse:
+def search_place_candidates(
+    q: str,
+    west: float | None = None,
+    south: float | None = None,
+    east: float | None = None,
+    north: float | None = None,
+) -> SearchPlacesResponse:
     try:
-        return search_places(q)
+        return search_places(q, west=west, south=south, east=east, north=north)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -91,6 +100,14 @@ def probe_remote_point(request: PointProbeRequest) -> PointProbeResponse:
 @app.post("/api/v1/probe/multi", response_model=MultiProbeResponse)
 def probe_remote_multi(request: MultiProbeRequest) -> MultiProbeResponse:
     return probe_point_multi(request)
+
+
+@app.post("/api/v1/profile/path", response_model=PathProfileResponse)
+def profile_remote_path(request: PathProfileRequest) -> PathProfileResponse:
+    try:
+        return build_path_profile(request)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/v1/probe/tile-preview", response_model=TilePreviewResponse)

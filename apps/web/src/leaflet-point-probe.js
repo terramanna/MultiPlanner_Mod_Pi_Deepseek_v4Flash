@@ -54,11 +54,7 @@ export function createPointProbe(map, apiBaseUrl, getProvider, getDataset = () =
     }
   }
 
-  function isActive() {
-    return active;
-  }
-
-  return { toggle, probe, isActive, setHoverMode, sampleNow };
+  return { toggle, probe, isActive: () => active, setHoverMode, sampleNow };
 }
 
 async function _fetchMultiProbe(apiBaseUrl, provider, lat, lon) {

@@ -19,6 +19,22 @@ class SearchCandidate(BaseModel):
     lon: float
     lat: float
     source: str
+    link_name: str | None = None
+    distance_m: float | None = None
+    site_a_name: str | None = None
+    site_a_label: str | None = None
+    site_a_id: str | None = None
+    site_a_type: str | None = None
+    site_a_structure: str | None = None
+    site_a_lon: float | None = None
+    site_a_lat: float | None = None
+    site_b_name: str | None = None
+    site_b_label: str | None = None
+    site_b_id: str | None = None
+    site_b_type: str | None = None
+    site_b_structure: str | None = None
+    site_b_lon: float | None = None
+    site_b_lat: float | None = None
 
 
 class SearchPlacesResponse(BaseModel):
@@ -135,13 +151,23 @@ class DownloadedFile(BaseModel):
     saved_path: str
 
 
+class DownloadFailure(BaseModel):
+    provider: str
+    dataset: str
+    tile_id: str | None = None
+    source_url: str | None = None
+    reason: str
+
+
 class DownloadSubsetResponse(BaseModel):
     provider: str
     selection_name: str
     export_profile: str
     output_dir: str
+    expected_file_count: int = 0
     file_count: int
     files: list[DownloadedFile]
+    failed_downloads: list[DownloadFailure] = []
     exports: list[str] = []
     warnings: list[str] = []
     total_estimated_source_bytes: int = 0
@@ -163,6 +189,50 @@ class MultiProbeResponse(BaseModel):
     ndsm_m: float | None = None
     dgm_error: str | None = None
     dom_error: str | None = None
+
+
+class ProfileEndpointInput(BaseModel):
+    lon: float
+    lat: float
+    height_m: float = 0.0
+
+
+class PathProfileRequest(BaseModel):
+    provider: str = "auto"
+    source: Literal["dgm1", "dom1", "dgm1_dom1"] = "dgm1_dom1"
+    site_a: ProfileEndpointInput
+    site_b: ProfileEndpointInput
+    antenna_height_m: float = 30.0
+    frequency_mhz: float = 6000.0
+    fresnel_zone: int = 1
+    sample_count: int = 33
+
+
+class PathProfileSample(BaseModel):
+    index: int
+    ratio: float
+    lon: float
+    lat: float
+    distance_m: float
+    los_height_m: float
+    fresnel_radius_m: float
+    fresnel_lower_m: float
+    dgm_m: float | None = None
+    dom_m: float | None = None
+    selected_height_m: float | None = None
+    clearance_m: float | None = None
+    error: str | None = None
+
+
+class PathProfileResponse(BaseModel):
+    provider: str
+    source: str
+    distance_m: float
+    antenna_height_m: float
+    frequency_mhz: float
+    fresnel_zone: int
+    samples: list[PathProfileSample]
+    warnings: list[str] = []
 
 
 class OpenFolderRequest(BaseModel):

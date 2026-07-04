@@ -45,7 +45,7 @@ async function runCorridorDownload(context) {
   const payload = await requestSubsetDownload(context);
   const saved = await saveSubsetPayloadToDirectory(context.apiBaseUrl, payload, rootDirectoryHandle);
   context.state.lastDownloadedOutputDir = payload.output_dir || null;
-  context.btnOpenDownloadFolder.hidden = !context.state.lastDownloadedOutputDir || !context.openFolderAfterDownload.checked;
+  context.btnOpenDownloadFolder.hidden = !context.state.lastDownloadedOutputDir;
   context.lookupStatus.textContent = formatCorridorDownloadStatus(saved, payload);
   await openOutputFolderAfterDownload(context, saved, payload);
 }

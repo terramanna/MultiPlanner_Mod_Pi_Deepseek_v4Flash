@@ -3,6 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from multiplanner_api import point_probe
+from multiplanner_api.models import MultiProbeRequest, PointProbeResponse
 
 
 def test_sample_height_calls_gdallocationinfo(monkeypatch, tmp_path):
@@ -46,6 +47,22 @@ def test_resolve_sample_path_prefers_tif(tmp_path):
     assert result == tif.resolve()
 
 
+def test_resolve_sample_path_prefers_bw_child_tif_covering_point(tmp_path):
+    wrong = tmp_path / "dgm1_32_476_5290_1_bw_2020.tif"
+    right = tmp_path / "dgm1_32_475_5291_1_bw_2020.tif"
+    wrong.touch()
+    right.touch()
+
+    result = point_probe._resolve_sample_path(
+        [wrong, right],
+        "lgl-bw",
+        lon=8.676077,
+        lat=47.778819,
+    )
+
+    assert result == right.resolve()
+
+
 def test_resolve_sample_path_converts_xyz_for_known_provider(monkeypatch, tmp_path):
     xyz = tmp_path / "tile.xyz"
     xyz.touch()
@@ -53,6 +70,29 @@ def test_resolve_sample_path_converts_xyz_for_known_provider(monkeypatch, tmp_pa
     monkeypatch.setattr(point_probe, "_xyz_to_geotiff", lambda path, crs: converted)
     result = point_probe._resolve_sample_path([xyz], "lgv-hh")
     assert result == converted.resolve()
+
+
+def test_resolve_sample_path_converts_bw_child_xyz_covering_point(monkeypatch, tmp_path):
+    wrong = tmp_path / "dgm1_32_476_5290_1_bw_2020.xyz"
+    right = tmp_path / "dgm1_32_475_5291_1_bw_2020.xyz"
+    wrong.touch()
+    right.touch()
+    chosen = []
+
+    def fake_convert(path, _crs):
+        chosen.append(path)
+        return path.with_suffix(".tif")
+
+    monkeypatch.setattr(point_probe, "_xyz_to_geotiff", fake_convert)
+    result = point_probe._resolve_sample_path(
+        [wrong, right],
+        "lgl-bw",
+        lon=8.676077,
+        lat=47.778819,
+    )
+
+    assert chosen == [right]
+    assert result == right.with_suffix(".tif").resolve()
 
 
 def test_resolve_sample_path_raises_for_xyz_unknown_provider(tmp_path):
@@ -96,8 +136,12 @@ def test_xyz_to_geotiff_calls_gdal_translate(monkeypatch, tmp_path):
 
 
 def test_provider_xyz_crs_covers_known_xyz_providers():
-    for provider in ("lgv-hh", "lginf-hb", "gdi-be"):
+    for provider in ("lgl-bw", "lgv-hh", "lginf-hb", "gdi-be"):
         assert provider in point_probe._PROVIDER_XYZ_CRS
+
+
+def test_bw_crs_is_utm32():
+    assert point_probe._PROVIDER_XYZ_CRS["lgl-bw"] == "EPSG:25832"
 
 
 def test_hh_crs_is_utm32():
@@ -124,7 +168,7 @@ def test_probe_elevation_api_calls_correct_url(monkeypatch):
         captured["params"] = params
         return SimpleNamespace(text="35.29", raise_for_status=lambda: None)
 
-    monkeypatch.setattr(point_probe.requests, "get", fake_get)
+    monkeypatch.setattr(point_probe, "get_with_ssl_fallback", fake_get)
     result = point_probe._probe_elevation_api(
         "https://isk.geobasis-bb.de/elevation/latlon/point", "EPSG:25833", 13.0622, 52.3906
     )
@@ -139,7 +183,7 @@ def test_probe_elevation_api_calls_correct_url(monkeypatch):
 
 def test_probe_elevation_api_raises_on_empty_response(monkeypatch):
     monkeypatch.setattr(
-        point_probe.requests, "get",
+        point_probe, "get_with_ssl_fallback",
         lambda *a, **k: SimpleNamespace(text="  ", raise_for_status=lambda: None),
     )
     try:
@@ -175,9 +219,37 @@ def test_auto_dgm1_probe_uses_elevation_api_for_bb_point(monkeypatch):
         captured["params"] = params
         return SimpleNamespace(text="42.5", raise_for_status=lambda: None)
 
-    monkeypatch.setattr(point_probe.requests, "get", fake_get)
+    monkeypatch.setattr(point_probe, "get_with_ssl_fallback", fake_get)
     from multiplanner_api.models import PointProbeRequest
     req = PointProbeRequest(provider="auto", dataset="dgm1", lon=12.963, lat=52.197)
     result = point_probe.probe_point(req)
     assert abs(result.height_m - 42.5) < 0.01
     assert "isk.geobasis-bb.de" in captured["url"]
+
+
+def test_multi_auto_probe_reports_rp_dom_as_unsupported_after_dgm_success(monkeypatch):
+    calls = []
+
+    def fake_probe(request):
+        calls.append((request.provider, request.dataset))
+        return PointProbeResponse(
+            provider="lvermgeo-rp",
+            dataset="dgm1",
+            lon=request.lon,
+            lat=request.lat,
+            height_m=283.67,
+            tile_id="dgm1_32_422_5463_1_rp_2022",
+            sampled_path="tile.tif",
+        )
+
+    monkeypatch.setattr(point_probe, "probe_point", fake_probe)
+
+    result = point_probe.probe_point_multi(
+        MultiProbeRequest(provider="auto", lon=7.939253, lat=49.320367)
+    )
+
+    assert result.provider == "lvermgeo-rp"
+    assert result.dgm_m == 283.67
+    assert result.dom_m is None
+    assert result.dom_error == "lvermgeo-rp does not support dom1 point probing."
+    assert calls == [("auto", "dgm1")]

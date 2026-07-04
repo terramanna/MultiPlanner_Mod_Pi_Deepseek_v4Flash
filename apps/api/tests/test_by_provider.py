@@ -113,7 +113,7 @@ def test_locate_tiles_point_geometry_returns_matching_tiles(monkeypatch) -> None
         captured["headers"] = headers
         return fake_response(METALINK_DGM)
 
-    monkeypatch.setattr("multiplanner_api.by.requests.post", fake_post)
+    monkeypatch.setattr("multiplanner_api.by.post_with_ssl_fallback", fake_post)
     config = SERVICE_PROVIDERS["ldbv-by"]["datasets"]["dgm1"]
     tiles = locate_tiles("dgm1", config=config, geometry=BAYERN_POINT, geometry_type="esriGeometryPoint", timeout=5)
     assert captured["url"].endswith("/services/poly2metalink/metalink/dgm1?data=dgm1&service=polygon")
@@ -139,7 +139,7 @@ def test_locate_tiles_supports_dom_and_ortho_datasets(monkeypatch, dataset, meta
         captured["headers"] = headers
         return fake_response(metalink)
 
-    monkeypatch.setattr("multiplanner_api.by.requests.post", fake_post)
+    monkeypatch.setattr("multiplanner_api.by.post_with_ssl_fallback", fake_post)
     config = SERVICE_PROVIDERS["ldbv-by"]["datasets"][dataset]
     tiles = locate_tiles(dataset, config=config, geometry=BAYERN_POINT, geometry_type="esriGeometryPoint", timeout=5)
     assert captured["url"] == expected_url
@@ -155,14 +155,14 @@ def test_locate_tiles_envelope_geometry(monkeypatch) -> None:
     def fake_post(*_args, **_kwargs):
         return fake_response(METALINK_DGM)
 
-    monkeypatch.setattr("multiplanner_api.by.requests.post", fake_post)
+    monkeypatch.setattr("multiplanner_api.by.post_with_ssl_fallback", fake_post)
     tiles = locate_tiles("dgm1", config=config, geometry=geom, geometry_type="esriGeometryEnvelope", timeout=5)
     assert len(tiles) == 2
 
 
 def test_locate_tiles_returns_empty_list_when_metalink_has_no_files(monkeypatch) -> None:
     monkeypatch.setattr(
-        "multiplanner_api.by.requests.post",
+        "multiplanner_api.by.post_with_ssl_fallback",
         lambda *_args, **_kwargs: fake_response('<?xml version="1.0"?><metalink xmlns="urn:ietf:params:xml:ns:metalink"></metalink>'),
     )
     config = SERVICE_PROVIDERS["ldbv-by"]["datasets"]["dgm1"]
@@ -174,14 +174,14 @@ def test_locate_tiles_raises_for_oversized_or_out_of_bounds_geometry(monkeypatch
     def fake_post(*_args, **_kwargs):
         return fake_response("Geometrie zu groß oder außerhalb der Grenzen.", status_code=400)
 
-    monkeypatch.setattr("multiplanner_api.by.requests.post", fake_post)
+    monkeypatch.setattr("multiplanner_api.by.post_with_ssl_fallback", fake_post)
     config = SERVICE_PROVIDERS["ldbv-by"]["datasets"]["dgm1"]
     with pytest.raises(ValueError, match="Bayern selection rejected"):
         locate_tiles("dgm1", config=config, geometry=BAYERN_POINT, geometry_type="esriGeometryPoint", timeout=5)
 
 
 def test_summarize_tiles_has_correct_provider_and_dataset(monkeypatch) -> None:
-    monkeypatch.setattr("multiplanner_api.by.requests.post", lambda *_args, **_kwargs: fake_response(METALINK_DGM))
+    monkeypatch.setattr("multiplanner_api.by.post_with_ssl_fallback", lambda *_args, **_kwargs: fake_response(METALINK_DGM))
     config = SERVICE_PROVIDERS["ldbv-by"]["datasets"]["dgm1"]
     summaries = summarize_tiles("dgm1", config=config, geometry=BAYERN_POINT, geometry_type="esriGeometryPoint", timeout=5)
     assert len(summaries) == 2
@@ -199,7 +199,7 @@ def test_summarize_tiles_has_correct_provider_and_dataset(monkeypatch) -> None:
     ],
 )
 def test_summarize_tiles_uses_dataset_specific_sources(monkeypatch, dataset, metalink, source_url) -> None:
-    monkeypatch.setattr("multiplanner_api.by.requests.post", lambda *_args, **_kwargs: fake_response(metalink))
+    monkeypatch.setattr("multiplanner_api.by.post_with_ssl_fallback", lambda *_args, **_kwargs: fake_response(metalink))
     config = SERVICE_PROVIDERS["ldbv-by"]["datasets"][dataset]
     summaries = summarize_tiles(dataset, config=config, geometry=BAYERN_POINT, geometry_type="esriGeometryPoint", timeout=5)
     assert summaries[0]["provider"] == "ldbv-by"

@@ -19,12 +19,12 @@ import time
 from pathlib import Path
 from typing import Any
 
-import requests
 from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box, shape
 from shapely.ops import transform
 
 from multiplanner_api.config import load_settings
+from multiplanner_api.http_client import get_with_ssl_fallback
 
 WGS84 = "EPSG:4326"
 ETRS89_UTM32 = "EPSG:25832"
@@ -132,7 +132,7 @@ def _load_index(dataset: str, *, timeout: int) -> list[dict]:
     if path.exists() and time.time() - path.stat().st_mtime < CACHE_MAX_AGE_SECONDS:
         return json.loads(path.read_text(encoding="utf-8"))
     cfg = _DATASET_CONFIG[dataset]
-    response = requests.get(_geojson_url(dataset), timeout=timeout)
+    response = get_with_ssl_fallback(_geojson_url(dataset), timeout=timeout)
     response.raise_for_status()
     try:
         payload = response.json()

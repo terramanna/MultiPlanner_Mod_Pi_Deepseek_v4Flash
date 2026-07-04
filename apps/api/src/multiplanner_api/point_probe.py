@@ -1,16 +1,18 @@
 from __future__ import annotations
 
+import math
 import os
 from pathlib import Path
+import re
 import subprocess
 
-import requests
 from pyproj import Transformer
 from pyproj.datadir import get_data_dir
 
 from multiplanner_api.cache_eviction import evict_lru
 from multiplanner_api.config import load_settings
 from multiplanner_api.downloads import _download_file, _expanded_download_paths, _target_filename
+from multiplanner_api.http_client import get_with_ssl_fallback
 
 # Providers that expose a direct elevation REST API for DGM probes.
 # Value is (api_url, native_crs).  Only dgm1 is supported via these APIs.
@@ -29,6 +31,7 @@ _ELEVATION_API_BBOX: dict[str, tuple[float, float, float, float]] = {
 # CRS for providers whose tiles are ASCII XYZ (no embedded CRS).
 # gdal_translate assigns the CRS when converting to GeoTIFF.
 _PROVIDER_XYZ_CRS: dict[str, str] = {
+    "lgl-bw": "EPSG:25832",
     "lgv-hh": "EPSG:25832",
     "lginf-hb": "EPSG:25832",
     "gdi-be": "EPSG:25833",
@@ -56,18 +59,51 @@ from multiplanner_api.subsets import locate_subsets
 
 def probe_point_multi(request: MultiProbeRequest) -> MultiProbeResponse:
     result = MultiProbeResponse(provider=request.provider, lon=request.lon, lat=request.lat)
-    for dataset, dgm_field, err_field in [
-        ("dgm1", "dgm_m", "dgm_error"),
-        ("dom1", "dom_m", "dom_error"),
-    ]:
-        try:
-            r = probe_point(PointProbeRequest(provider=request.provider, dataset=dataset, lon=request.lon, lat=request.lat))
-            setattr(result, dgm_field, r.height_m)
-        except Exception as exc:
-            setattr(result, err_field, str(exc))
+    dgm_probe = _probe_multi_dataset(result, request, "dgm1", "dgm_m", "dgm_error")
+    dom_provider = request.provider
+    if request.provider == "auto" and dgm_probe is not None:
+        result.provider = dgm_probe.provider
+        if not _provider_supports_probe_dataset(dgm_probe.provider, "dom1"):
+            dom_provider = dgm_probe.provider
+    _probe_multi_dataset(result, request, "dom1", "dom_m", "dom_error", provider=dom_provider)
     if result.dgm_m is not None and result.dom_m is not None:
         result.ndsm_m = max(result.dom_m - result.dgm_m, 0.0)
     return result
+
+
+def _probe_multi_dataset(
+    result: MultiProbeResponse,
+    request: MultiProbeRequest,
+    dataset: str,
+    value_field: str,
+    error_field: str,
+    *,
+    provider: str | None = None,
+) -> PointProbeResponse | None:
+    probe_provider = provider or request.provider
+    if not _provider_supports_probe_dataset(probe_provider, dataset):
+        setattr(result, error_field, _unsupported_probe_dataset_message(probe_provider, dataset))
+        return None
+    try:
+        response = probe_point(
+            PointProbeRequest(provider=probe_provider, dataset=dataset, lon=request.lon, lat=request.lat)
+        )
+        setattr(result, value_field, response.height_m)
+        return response
+    except Exception as exc:
+        setattr(result, error_field, str(exc))
+        return None
+
+
+def _provider_supports_probe_dataset(provider: str, dataset: str) -> bool:
+    if provider == "auto":
+        return True
+    from multiplanner_api.providers import provider_dataset_names
+    return dataset in provider_dataset_names(provider)
+
+
+def _unsupported_probe_dataset_message(provider: str, dataset: str) -> str:
+    return f"{provider} does not support {dataset} point probing."
 
 
 def probe_point(request: PointProbeRequest) -> PointProbeResponse:
@@ -114,7 +150,7 @@ def _probe_elevation_api(api_url: str, native_crs: str, lon: float, lat: float) 
     """Query a direct elevation REST API (e.g. LGB Brandenburg) instead of downloading a tile."""
     transformer = Transformer.from_crs("EPSG:4326", native_crs, always_xy=True)
     x, y = transformer.transform(lon, lat)
-    resp = requests.get(api_url, params={"coordinates": f"{x:.3f},{y:.3f}"}, timeout=15)
+    resp = get_with_ssl_fallback(api_url, params={"coordinates": f"{x:.3f},{y:.3f}"}, timeout=15)
     resp.raise_for_status()
     text = resp.text.strip()
     if not text:
@@ -204,7 +240,7 @@ def _prepare_sample_path(request: PointProbeRequest, tile: TileSummary) -> Path:
         _download_file(tile.primary_url or "", target_path)
         s = load_settings()
         evict_lru(Path(s.cache_root) / "raster_tile_sources", s.source_cache_max_bytes)
-    return _resolve_sample_path(_expanded_download_paths(target_path, cache_dir), request.provider)
+    return _resolve_sample_path(_expanded_download_paths(target_path, cache_dir), request.provider, lon=request.lon, lat=request.lat)
 
 
 def _shared_source_cache_dir(provider: str, dataset: str) -> Path:
@@ -213,8 +249,9 @@ def _shared_source_cache_dir(provider: str, dataset: str) -> Path:
     return cache_dir.resolve()
 
 
-def _resolve_sample_path(paths: list[Path], provider: str) -> Path:
-    for path in paths:
+def _resolve_sample_path(paths: list[Path], provider: str, *, lon: float | None = None, lat: float | None = None) -> Path:
+    ordered_paths = _point_ordered_paths(paths, provider, lon=lon, lat=lat)
+    for path in ordered_paths:
         if path.suffix.lower() in {".tif", ".tiff"}:
             missing_srs_crs = _PROVIDER_WCS_MISSING_SRS.get(provider)
             if missing_srs_crs:
@@ -222,10 +259,35 @@ def _resolve_sample_path(paths: list[Path], provider: str) -> Path:
             return path.resolve()
     crs = _PROVIDER_XYZ_CRS.get(provider)
     if crs:
-        for path in paths:
+        for path in ordered_paths:
             if path.suffix.lower() == ".xyz":
                 return _xyz_to_geotiff(path, crs).resolve()
     raise ValueError(f"Point probe: no usable GeoTIFF or known-CRS XYZ tile for {provider}.")
+
+
+def _point_ordered_paths(paths: list[Path], provider: str, *, lon: float | None, lat: float | None) -> list[Path]:
+    point_cell = _point_grid_cell(provider, lon, lat)
+    if point_cell is None:
+        return paths
+    for index, path in enumerate(paths):
+        if _path_grid_cell(path) == point_cell:
+            return [path, *paths[:index], *paths[index + 1:]]
+    return paths
+
+
+def _point_grid_cell(provider: str, lon: float | None, lat: float | None) -> tuple[int, int] | None:
+    crs = _PROVIDER_XYZ_CRS.get(provider) or _PROVIDER_WCS_MISSING_SRS.get(provider)
+    if crs is None or lon is None or lat is None:
+        return None
+    x, y = Transformer.from_crs("EPSG:4326", crs, always_xy=True).transform(lon, lat)
+    return math.floor(x / 1000), math.floor(y / 1000)
+
+
+def _path_grid_cell(path: Path) -> tuple[int, int] | None:
+    match = re.search(r"_32_(\d+)_(\d+)_", path.name)
+    if not match:
+        return None
+    return int(match.group(1)), int(match.group(2))
 
 
 def _assign_srs_if_missing(tif_path: Path, crs: str) -> Path:

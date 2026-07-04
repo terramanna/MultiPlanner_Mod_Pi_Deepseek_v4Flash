@@ -21,12 +21,12 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-import requests
 from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box
 from shapely.ops import transform
 
 from multiplanner_api.config import load_settings
+from multiplanner_api.http_client import get_with_ssl_fallback
 
 WGS84 = "EPSG:4326"
 ETRS89_UTM33 = "EPSG:25833"
@@ -153,7 +153,7 @@ def _load_index(
     if path.exists() and time.time() - path.stat().st_mtime < CACHE_MAX_AGE_SECONDS:
         raw = json.loads(path.read_text(encoding="utf-8"))
         return {(e["x_km"], e["y_km"]): e["url"] for e in raw}
-    response = requests.get(ds_cfg["atom_url"], timeout=timeout)
+    response = get_with_ssl_fallback(ds_cfg["atom_url"], timeout=timeout)
     response.raise_for_status()
     entries = _parse_atom(response.text, ds_cfg["filename_prefix"])
     path.parent.mkdir(parents=True, exist_ok=True)

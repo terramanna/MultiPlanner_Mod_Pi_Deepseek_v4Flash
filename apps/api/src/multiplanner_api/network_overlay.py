@@ -42,6 +42,9 @@ _LINK_SQL = """
         l.bnetza_link_id,
         sa.latitude  AS lat_a, sa.longitude AS lon_a,
         sb.latitude  AS lat_b, sb.longitude AS lon_b,
+        sa.site_name_2 AS site_name2_a, sb.site_name_2 AS site_name2_b,
+        sa.site_type AS site_type_a, sb.site_type AS site_type_b,
+        sa.flags_csv AS flags_a, sb.flags_csv AS flags_b,
         st_a.radio_circuit_planer, st_a.directional_radio_planer,
         st_a.project_id, st_a.project_status, st_a.customer,
         st_a.site_status  AS tracker_status_a,
@@ -143,6 +146,12 @@ def _link_feature(row: sqlite3.Row) -> dict:
             "channel": row["channel"] or "",
             "site_a": row["site_a_name"],
             "site_b": row["site_b_name"],
+            "site_label_a": row["site_name2_a"] or "",
+            "site_label_b": row["site_name2_b"] or "",
+            "site_type_a": row["site_type_a"] or "",
+            "site_type_b": row["site_type_b"] or "",
+            "site_structure_a": _structure_from_flags(row["flags_a"] or ""),
+            "site_structure_b": _structure_from_flags(row["flags_b"] or ""),
             "site_status_a": row["site_status_a"] or "",
             "site_status_b": row["site_status_b"] or "",
             "tracker_status_a": row["tracker_status_a"] or "",
@@ -161,3 +170,12 @@ def _link_feature(row: sqlite3.Row) -> dict:
             "lon_b": row["lon_b"],
         },
     }
+
+
+def _structure_from_flags(flags: str) -> str:
+    known = ("Mast", "Dach", "Kamin", "Grundstück", "Cellular", "Aggregation")
+    values = {value.strip().casefold(): value.strip() for value in flags.split(";") if value.strip()}
+    for label in known:
+        if label.casefold() in values:
+            return values[label.casefold()]
+    return ""

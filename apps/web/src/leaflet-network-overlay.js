@@ -66,7 +66,7 @@ function _buildLinksLayer(features, callbacks) {
       opacity: 0.85,
     }),
     onEachFeature: (feature, layer) => {
-      layer.on("click", () => _openLinkPopup(layer, feature.properties, callbacks));
+      layer.on("click", (event) => _openLinkPopup(layer, feature.properties, callbacks, event.latlng));
     },
   });
 }
@@ -113,7 +113,7 @@ function _openSitePopup(layer, p, callbacks) {
   layer.bindPopup(div, { maxWidth: 300 }).openPopup();
 }
 
-function _openLinkPopup(layer, p, callbacks) {
+function _openLinkPopup(layer, p, callbacks, latlng) {
   const div = L.DomUtil.create("div", "net-popup");
   div.innerHTML =
     `<strong>${p.name}</strong>` +
@@ -129,9 +129,19 @@ function _openLinkPopup(layer, p, callbacks) {
     _sideHtml(p.site_b, p.s_number_b, p.site_status_b, p.tracker_status_b) +
     `<div class="net-popup-actions"><button data-a="corridor">→ Corridor</button></div>`;
   _on(div, "corridor", () => { callbacks.onCorridor(p); layer.closePopup(); });
+  _appendProfileAction(div, () => { callbacks.onProfile?.(p, latlng); layer.closePopup(); });
   layer.bindPopup(div, { maxWidth: 340 }).openPopup();
 }
 
 function _on(container, action, handler) {
   container.querySelector(`[data-a="${action}"]`)?.addEventListener("click", handler);
+}
+
+function _appendProfileAction(container, handler) {
+  const actions = container.querySelector(".net-popup-actions");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = "Profile";
+  button.addEventListener("click", handler);
+  actions?.appendChild(button);
 }

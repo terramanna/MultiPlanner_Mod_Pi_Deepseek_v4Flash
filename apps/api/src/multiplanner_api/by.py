@@ -7,10 +7,11 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
 
-import requests
 from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box
 from shapely.ops import transform
+
+from multiplanner_api.http_client import post_with_ssl_fallback
 
 WGS84 = "EPSG:4326"
 ETRS89_UTM32 = "EPSG:25832"
@@ -27,7 +28,7 @@ def locate_tiles(
     timeout: int,
 ) -> list[dict[str, str]]:
     geom_32 = _to_utm32(request_geometry(geometry, geometry_type))
-    response = requests.post(
+    response = post_with_ssl_fallback(
         config["metalink_url"],
         data=_request_body(geom_32),
         headers={"Content-Type": "text/plain"},

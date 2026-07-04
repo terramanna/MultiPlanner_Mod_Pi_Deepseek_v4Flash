@@ -77,30 +77,56 @@ async function streamSubsetDownload(context, body, rootDirectoryHandle) {
   const response = await postJson(context, "/api/v1/subsets/download-stream", body);
   if (!response.ok) throw new Error(await errorDetail(response, "Download failed"));
   setStatus(context, "Downloading source tiles and building export...");
-  const reader = response.body.getReader();
+  const payload = await readDownloadStream(response.body, context);
+  if (!payload) throw new Error("Download stream ended without result.");
+  if (hasMissingDownloads(payload)) {
+    return handleMissingDownloads(context, body, payload, rootDirectoryHandle);
+  }
+  return handleDownloadSubset(context, body, payload, rootDirectoryHandle);
+}
+
+async function readDownloadStream(body, context) {
+  const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   let payload = null;
   while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+    const chunk = await reader.read();
+    if (chunk.done) return payload;
+    buffer += decoder.decode(chunk.value, { stream: true });
     const parts = buffer.split("\n\n");
     buffer = parts.pop();
-    for (const part of parts) {
-      if (!part.startsWith("data: ")) continue;
-      const event = JSON.parse(part.slice(6));
-      if (event.type === "progress") {
-        setStatus(context, `Downloading tile ${event.current} of ${event.total}…`);
-      } else if (event.type === "done") {
-        payload = event.result;
-      } else if (event.type === "error") {
-        throw new Error(event.message);
-      }
-    }
+    payload = applyStreamParts(parts, context, payload);
   }
-  if (!payload) throw new Error("Download stream ended without result.");
-  return handleDownloadSubset(context, body, payload, rootDirectoryHandle);
+}
+
+function applyStreamParts(parts, context, payload) {
+  let nextPayload = payload;
+  for (const part of parts) {
+    if (!part.startsWith("data: ")) continue;
+    nextPayload = applyStreamEvent(JSON.parse(part.slice(6)), context, nextPayload);
+  }
+  return nextPayload;
+}
+
+function applyStreamEvent(event, context, payload) {
+  if (event.type === "progress") {
+    setStatus(context, `Downloading tile ${event.current} of ${event.total}…`);
+    return payload;
+  }
+  if (event.type === "done") return event.result;
+  if (event.type === "error") throw new Error(event.message);
+  return payload;
+}
+
+async function handleMissingDownloads(context, body, payload, rootDirectoryHandle) {
+  const message = missingDownloadPrompt(payload.failed_downloads);
+  if (context.confirm(message)) {
+    setStatus(context, "Retrying missing source files...");
+    return streamSubsetDownload(context, body, rootDirectoryHandle);
+  }
+  setStatus(context, `Download stopped. ${missingDownloadSummary(payload.failed_downloads)}`);
+  return null;
 }
 
 async function errorDetail(response, fallback) {
@@ -126,10 +152,30 @@ async function handleDownloadSubset(context, body, payload, rootDirectoryHandle)
   context.state.lastDownloadedOutputDir = payload.output_dir || null;
   context.openDownloadFolderButton.hidden = !context.state.lastDownloadedOutputDir;
   const warningHint = payload.warnings?.length ? ` Warnings: ${payload.warnings.join("; ")}.` : "";
-  const exportLabel = body.export_profile === "ellipse_mapinfo_tab" ? "UTM32N GeoTIFF + TAB exports" : "GRD exports";
+  const exportLabel = exportProfileLabel(body.export_profile);
   setStatus(context, `Saved ${saved.sourceFileCount} source files and ${saved.exportFileCount} ${exportLabel} to ${saved.rootName}\\${saved.selectionName}.${warningHint}`);
   renderTiles(payload.files.map((file) => ({ provider: file.provider, dataset: file.dataset, tileId: file.tile_id, path: file.saved_path })), context.document);
   await maybeOpenOutputFolder(context);
+}
+
+function hasMissingDownloads(payload) {
+  return Boolean(payload.failed_downloads?.length);
+}
+
+function exportProfileLabel(exportProfile) {
+  if (exportProfile === "ellipse_mapinfo_tab") return "UTM32N GeoTIFF + TAB exports";
+  if (exportProfile === "ellipse_mapinfo_tab_pyramids") return "UTM32N GeoTIFF + TAB + pyramid exports";
+  return "GRD exports";
+}
+
+export function missingDownloadSummary(failures) {
+  const shown = failures.slice(0, 8).map((failure) => `${failure.provider}/${failure.dataset}/${failure.tile_id || "unnamed-tile"}`);
+  const extra = failures.length > shown.length ? ` and ${failures.length - shown.length} more` : "";
+  return `Missing ${failures.length} identified file(s): ${shown.join(", ")}${extra}.`;
+}
+
+export function missingDownloadPrompt(failures) {
+  return `${missingDownloadSummary(failures)}\n\nRetry the missing files now? Choose Cancel to stop without saving an incomplete export.`;
 }
 
 async function maybeOpenOutputFolder(context) {

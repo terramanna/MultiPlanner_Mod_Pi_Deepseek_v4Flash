@@ -3,11 +3,11 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import requests
 from pyproj import Transformer
 from shapely.geometry import LineString
 from shapely.ops import transform
 
+from multiplanner_api.http_client import post_with_ssl_fallback
 from multiplanner_api.bb import locate_tiles as locate_bb_tiles
 from multiplanner_api.bb import summarize_tiles as summarize_bb_tiles
 from multiplanner_api.bw import locate_tiles as locate_bw_tiles
@@ -368,7 +368,7 @@ def locate_remote_tiles(
         return locator(dataset, config=_dataset_config(provider, dataset), geometry=geometry, geometry_type=geometry_type, timeout=timeout)
 
     config = _dataset_config(provider, dataset)
-    response = requests.post(
+    response = post_with_ssl_fallback(
         config["query_url"],
         data=_query_params(geometry=geometry, geometry_type=geometry_type),
         timeout=timeout,

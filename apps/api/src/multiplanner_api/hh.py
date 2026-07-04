@@ -14,8 +14,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import requests
 from shapely.geometry import Point, Polygon, box
+
+from multiplanner_api.http_client import get_with_ssl_fallback
 
 MAX_TILES_PER_DATASET = 100
 PROVIDER_ID = "lgv-hh"
@@ -136,7 +137,7 @@ def _query_ogc_api(
 
     Hamburg has 244 2km tiles; limit=300 fetches them all in one request.
     """
-    response = requests.get(
+    response = get_with_ssl_fallback(
         _OGC_API_URL,
         params={"bbox": f"{west},{south},{east},{north}", "f": "json", "limit": 300},
         timeout=timeout,

@@ -127,6 +127,7 @@ function renderExportOptions() {
       <legend>Export format</legend>
       <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_grd" checked /> GRD</label>
       <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_mapinfo_tab" /> UTM32N GeoTIFF + TAB</label>
+      <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_mapinfo_tab_pyramids" /> UTM32N GeoTIFF + TAB + pyramids</label>
     </fieldset>`;
 }
 

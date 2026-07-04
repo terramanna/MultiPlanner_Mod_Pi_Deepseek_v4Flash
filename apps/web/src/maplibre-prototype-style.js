@@ -8,67 +8,29 @@ export function mapStyle(apiBaseUrl) {
 
 function rasterSources(apiBaseUrl) {
   return {
-    osm: {
-      type: "raster",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      attribution: "OpenStreetMap contributors",
-    },
-    "nrw-dop": {
-      type: "raster",
-      tiles: [wmsUrl("https://www.wms.nrw.de/geobasis/wms_nw_dop", "nw_dop_rgb", "image/jpeg")],
-      tileSize: 256,
-      attribution: "Geobasis NRW",
-    },
-    "nrw-topo": {
-      type: "raster",
-      tiles: [wmsUrl("https://www.wms.nrw.de/geobasis/wms_nw_dtk", "nw_dtk_col", "image/png")],
-      tileSize: 256,
-      attribution: "Geobasis NRW",
-    },
-    "nrw-dtm": {
-      type: "raster",
-      tiles: [wmsUrl("https://www.wms.nrw.de/geobasis/wms_nw_dgm-schummerung", "nw_dgm-schummerung_col", "image/png")],
-      tileSize: 256,
-      attribution: "Geobasis NRW",
-    },
-    "nrw-dhm-overview": {
-      type: "raster",
-      tiles: [wmsUrl("https://www.wms.nrw.de/geobasis/wms_nw_dhm-uebersicht", "nw_dhm-uebersicht_planung_2024-2028", "image/png")],
-      tileSize: 256,
-      attribution: "Geobasis NRW",
-    },
-    "nrw-ndom50-wms": {
-      type: "raster",
-      tiles: [wmsUrl("https://www.wms.nrw.de/geobasis/wms_nw_ndom", "nw_ndom", "image/png")],
-      tileSize: 256,
-      attribution: "Geobasis NRW",
-    },
-    "nrw-dgm1-local": {
-      type: "raster",
-      tiles: [`${apiBaseUrl}/api/v1/tiles/geobasis-nrw/dgm1/{z}/{x}/{y}.png`],
-      tileSize: 256,
-      attribution: "Geobasis NRW, local cache",
-    },
-    "nrw-dom1-local": {
-      type: "raster",
-      tiles: [`${apiBaseUrl}/api/v1/tiles/geobasis-nrw/dom1/{z}/{x}/{y}.png`],
-      tileSize: 256,
-      attribution: "Geobasis NRW, local cache",
-    },
-    "nrw-dom1-hillshade-local": {
-      type: "raster",
-      tiles: [`${apiBaseUrl}/api/v1/tiles/geobasis-nrw/dom1hs/{z}/{x}/{y}.png`],
-      tileSize: 256,
-      attribution: "Geobasis NRW, local cache",
-    },
-    "nrw-ndsm-local": {
-      type: "raster",
-      tiles: [`${apiBaseUrl}/api/v1/tiles/geobasis-nrw/ndsm/{z}/{x}/{y}.png`],
-      tileSize: 256,
-      attribution: "Geobasis NRW, local cache",
-    },
+    osm: rasterSource("https://tile.openstreetmap.org/{z}/{x}/{y}.png", "OpenStreetMap contributors"),
+    "nrw-dop": wmsSource("https://www.wms.nrw.de/geobasis/wms_nw_dop", "nw_dop_rgb", "image/jpeg"),
+    "nrw-topo": wmsSource("https://www.wms.nrw.de/geobasis/wms_nw_dtk", "nw_dtk_col", "image/png"),
+    "nrw-dtm": wmsSource("https://www.wms.nrw.de/geobasis/wms_nw_dgm-schummerung", "nw_dgm-schummerung_col", "image/png"),
+    "nrw-dhm-overview": wmsSource("https://www.wms.nrw.de/geobasis/wms_nw_dhm-uebersicht", "nw_dhm-uebersicht_planung_2024-2028", "image/png"),
+    "nrw-ndom50-wms": wmsSource("https://www.wms.nrw.de/geobasis/wms_nw_ndom", "nw_ndom", "image/png"),
+    "nrw-dgm1-local": localSource(apiBaseUrl, "dgm1"),
+    "nrw-dom1-local": localSource(apiBaseUrl, "dom1"),
+    "nrw-dom1-hillshade-local": localSource(apiBaseUrl, "dom1hs"),
+    "nrw-ndsm-local": localSource(apiBaseUrl, "ndsm"),
   };
+}
+
+function wmsSource(baseUrl, layers, format) {
+  return rasterSource(wmsUrl(baseUrl, layers, format), "Geobasis NRW");
+}
+
+function localSource(apiBaseUrl, dataset) {
+  return rasterSource(`${apiBaseUrl}/api/v1/tiles/geobasis-nrw/${dataset}/{z}/{x}/{y}.png`, "Geobasis NRW, local cache");
+}
+
+function rasterSource(url, attribution) {
+  return { type: "raster", tiles: [url], tileSize: 256, attribution };
 }
 
 function rasterLayers() {

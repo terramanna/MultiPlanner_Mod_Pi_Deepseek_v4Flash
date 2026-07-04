@@ -73,6 +73,13 @@ renderProbeReadout();
 renderLayerStatus();
 
 function bindEvents() {
+  bindMapEvents();
+  bindLayerControlEvents();
+  bindProbeControlEvents();
+  bindDomMetricControls();
+}
+
+function bindMapEvents() {
   map.on("load", () => {
     elements.mapStatus.textContent = "Map ready.";
     updateBaseLayerVisibility();
@@ -108,6 +115,9 @@ function bindEvents() {
     finishDomBatchIfReady();
     renderLayerStatus();
   });
+}
+
+function bindLayerControlEvents() {
   elements.baseLayerSelect.addEventListener("change", () => {
     state.currentBaseLayer = elements.baseLayerSelect.value;
     updateBaseLayerVisibility();
@@ -132,6 +142,9 @@ function bindEvents() {
     updateDomOverlay();
     renderDomOverlayReadout();
   });
+}
+
+function bindProbeControlEvents() {
   elements.probeTargetSelect.addEventListener("change", () => {
     state.probe.target = elements.probeTargetSelect.value;
     state.probe.result = null;
@@ -152,6 +165,9 @@ function bindEvents() {
     input.addEventListener("change", handleProbeModeChange);
   }
   elements.probeSampleButton.addEventListener("click", handleManualProbeSample);
+}
+
+function bindDomMetricControls() {
   elements.resetDomMetricsButton.addEventListener("click", () => {
     state.domMetrics = emptyDomMetrics();
     renderLayerStatus();
@@ -183,48 +199,50 @@ function renderLayerStatus() {
 }
 
 function layerStatusText(layerId, metrics) {
-  if (layerId === domSourceId) {
-    const inFlightMs = metrics.batchStartedAt ? Math.round(performance.now() - metrics.batchStartedAt) : 0;
-    const lastBatchMs = metrics.lastBatchDurationMs === null ? "n/a" : `${Math.round(metrics.lastBatchDurationMs)} ms`;
-    return [
-      "Active layer: NRW DOM1 local",
-      `URL template: ${apiBaseUrl}/api/v1/tiles/geobasis-nrw/dom1/{z}/{x}/{y}.png`,
-      `Tiles started: ${metrics.started}`,
-      `Tiles completed: ${metrics.completed}`,
-      `Tiles pending: ${metrics.pending}`,
-      `Current batch age: ${metrics.batchStartedAt ? `${inFlightMs} ms` : "n/a"}`,
-      `Last batch duration: ${lastBatchMs}`,
-    ].join("\n");
-  }
-  if (layerId === "nrw-dgm1-local") {
-    return [
+  if (layerId === domSourceId) return domLayerStatusText(metrics);
+  const staticStatus = staticLayerStatusText(layerId);
+  if (staticStatus) return staticStatus;
+  return `Active layer: ${elements.baseLayerSelect.selectedOptions[0]?.textContent || layerId}`;
+}
+
+function domLayerStatusText(metrics) {
+  const inFlightMs = metrics.batchStartedAt ? Math.round(performance.now() - metrics.batchStartedAt) : 0;
+  const lastBatchMs = metrics.lastBatchDurationMs === null ? "n/a" : `${Math.round(metrics.lastBatchDurationMs)} ms`;
+  return [
+    "Active layer: NRW DOM1 local",
+    `URL template: ${apiBaseUrl}/api/v1/tiles/geobasis-nrw/dom1/{z}/{x}/{y}.png`,
+    `Tiles started: ${metrics.started}`,
+    `Tiles completed: ${metrics.completed}`,
+    `Tiles pending: ${metrics.pending}`,
+    `Current batch age: ${metrics.batchStartedAt ? `${inFlightMs} ms` : "n/a"}`,
+    `Last batch duration: ${lastBatchMs}`,
+  ].join("\n");
+}
+
+function staticLayerStatusText(layerId) {
+  const statuses = {
+    "nrw-dgm1-local": [
       "Active layer: NRW DGM1 local",
       `URL template: ${apiBaseUrl}/api/v1/tiles/geobasis-nrw/dgm1/{z}/{x}/{y}.png`,
       "Meaning: bare-earth terrain raster.",
-    ].join("\n");
-  }
-  if (layerId === "nrw-ndsm-local") {
-    return [
+    ],
+    "nrw-ndsm-local": [
       "Active layer: NRW nDSM local",
       `URL template: ${apiBaseUrl}/api/v1/tiles/geobasis-nrw/ndsm/{z}/{x}/{y}.png`,
       "Meaning: DOM1 minus DGM1. Bare ground should be near 0.",
-    ].join("\n");
-  }
-  if (layerId === "nrw-ndom50-wms") {
-    return [
+    ],
+    "nrw-ndom50-wms": [
       "Active layer: NRW nDOM50 WMS",
       "Service: https://www.wms.nrw.de/geobasis/wms_nw_ndom",
       "Meaning: hosted relative-height display layer. Visual only in this prototype.",
-    ].join("\n");
-  }
-  if (layerId === "nrw-dhm-overview") {
-    return [
+    ],
+    "nrw-dhm-overview": [
       "Active layer: NRW DHM overview WMS",
       "Service: https://www.wms.nrw.de/geobasis/wms_nw_dhm-uebersicht",
       "Meaning: hosted overview layer, not the DOM WCS service.",
-    ].join("\n");
-  }
-  return `Active layer: ${elements.baseLayerSelect.selectedOptions[0]?.textContent || layerId}`;
+    ],
+  };
+  return statuses[layerId]?.join("\n") || "";
 }
 
 function updateDomOverlay() {

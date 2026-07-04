@@ -146,7 +146,7 @@ def test_load_index_fetches_and_caches(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr("multiplanner_api.be._cache_path",
                         lambda ds_cfg: tmp_path / ds_cfg["cache_file"])
     ds_cfg = _DATASET_CONFIG["dgm1"]
-    with patch("multiplanner_api.be.requests.get",
+    with patch("multiplanner_api.be.get_with_ssl_fallback",
                return_value=_mock_response(SAMPLE_DGM1_XML)):
         index = _load_index("dgm1", ds_cfg, timeout=5)
     assert (390, 5818) in index
@@ -159,7 +159,7 @@ def test_load_index_uses_cache_when_fresh(tmp_path, monkeypatch) -> None:
     entries = [{"x_km": 390, "y_km": 5818, "url": f"{DGM1_BASE}/DGM1_390_5818.zip"}]
     cache.write_text(json.dumps(entries), encoding="utf-8")
     monkeypatch.setattr("multiplanner_api.be._cache_path", lambda _: cache)
-    with patch("multiplanner_api.be.requests.get",
+    with patch("multiplanner_api.be.get_with_ssl_fallback",
                side_effect=AssertionError("should not fetch")):
         index = _load_index("dgm1", _DATASET_CONFIG["dgm1"], timeout=5)
     assert (390, 5818) in index
@@ -170,7 +170,7 @@ def test_load_index_uses_cache_when_fresh(tmp_path, monkeypatch) -> None:
 def test_locate_dgm1_point_in_berlin(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr("multiplanner_api.be._cache_path",
                         lambda ds_cfg: tmp_path / ds_cfg["cache_file"])
-    with patch("multiplanner_api.be.requests.get",
+    with patch("multiplanner_api.be.get_with_ssl_fallback",
                return_value=_mock_response(SAMPLE_DGM1_XML)):
         tiles = locate_tiles("dgm1", config=DGM1_CONFIG, geometry=BERLIN_POINT,
                              geometry_type="esriGeometryPoint", timeout=5)
@@ -182,7 +182,7 @@ def test_locate_dgm1_point_in_berlin(monkeypatch, tmp_path) -> None:
 def test_locate_dom1_point_in_berlin(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr("multiplanner_api.be._cache_path",
                         lambda ds_cfg: tmp_path / ds_cfg["cache_file"])
-    with patch("multiplanner_api.be.requests.get",
+    with patch("multiplanner_api.be.get_with_ssl_fallback",
                return_value=_mock_response(SAMPLE_DOM1_XML)):
         tiles = locate_tiles("dom1", config=DOM1_CONFIG, geometry=BERLIN_POINT,
                              geometry_type="esriGeometryPoint", timeout=5)
@@ -194,7 +194,7 @@ def test_locate_dom1_point_in_berlin(monkeypatch, tmp_path) -> None:
 def test_locate_bdom_point_in_berlin(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr("multiplanner_api.be._cache_path",
                         lambda ds_cfg: tmp_path / ds_cfg["cache_file"])
-    with patch("multiplanner_api.be.requests.get",
+    with patch("multiplanner_api.be.get_with_ssl_fallback",
                return_value=_mock_response(SAMPLE_BDOM_XML)):
         tiles = locate_tiles("bdom", config=BDOM_CONFIG, geometry=BERLIN_POINT,
                              geometry_type="esriGeometryPoint", timeout=5)
@@ -206,7 +206,7 @@ def test_locate_bdom_point_in_berlin(monkeypatch, tmp_path) -> None:
 def test_locate_tiles_outside_berlin_returns_empty(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr("multiplanner_api.be._cache_path",
                         lambda ds_cfg: tmp_path / ds_cfg["cache_file"])
-    with patch("multiplanner_api.be.requests.get",
+    with patch("multiplanner_api.be.get_with_ssl_fallback",
                return_value=_mock_response(SAMPLE_DGM1_XML)):
         tiles = locate_tiles("dgm1", config=DGM1_CONFIG, geometry="11.58,48.14",
                              geometry_type="esriGeometryPoint", timeout=5)
@@ -216,7 +216,7 @@ def test_locate_tiles_outside_berlin_returns_empty(monkeypatch, tmp_path) -> Non
 def test_summarize_tiles_has_correct_fields(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr("multiplanner_api.be._cache_path",
                         lambda ds_cfg: tmp_path / ds_cfg["cache_file"])
-    with patch("multiplanner_api.be.requests.get",
+    with patch("multiplanner_api.be.get_with_ssl_fallback",
                return_value=_mock_response(SAMPLE_DGM1_XML)):
         summaries = summarize_tiles("dgm1", config=DGM1_CONFIG, geometry=BERLIN_POINT,
                                     geometry_type="esriGeometryPoint", timeout=5)

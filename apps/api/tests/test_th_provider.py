@@ -186,7 +186,7 @@ def test_load_index_fetches_and_caches(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr("multiplanner_api.th._cache_path",
                         lambda ds_cfg: tmp_path / ds_cfg["cache_file"])
     ds_cfg = _DATASET_CONFIG["dgm"]
-    with patch("multiplanner_api.th.requests.get",
+    with patch("multiplanner_api.th.get_with_ssl_fallback",
                return_value=_mock_response(SAMPLE_DGM_XML)):
         index = _load_index(ds_cfg, timeout=5)
     assert any(e["x_km"] == 628 and e["y_km"] == 5651 for e in index)
@@ -200,7 +200,7 @@ def test_load_index_uses_cache_when_fresh(tmp_path, monkeypatch) -> None:
                 "url": f"{_BASE}/hoehendaten/DGM/dgm_2020-2025/dgm2_628_5651_1_th_2020-2025.zip"}]
     cache.write_text(json.dumps(entries), encoding="utf-8")
     monkeypatch.setattr("multiplanner_api.th._cache_path", lambda _: cache)
-    with patch("multiplanner_api.th.requests.get",
+    with patch("multiplanner_api.th.get_with_ssl_fallback",
                side_effect=AssertionError("should not fetch")):
         index = _load_index(_DATASET_CONFIG["dgm"], timeout=5)
     assert any(e["x_km"] == 628 for e in index)
@@ -211,7 +211,7 @@ def test_load_index_uses_cache_when_fresh(tmp_path, monkeypatch) -> None:
 def test_locate_dgm_point_in_erfurt(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr("multiplanner_api.th._cache_path",
                         lambda ds_cfg: tmp_path / ds_cfg["cache_file"])
-    with patch("multiplanner_api.th.requests.get",
+    with patch("multiplanner_api.th.get_with_ssl_fallback",
                return_value=_mock_response(SAMPLE_DGM_XML)):
         tiles = locate_tiles("dgm", config=DGM_CONFIG, geometry=ERFURT_POINT,
                              geometry_type="esriGeometryPoint", timeout=5)
@@ -224,7 +224,7 @@ def test_locate_dgm_point_in_erfurt(monkeypatch, tmp_path) -> None:
 def test_locate_lod2_point_in_erfurt(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr("multiplanner_api.th._cache_path",
                         lambda ds_cfg: tmp_path / ds_cfg["cache_file"])
-    with patch("multiplanner_api.th.requests.get",
+    with patch("multiplanner_api.th.get_with_ssl_fallback",
                return_value=_mock_response(SAMPLE_LOD2_XML)):
         tiles = locate_tiles("lod2", config=LOD2_CONFIG, geometry=ERFURT_POINT,
                              geometry_type="esriGeometryPoint", timeout=5)
@@ -236,7 +236,7 @@ def test_locate_lod2_point_in_erfurt(monkeypatch, tmp_path) -> None:
 def test_locate_tiles_outside_returns_empty(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr("multiplanner_api.th._cache_path",
                         lambda ds_cfg: tmp_path / ds_cfg["cache_file"])
-    with patch("multiplanner_api.th.requests.get",
+    with patch("multiplanner_api.th.get_with_ssl_fallback",
                return_value=_mock_response(SAMPLE_DGM_XML)):
         tiles = locate_tiles("dgm", config=DGM_CONFIG, geometry=OUTSIDE_POINT,
                              geometry_type="esriGeometryPoint", timeout=5)
@@ -265,7 +265,7 @@ def test_locate_tiles_raises_for_oversized_area(monkeypatch, tmp_path) -> None:
 def test_summarize_tiles_has_correct_fields(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr("multiplanner_api.th._cache_path",
                         lambda ds_cfg: tmp_path / ds_cfg["cache_file"])
-    with patch("multiplanner_api.th.requests.get",
+    with patch("multiplanner_api.th.get_with_ssl_fallback",
                return_value=_mock_response(SAMPLE_DGM_XML)):
         summaries = summarize_tiles("dgm", config=DGM_CONFIG, geometry=ERFURT_POINT,
                                     geometry_type="esriGeometryPoint", timeout=5)

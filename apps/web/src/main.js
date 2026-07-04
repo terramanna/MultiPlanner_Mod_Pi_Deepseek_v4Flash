@@ -3,6 +3,7 @@ import "./style.css";
 import * as Cesium from "cesium";
 import { retryUntilReady } from "./bootstrap-retry.js";
 import { createCorridorFlow } from "./corridor-flow.js";
+import { createLinkProfileWindow } from "./link-profile-window.js";
 
 window.CESIUM_BASE_URL = "/node_modules/cesium/Build/Cesium";
 
@@ -99,9 +100,15 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
     ? { terrain: Cesium.Terrain.fromWorldTerrain() }
     : { terrainProvider: new Cesium.EllipsoidTerrainProvider() })
 });
+const linkProfileWindow = createLinkProfileWindow({
+  parent: document.querySelector(".map-stage"),
+  apiBaseUrl,
+  fetchWithTimeout,
+});
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
+    linkProfileWindow.destroy();
     viewer.destroy();
   });
 }
@@ -146,6 +153,7 @@ lookupPanel.innerHTML = `
     <legend>Export format</legend>
     <label><input type="radio" name="downloadExportProfile" value="ellipse_grd" checked /> GRD</label>
     <label><input type="radio" name="downloadExportProfile" value="ellipse_mapinfo_tab" /> UTM32N GeoTIFF + TAB</label>
+    <label><input type="radio" name="downloadExportProfile" value="ellipse_mapinfo_tab_pyramids" /> UTM32N GeoTIFF + TAB + pyramids</label>
   </fieldset>
   <label class="download-open-toggle"><input id="openFolderAfterDownload" type="checkbox" checked /> Open output folder after download</label>
   <button id="btnOpenDownloadFolder" class="button-ghost download-open-link" type="button" hidden>Open last output folder</button>
@@ -166,6 +174,7 @@ const state = {
   siteAEntity: null,
   siteBEntity: null,
   linkEntity: null,
+  linkProfileDatasets: ["dgm1", "dom1"],
   apiReady: false,
   lastSelectedSearchLabel: null,
   lastDownloadedOutputDir: null
@@ -190,7 +199,7 @@ btnLocate.addEventListener("click", corridorFlow.locate);
 btnDownload.addEventListener("click", corridorFlow.download);
 btnOpenDownloadFolder.addEventListener("click", corridorFlow.openLastDownloadedFolder);
 openFolderAfterDownload.addEventListener("change", () => {
-  btnOpenDownloadFolder.hidden = !(openFolderAfterDownload.checked && state.lastDownloadedOutputDir);
+  btnOpenDownloadFolder.hidden = !state.lastDownloadedOutputDir;
 });
 searchInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
@@ -201,6 +210,11 @@ searchInput.addEventListener("keydown", (event) => {
 
 const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
 handler.setInputAction((movement) => {
+  if (pickedLinkEntity(movement.position)) {
+    openLinkProfileWindow();
+    return;
+  }
+
   const sample = pickSampleFromScreen(movement.position);
   if (!sample) {
     return;
@@ -250,6 +264,7 @@ function clearSelections() {
   state.siteBEntity = null;
   state.linkEntity = null;
   state.lastSelectedSearchLabel = null;
+  linkProfileWindow.close();
   setSelectionMode("A");
   searchResults.innerHTML = "";
   updateReadout();
@@ -356,6 +371,8 @@ function renderLink() {
   }
 
   state.linkEntity = viewer.entities.add({
+    id: "site-a-b-link",
+    name: "Site A to Site B",
     polyline: {
       positions: Cesium.Cartesian3.fromDegreesArrayHeights([
         state.siteA.lon,
@@ -365,10 +382,25 @@ function renderLink() {
         state.siteB.lat,
         state.siteB.height
       ]),
-      width: 3,
+      width: 5,
       material: Cesium.Color.LIME
     }
   });
+}
+
+function pickedLinkEntity(screenPosition) {
+  const picked = viewer.scene.pick(screenPosition);
+  return Cesium.defined(picked) && picked.id === state.linkEntity;
+}
+
+function openLinkProfileWindow() {
+  if (!(state.siteA && state.siteB)) return;
+  linkProfileWindow.open({
+    siteA: state.siteA,
+    siteB: state.siteB,
+    availableDatasets: state.linkProfileDatasets,
+  });
+  searchStatus.textContent = "opened link profile settings";
 }
 
 function siteLabel(kind, sample) {

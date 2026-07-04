@@ -24,10 +24,10 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-import requests
 from shapely.geometry import Point, Polygon, box
 
 from multiplanner_api.config import load_settings
+from multiplanner_api.http_client import get_with_ssl_fallback
 
 PROVIDER_ID = "tlbg-th"
 MAX_TILES_PER_DATASET = 200
@@ -164,7 +164,7 @@ def _load_index(ds_cfg: dict[str, str], *, timeout: int) -> list[dict]:
     path = _cache_path(ds_cfg)
     if path.exists() and time.time() - path.stat().st_mtime < CACHE_MAX_AGE_SECONDS:
         return json.loads(path.read_text(encoding="utf-8"))
-    response = requests.get(ds_cfg["atom_url"], timeout=timeout)
+    response = get_with_ssl_fallback(ds_cfg["atom_url"], timeout=timeout)
     response.raise_for_status()
     entries = _parse_atom(response.text, ds_cfg["href_prefix"])
     path.parent.mkdir(parents=True, exist_ok=True)

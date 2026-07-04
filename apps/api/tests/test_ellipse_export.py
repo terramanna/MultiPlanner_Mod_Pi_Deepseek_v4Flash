@@ -1,14 +1,20 @@
 from pathlib import Path
 import zipfile
 
+import pytest
+
 from multiplanner_api.downloads import (
+    _expanded_download_paths,
+    _extract_supported_sources,
+)
+from multiplanner_api.ellipse_exports import (
     GRD_DRIVER,
     MAPINFO_WGS84_UTM32,
     WGS84_UTM32,
-    _expanded_download_paths,
     _export_for_ellipse,
     _export_grd,
-    _extract_supported_sources,
+    _export_grd_elevation,
+    _translate_to_grd,
     _warp_vrt,
     _write_mapinfo_tab,
 )
@@ -18,8 +24,8 @@ def test_warp_reprojects_the_ellipse_tiff_to_wgs84_utm32(monkeypatch, tmp_path) 
     command = []
 
     monkeypatch.setattr(
-        "multiplanner_api.downloads.subprocess.run",
-        lambda args, check, env: command.extend(args),
+        "multiplanner_api.ellipse_exports.subprocess.run",
+        lambda args, **_kwargs: command.extend(args),
     )
 
     _warp_vrt(Path("gdalwarp.exe"), tmp_path / "dgm1.vrt", tmp_path / "dgm1.tif", {})
@@ -33,11 +39,9 @@ def test_grd_translate_uses_createcopy_with_the_northwood_driver(monkeypatch, tm
     grd_path.write_bytes(b"\x00" * 520)  # stub for _patch_grd_style
 
     monkeypatch.setattr(
-        "multiplanner_api.downloads.subprocess.run",
-        lambda args, check, env: command.extend(args),
+        "multiplanner_api.ellipse_exports.subprocess.run",
+        lambda args, **_kwargs: command.extend(args),
     )
-
-    from multiplanner_api.downloads import _translate_to_grd
 
     _translate_to_grd(Path("gdal_translate.exe"), tmp_path / "dgm1.tif", grd_path, {})
 
@@ -75,9 +79,7 @@ def test_grd_style_flags_patched_to_gradient_after_translate(monkeypatch, tmp_pa
                    'Earth Projection 8, 104, "m", 9, 0, 0.9996, 500000, 0',
                    17.275)
 
-    monkeypatch.setattr("multiplanner_api.downloads.subprocess.run", lambda *a, **k: None)
-
-    from multiplanner_api.downloads import _translate_to_grd
+    monkeypatch.setattr("multiplanner_api.ellipse_exports.subprocess.run", lambda *a, **k: None)
 
     _translate_to_grd(Path("gdal_translate.exe"), tmp_path / "dgm1.tif", grd_path, {})
 
@@ -100,16 +102,14 @@ def test_grd_elevation_warps_to_geotiff_then_createcopies_to_grd(monkeypatch, tm
     calls = []
 
     monkeypatch.setattr(
-        "multiplanner_api.downloads._warp_vrt",
+        "multiplanner_api.ellipse_exports._warp_vrt",
         lambda _gdalwarp, _vrt, tif, _env: calls.append(("warp", Path(tif).suffix)),
     )
     monkeypatch.setattr(
-        "multiplanner_api.downloads._translate_to_grd",
+        "multiplanner_api.ellipse_exports._translate_to_grd",
         lambda _translate, tif, grd, _env: calls.append(("translate", Path(tif).suffix, Path(grd).suffix)),
     )
-    monkeypatch.setattr("multiplanner_api.downloads._write_mapinfo_tab", lambda *_args: None)
-
-    from multiplanner_api.downloads import _export_grd_elevation
+    monkeypatch.setattr("multiplanner_api.ellipse_exports._write_mapinfo_tab", lambda *_args, **_kwargs: None)
 
     exports = _export_grd_elevation(
         "sel_dgm1_3tiles",
@@ -128,7 +128,7 @@ def test_grd_elevation_warps_to_geotiff_then_createcopies_to_grd(monkeypatch, tm
 
 def test_tab_declares_wgs84_utm32(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(
-        "multiplanner_api.downloads.subprocess.run",
+        "multiplanner_api.ellipse_exports.subprocess.run",
         lambda *_args, **_kwargs: type("Result", (), {
             "stdout": '{"size":[2,3],"cornerCoordinates":{"upperLeft":[1,2],"upperRight":[3,2],"lowerRight":[3,0],"lowerLeft":[1,0]}}'
         })(),
@@ -140,24 +140,61 @@ def test_tab_declares_wgs84_utm32(monkeypatch, tmp_path) -> None:
     assert MAPINFO_WGS84_UTM32 in tab_path.read_text(encoding="ascii")
 
 
+def test_tab_validation_rejects_non_utm32_geotiff(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(
+        "multiplanner_api.ellipse_exports.subprocess.run",
+        lambda *_args, **_kwargs: type("Result", (), {
+            "stdout": '{"coordinateSystem":{"wkt":"ID[\\"EPSG\\",25832]"}}'
+        })(),
+    )
+
+    with pytest.raises(ValueError, match="was not reprojected to EPSG:32632"):
+        _write_mapinfo_tab(Path("gdalinfo.exe"), tmp_path / "dgm1.tif", tmp_path / "dgm1.TAB", {}, require_utm32=True)
+
+
 def test_ellipse_export_filename_identifies_selection_dataset_and_tile_count(monkeypatch, tmp_path) -> None:
     gdal_dir = tmp_path / "gdal"
     gdal_dir.mkdir()
     for executable in ("gdalbuildvrt.exe", "gdalwarp.exe", "gdalinfo.exe"):
         (gdal_dir / executable).write_text("", encoding="ascii")
 
-    monkeypatch.setattr("multiplanner_api.downloads._build_vrt", lambda *_args: None)
-    monkeypatch.setattr("multiplanner_api.downloads._warp_vrt", lambda *_args: None)
-    monkeypatch.setattr("multiplanner_api.downloads._write_mapinfo_tab", lambda *_args: None)
+    monkeypatch.setattr("multiplanner_api.ellipse_exports._build_vrt", lambda *_args: None)
+    monkeypatch.setattr("multiplanner_api.ellipse_exports._warp_vrt", lambda *_args: None)
+    monkeypatch.setattr("multiplanner_api.ellipse_exports._write_mapinfo_tab", lambda *_args, **_kwargs: None)
 
-    exports = _export_for_ellipse(
+    exports, warnings = _export_for_ellipse(
         {"dom1": [tmp_path / "a.tif", tmp_path / "b.tif"]},
         tmp_path / "leaflet_polygon",
         str(gdal_dir),
+        build_pyramids=False,
     )
 
+    assert not warnings
     assert Path(exports[0]).name == "leaflet_polygon_dom1_2tiles_utm32n_ellipse.tif"
     assert Path(exports[1]).name == "leaflet_polygon_dom1_2tiles_utm32n_ellipse.TAB"
+
+
+def test_ellipse_geotiff_tab_export_reports_gdal_failures_as_warnings(monkeypatch, tmp_path) -> None:
+    gdal_dir = tmp_path / "gdal"
+    gdal_dir.mkdir()
+    for executable in ("gdalbuildvrt.exe", "gdalwarp.exe", "gdalinfo.exe"):
+        (gdal_dir / executable).write_text("", encoding="ascii")
+
+    def raise_warp_error(*_args):
+        raise ValueError("gdalwarp failed: reprojection failed")
+
+    monkeypatch.setattr("multiplanner_api.ellipse_exports._build_vrt", lambda *_args: None)
+    monkeypatch.setattr("multiplanner_api.ellipse_exports._warp_vrt", raise_warp_error)
+
+    exports, warnings = _export_for_ellipse(
+        {"dgm1": [tmp_path / "a.tif"]},
+        tmp_path / "leaflet_polygon",
+        str(gdal_dir),
+        build_pyramids=False,
+    )
+
+    assert exports == []
+    assert warnings == ["UTM32N GeoTIFF + TAB export failed for dgm1: gdalwarp failed: reprojection failed"]
 
 
 def test_grd_export_writes_a_real_orthophoto_file(monkeypatch, tmp_path) -> None:
@@ -166,9 +203,9 @@ def test_grd_export_writes_a_real_orthophoto_file(monkeypatch, tmp_path) -> None
     for executable in ("gdalbuildvrt.exe", "gdalwarp.exe", "gdalinfo.exe"):
         (gdal_dir / executable).write_text("", encoding="ascii")
 
-    monkeypatch.setattr("multiplanner_api.downloads._build_vrt", lambda *_args: None)
-    monkeypatch.setattr("multiplanner_api.downloads._warp_vrt", lambda *_args: None)
-    monkeypatch.setattr("multiplanner_api.downloads._write_mapinfo_tab", lambda *_args: None)
+    monkeypatch.setattr("multiplanner_api.ellipse_exports._build_vrt", lambda *_args: None)
+    monkeypatch.setattr("multiplanner_api.ellipse_exports._warp_vrt", lambda *_args: None)
+    monkeypatch.setattr("multiplanner_api.ellipse_exports._write_mapinfo_tab", lambda *_args: None)
 
     exports, warnings = _export_grd(
         {"dop20": [tmp_path / "a.tif"]},

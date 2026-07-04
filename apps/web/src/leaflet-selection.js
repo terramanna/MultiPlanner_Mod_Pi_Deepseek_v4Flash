@@ -2,6 +2,7 @@ export function clearLeafletSelection(context) {
   const { state, map, redrawGeometry, refreshReadout, downloadStatus, tileList } = context;
   state.siteA = null;
   state.siteB = null;
+  state.selectedNetworkLink = null;
   state.point = null;
   state.areaStart = null;
   if (state.rectangle) map.removeLayer(state.rectangle);

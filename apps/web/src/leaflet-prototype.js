@@ -8,12 +8,17 @@ import "./leaflet-prototype.css";
 import { retryUntilReady } from "./bootstrap-retry.js";
 import { createPointProbe } from "./leaflet-point-probe.js";
 import { createNetworkOverlay } from "./leaflet-network-overlay.js";
+import { createLeafletLinkProfile } from "./leaflet-link-profile.js";
 import { createLod2Layer } from "./leaflet-bb-lod2.js";
 import { clearLeafletSelection } from "./leaflet-selection.js";
 import { requestLeafletSubset } from "./leaflet-subset-request.js";
 import { bindPersistedInput } from "./persisted-input.js";
 import { renderPrototypeShell } from "./leaflet-prototype-shell.js";
 import { createCoverageOverlay } from "./leaflet-coverage-overlay.js";
+import { addLeafletLayerControl } from "./leaflet-layer-control.js";
+import { applySearchCandidateToState } from "./leaflet-search-results.js";
+import { openSelectedLinkPopup } from "./leaflet-selected-link.js";
+import { buildSearchPlacesUrl } from "./leaflet-search-request.js";
 import { applyProviderSelection, sortProviders } from "./provider-selection.js";
 import {
   currentGeometryFrom,
@@ -24,36 +29,6 @@ import {
   polygonAreaM2,
   renderDatasetChoices,
 } from "./leaflet-prototype-utils.js";
-import {
-  streets,
-  satellite,
-  nrwDop,
-  byDop,
-  thDop,
-  bbDop,
-  hhDop,
-  hbDop,
-  niDop,
-  beDop,
-  snDop,
-  mvDop,
-  heDop,
-  heDgm,
-  heDom,
-  shDop,
-  stDop,
-  bwDop,
-  rpDop,
-  slDop,
-  slDom,
-  nrwTopo,
-  byTopo,
-  nrwHillshade,
-  nrwNdom,
-  bbInspireDom,
-  globalHillshade,
-} from "./leaflet-basemaps.js";
-
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").trim();
 const providerCoverage = {
   "lgln-ni": { stateCode: "NI", color: "#3b82f6", label: "Niedersachsen LGLN" },
@@ -82,44 +57,8 @@ app.innerHTML = renderPrototypeShell(variant);
 
 const map = L.map("leafletMap", { zoomControl: true }).setView([51.1657, 10.4515], 6);
 map.getContainer().classList.add("is-site-placement");
-streets.addTo(map);
 const bbLod2Layer = createLod2Layer(map);
-
-L.control.layers(
-  {
-    Streets: streets,
-    Satellite: satellite,
-    "Baden-Württemberg Ortho (DOP20)": bwDop,
-    "Bayern Ortho (DOP20)": byDop,
-    "Berlin Ortho (DOP20)": beDop,
-    "Brandenburg Ortho (DOP20c)": bbDop,
-    "Bremen Ortho (DOP20)": hbDop,
-    "Hamburg Ortho (DOP)": hhDop,
-    "Hessen Ortho (DOP20)": heDop,
-    "Mecklenburg-Vorpommern Ortho (DOP20)": mvDop,
-    "Niedersachsen Ortho (DOP20)": niDop,
-    "NRW Ortho (DOP)": nrwDop,
-    "Rheinland-Pfalz Ortho (DOP20)": rpDop,
-    "Saarland Ortho (DOP20)": slDop,
-    "Sachsen Ortho (DOP20)": snDop,
-    "Sachsen-Anhalt Ortho (DOP20)": stDop,
-    "Schleswig-Holstein Ortho (DOP20)": shDop,
-    "Thüringen Ortho (DOP)": thDop,
-    "NRW Topo (DTK)": nrwTopo,
-    "Bayern Topo (DTK25)": byTopo
-  },
-  {
-    "Hillshade (global, ESRI)": globalHillshade,
-    "NRW Hillshade (1m DGM)": nrwHillshade,
-    "NRW nDOM50 (relative height)": nrwNdom,
-    "BB DOM (absolute elevation)": bbInspireDom,
-    "BB LoD2 Buildings (height ≥14)": bbLod2Layer,
-    "Hessen DGM1 (AdV-Farbe)": heDgm,
-    "Hessen DOM1 (AdV-Farbe)": heDom,
-    "Saarland DOM1 shaded [eval]": slDom,
-  },
-  { position: "topright" }
-).addTo(map);
+addLeafletLayerControl(L, map, bbLod2Layer);
 L.control.scale({ imperial: false, position: "bottomleft" }).addTo(map);
 const zoomLevelControl = L.control({ position: "bottomleft" });
 zoomLevelControl.onAdd = function (m) {
@@ -166,7 +105,8 @@ const state = {
   isDrawing: false,
   coverageLayers: {},
   coverageFeatures: {},
-  lastDownloadedOutputDir: null
+  lastDownloadedOutputDir: null,
+  selectedNetworkLink: null
 };
 
 const bootstrapAbortController = new AbortController();
@@ -201,10 +141,12 @@ const pointProbe = createPointProbe(
   () => state.provider,
   () => document.getElementById("probeDataset")?.value ?? "multi"
 );
+const linkProfile = createLeafletLinkProfile({ L, map, apiBaseUrl, provider: () => state.provider, fetchFn: fetch });
 const networkOverlay = createNetworkOverlay(map, apiBaseUrl, {
   onSiteA: (p) => { state.activeSite = "A"; placeSample({ lat: p.lat, lon: p.lon }, false); },
   onSiteB: (p) => { state.activeSite = "B"; placeSample({ lat: p.lat, lon: p.lon }, false); },
   onCorridor: (p) => { state.siteA = { lat: p.lat_a, lon: p.lon_a }; state.siteB = { lat: p.lat_b, lon: p.lon_b }; redrawGeometry(); refreshReadout(); },
+  onProfile: (p, latlng) => linkProfile.openNetwork(p, latlng),
 });
 
 if (import.meta.hot) {
@@ -312,6 +254,7 @@ function placeFromMap(latlng) {
 }
 
 function placeSample(sample, panTo) {
+  state.selectedNetworkLink = null;
   if (variant === "corridor") {
     if (state.activeSite === "A") state.siteA = sample;
     if (state.activeSite === "B") state.siteB = sample;
@@ -339,7 +282,7 @@ function redrawGeometry() {
   if (variant === "corridor") {
     if (state.siteA) state.markers.push(circle(state.siteA, "#00c7ff", "A"));
     if (state.siteB) state.markers.push(circle(state.siteB, "#ff9f43", "B"));
-    if (state.siteA && state.siteB) state.line = L.polyline([[state.siteA.lat, state.siteA.lon], [state.siteB.lat, state.siteB.lon]], { color: "#7dff8c", weight: 4 }).addTo(map);
+    if (state.siteA && state.siteB) state.line = L.polyline([[state.siteA.lat, state.siteA.lon], [state.siteB.lat, state.siteB.lon]], { color: "#7dff8c", weight: 4 }).on("click", openSiteLinkActions).addTo(map);
   }
   if (variant === "point" && state.point) state.markers.push(circle(state.point, "#ffdd57", "P"));
 }
@@ -388,7 +331,9 @@ function updateSiteToggleButtons() {
 }
 
 function sampleText(sample) {
-  return sample ? `${sample.lat.toFixed(6)}, ${sample.lon.toFixed(6)}` : "not set";
+  if (!sample) return "not set";
+  const identity = [sample.name, sample.id && `(${sample.id})`].filter(Boolean).join(" ");
+  return `${identity ? `${identity} - ` : ""}${sample.lat.toFixed(6)}, ${sample.lon.toFixed(6)}`;
 }
 
 async function bootstrapApi() {
@@ -460,7 +405,7 @@ async function searchPlaces() {
   searchStatus.textContent = "Searching...";
   searchResults.innerHTML = "";
   try {
-    const response = await fetch(`${apiBaseUrl}/api/v1/search/places?q=${encodeURIComponent(query)}`);
+    const response = await fetch(buildSearchPlacesUrl(apiBaseUrl, query, map.getBounds()));
     if (!response.ok) throw new Error("Search failed");
     const payload = await response.json();
     const candidates = payload.candidates || [];
@@ -482,9 +427,37 @@ async function searchPlaces() {
 }
 
 function chooseCandidate(candidate) {
+  const applied = applySearchCandidateToState({ candidate, state, variant, redrawGeometry, refreshReadout });
+  if (applied.applied) {
+    focusAppliedSearchResult(applied);
+    searchStatus.textContent = applied.status;
+    searchResults.innerHTML = "";
+    return;
+  }
   placeSample({ lat: candidate.lat, lon: candidate.lon }, true);
   searchStatus.textContent = `Placed ${candidate.source} result.`;
   searchResults.innerHTML = "";
+}
+
+function openSiteLinkActions(event) {
+  L.DomEvent.stop(event);
+  openSelectedLinkPopup({
+    L,
+    map,
+    linkProfile,
+    selectedLink: state.selectedNetworkLink,
+    siteA: state.siteA,
+    siteB: state.siteB,
+    onCorridor: () => requestLeafletSubset(subsetRequestContext(), false),
+  }, event);
+}
+
+function focusAppliedSearchResult(applied) {
+  if (applied.bounds) {
+    map.fitBounds(applied.bounds.map((site) => [site.lat, site.lon]), { padding: [32, 32], animate: false });
+  } else if (applied.panTo) {
+    map.setView([applied.panTo.lat, applied.panTo.lon], 14, { animate: false });
+  }
 }
 
 function subsetRequestContext() {
