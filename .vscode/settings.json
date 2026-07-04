@@ -1,5 +1,6 @@
 {
-  "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+  "git.path": "H:\\DevStack\\PortableGit\\bin\\git.exe",
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
   "python.terminal.activateEnvironment": true,
   "python.testing.pytestEnabled": true,
   "python.testing.pytestArgs": [
@@ -12,14 +13,14 @@
       "args": [
         "-NoExit",
         "-Command",
-        "& '${workspaceFolder}\\.venv\\Scripts\\Activate.ps1'"
+        "& '.\\.venv\\Scripts\\Activate.ps1'"
       ]
     },
     "Command Prompt": {
       "path": "cmd.exe",
       "args": [
         "/K",
-        "${workspaceFolder}\\.venv\\Scripts\\activate.bat"
+        ".venv\\Scripts\\activate.bat"
       ]
     },
     "Bash": {
@@ -30,5 +31,12 @@
       ]
     }
   },
-  "terminal.integrated.defaultProfile.windows": "PowerShell"
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "python-envs.pythonProjects": [
+    {
+      "path": ".",
+      "envManager": "ms-python.python:venv",
+      "packageManager": "ms-python.python:pip"
+    }
+  ]
 }
