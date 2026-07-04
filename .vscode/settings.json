@@ -1,5 +1,5 @@
 {
-  "git.path": "H:\\DevStack\\PortableGit\\bin\\git.exe",
+  "git.path": "git.exe",
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
   "python.terminal.activateEnvironment": true,
   "python.testing.pytestEnabled": true,
@@ -24,7 +24,7 @@
       ]
     },
     "Bash": {
-      "path": "H:\\Portable_Apps\\VSCodePortable-x64\\PortableGit\\bin\\bash.exe",
+      "path": "bash.exe",
       "args": [
         "--init-file",
         ".venv/Scripts/activate"
