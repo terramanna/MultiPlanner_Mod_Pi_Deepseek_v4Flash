@@ -6,23 +6,44 @@ without losing work currently held only in dirty checkouts or stale branches.
 Follow `docs/agents/git-workflow.md` throughout. Use focused branches, explicit
 staging, attributable commits, normal merges, and no squash merges.
 
+## Current status and safety notes
+
+`origin/main` is the lead tree through `e5586d8`. It includes the launcher,
+isolated-browser, network-search, link-profile, resumable-download, semantic
+clutter, and separate building/tree GRC work integrated during this run.
+
+- Do not clean the primary dirty worktree before resolving section 3.6. Its
+  categorical export implementation exists only in that dirty diff and in the
+  verified external recovery backup. The helper-level nearest-neighbour test
+  exists, but the real provider/dataset route and an end-to-end export test do
+  not.
+- Do not trust imports from the shared root `.venv` when testing another
+  worktree. Its editable install points at the primary checkout and can produce
+  false `ModuleNotFoundError` failures. Set `PYTHONPATH` to the worktree's
+  `apps/api/src`, or create a worktree-local environment.
+- The primary checkout still contains untracked `archive/video/webinar.mp4`
+  (about 407 MiB) and `.tools/node` (about 143 MiB). Until ignore rules and
+  external archival are complete, never use broad staging such as `git add -A`.
+- The untracked PySide6 status-widget prototype and launcher are preserved in
+  the recovery backup, but the productize/archive decision remains open.
+
 ## 1. Secure the current work
 
-- [ ] Record the current branch, status, worktrees, and commit IDs.
-- [ ] Export the tracked dirty diff as a binary patch outside the repository.
-- [ ] Back up the untracked browser launcher and PySide6 prototype source files.
-- [ ] Exclude `.tools/`, generated rasters, caches, and the webinar from source backups.
-- [ ] Verify the backup before switching branches or removing worktrees.
-- [ ] Confirm the Git identity matches an actor in `config/commit-actors.json`.
+- [x] Record the current branch, status, worktrees, and commit IDs.
+- [x] Export the tracked dirty diff as a binary patch outside the repository.
+- [x] Back up the untracked browser launcher and PySide6 prototype source files.
+- [x] Exclude `.tools/`, generated rasters, caches, and the webinar from source backups.
+- [x] Verify the backup before switching branches or removing worktrees.
+- [x] Confirm the Git identity matches an actor in `config/commit-actors.json`.
 
 ## 2. Establish the lead main worktree
 
-- [ ] Create a clean worktree dedicated to `main`.
-- [ ] Fetch and fast-forward `main` to `origin/main`.
-- [ ] Confirm local `main` and `origin/main` point to the same commit.
-- [ ] Run baseline Python tests, web tests, Ruff, ESLint, build, and size policy.
-- [ ] Fix the Windows-invalid cache-eviction test timestamps on a test-only branch.
-- [ ] Merge the test fix normally and push `main`.
+- [x] Create a clean worktree dedicated to `main`.
+- [x] Fetch and fast-forward `main` to `origin/main`.
+- [x] Confirm local `main` and `origin/main` point to the same commit.
+- [x] Run baseline Python tests, web tests, Ruff, ESLint, build, and size policy.
+- [x] Fix the Windows-invalid cache-eviction test timestamps on a test-only branch.
+- [x] Merge the test fix normally and push `main` (`1b02f7b`).
 
 ## 3. Integrate current WIP in focused branches
 
@@ -34,72 +55,85 @@ before beginning the next branch.
 
 Branch: `fix/launcher-runtime-reliability`
 
-- [ ] Port the service lifecycle and thread-safety changes.
-- [ ] Port project-local Node and Vite execution changes.
-- [ ] Make `bootstrap_local.ps1` provision the runtime required by the launchers,
+- [x] Port the service lifecycle and thread-safety changes.
+- [x] Port project-local Node and Vite execution changes.
+- [x] Make `bootstrap_local.ps1` provision the runtime required by the launchers,
       or revise the launchers to use the runtime that bootstrap already supports.
-- [ ] Preserve the underscore-based launcher filenames.
-- [ ] Verify start, stop, restart, duplicate-widget handling, and setup diagnostics.
+- [x] Preserve the underscore-based launcher filenames.
+- [x] Verify start, stop, restart, duplicate-widget handling, and setup diagnostics.
 - [ ] Verify launcher behavior from a fresh bootstrap.
-- [ ] Commit, push, merge, and push `main`.
+- [x] Commit, push, merge, and push `main` (`bf9e576`).
 
 ### 3.2 Isolated Edge browser
 
 Branch: `fix/isolated-edge-browser`
 
-- [ ] Port `scripts/browser_launcher.py` and its regression tests.
-- [ ] Route automatic opening and the Tk widget Open button through it.
-- [ ] Retain `--user-data-dir`, `--no-first-run`, and
+- [x] Port `scripts/browser_launcher.py` and its regression tests.
+- [x] Route automatic opening and the Tk widget Open button through it.
+- [x] Retain `--user-data-dir`, `--no-first-run`, and
       `--no-default-browser-check`.
-- [ ] Verify the browser opens once after both services become healthy.
-- [ ] Verify ordinary signed-in Edge profiles remain untouched.
-- [ ] Commit, push, merge, and push `main`.
+- [x] Verify the browser opens once after both services become healthy.
+- [x] Verify ordinary signed-in Edge profiles remain untouched.
+- [x] Commit, push, merge, and push `main` (`e237153`).
 
 ### 3.3 Network-search fallback
 
 Branch: `fix/network-search-empty-db-fallback`
 
-- [ ] Port fallback from an empty configured database to static GeoJSON.
-- [ ] Port its focused regression test.
-- [ ] Commit, push, merge, and push `main`.
+- [x] Port fallback from an empty configured database to static GeoJSON.
+- [x] Port its focused regression test.
+- [x] Commit, push, merge, and push `main` (`abd84b7`).
 
 ### 3.4 Link-profile improvements
 
 Branch: `feat/link-profile-followups`
 
-- [ ] Port independent antenna heights for sites A and B.
-- [ ] Port GHz-to-MHz UI conversion.
-- [ ] Port background profile preloading and stale-request protection.
-- [ ] Port bounded parallel terrain probes.
-- [ ] Port probe caching and per-source download locking.
-- [ ] Verify provider-selection behavior remains unchanged.
-- [ ] Run the API profile tests and both link-profile web checks.
-- [ ] Use no more than three cohesive commits.
-- [ ] Push, merge without squashing, and push `main`.
+- [x] Port independent antenna heights for sites A and B.
+- [x] Port GHz-to-MHz UI conversion.
+- [x] Port background profile preloading and stale-request protection.
+- [x] Port bounded parallel terrain probes.
+- [x] Port probe caching and per-source download locking.
+- [x] Verify provider-selection behavior remains unchanged.
+- [x] Run the API profile tests and both link-profile web checks.
+- [x] Use no more than three cohesive commits.
+- [x] Push, merge without squashing, and push `main` (`ea022b5`).
 
 ### 3.5 Resumable downloads and progress
 
 Branch: `feat/resumable-subset-downloads`
 
-- [ ] Port HTTP Range-based `.part` download resumption.
-- [ ] Port per-tile progress metadata and browser progress display.
-- [ ] Fix accounting so failed or missing-URL tiles reach a terminal progress state.
-- [ ] Port directory and job naming behavior.
-- [ ] Preserve deterministic copying and provider-grouped output.
-- [ ] Test resumed, restarted, failed, partial, and successful downloads.
-- [ ] Commit, push, merge, and push `main`.
+- [x] Port HTTP Range-based `.part` download resumption.
+- [x] Port per-tile progress metadata and browser progress display.
+- [x] Fix accounting so failed or missing-URL tiles reach a terminal progress state.
+- [x] Port directory and job naming behavior.
+- [x] Preserve deterministic copying and provider-grouped output.
+- [x] Test resumed, restarted, failed, partial, and successful downloads.
+- [x] Commit, push, merge, and push `main` (`f726e01`).
 
 ### 3.6 Categorical and clutter export
 
 Branch: `feat/categorical-raster-export`
 
 - [ ] Identify the real provider and dataset route supplying categorical rasters.
-- [ ] If no route is planned, preserve the patch externally and defer the branch.
+- [x] Preserve the stranded dirty patch in the verified external backup.
+- [ ] Decide whether to defer it or connect it to a real route.
 - [ ] If proceeding, port nearest-neighbour warping, fixed grid resolution,
       palette validation, and nearest-neighbour pyramids.
 - [ ] Add an end-to-end `_export_ellipse_dataset` test.
 - [ ] Preserve the Ellipse WGS 84 / UTM zone 32N invariant.
 - [ ] Commit, push, merge, and push `main`.
+
+### 3.7 Separate Ellipse GRC layers
+
+Branch: `feat/separate-ellipse-grc`
+
+- [x] Convert the shared semantic mask through the installed MapInfo Raster API.
+- [x] Export LoD2 buildings as a building-only classified GRC.
+- [x] Export forest and woodland as a separate tree-only classified GRC.
+- [x] Make unrelated cells No Data in each output.
+- [x] Verify class labels, palettes, and cell values with a live MapInfo/GDAL smoke test.
+- [x] Add orchestration tests and update the Ellipse workflow documentation.
+- [x] Commit, push, merge, and push `main` (`e5586d8`).
 
 ## 4. Resolve prototypes and local artifacts
 
