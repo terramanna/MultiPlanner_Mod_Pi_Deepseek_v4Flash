@@ -161,8 +161,18 @@ async def download_remote_subset_stream(request: DownloadSubsetRequest) -> Strea
     q: queue_module.SimpleQueue = queue_module.SimpleQueue()
 
     def run_download() -> None:
-        def emit(tile_id: str, current: int, total: int) -> None:
-            q.put({"type": "progress", "tile_id": tile_id, "current": current, "total": total})
+        def emit(provider: str, dataset: str, tile_id: str, current: int, total: int, success: bool) -> None:
+            q.put(
+                {
+                    "type": "progress",
+                    "provider": provider,
+                    "dataset": dataset,
+                    "tile_id": tile_id,
+                    "current": current,
+                    "total": total,
+                    "success": success,
+                }
+            )
         try:
             result = download_subset(request, on_progress=emit)
             q.put({"type": "done", "result": result.model_dump()})

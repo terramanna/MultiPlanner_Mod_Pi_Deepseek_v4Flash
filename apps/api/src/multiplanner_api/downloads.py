@@ -27,12 +27,13 @@ _TRANSIENT_DOWNLOAD_ERRORS = (
     requests.exceptions.ChunkedEncodingError,
     requests.exceptions.Timeout,
 )
+ProgressCallback = Callable[[str, str, str, int, int, bool], None]
 
 
 def download_subset(
     request: DownloadSubsetRequest,
     *,
-    on_progress: Callable[[str, int, int], None] | None = None,
+    on_progress: ProgressCallback | None = None,
 ) -> DownloadSubsetResponse:
     subset_response = locate_subsets(_locate_request(request))
     total_tiles = sum(len(result.tiles) for result in subset_response.results)
@@ -87,7 +88,7 @@ def _download_located_files(
     *,
     group_by_provider: bool,
     default_provider: str,
-    on_progress: Callable[[str, int, int], None] | None = None,
+    on_progress: ProgressCallback | None = None,
     total_tiles: int = 0,
 ) -> tuple[list[DownloadedFile], dict[str, list[Path]], list[DownloadFailure], list[str]]:
     downloaded_files: list[DownloadedFile] = []
@@ -121,7 +122,7 @@ def _download_result_files(
     provider: str,
     group_by_provider: bool,
     *,
-    on_progress: Callable[[str, int, int], None] | None = None,
+    on_progress: ProgressCallback | None = None,
     tile_counter: list[int] | None = None,
     total_tiles: int = 0,
 ) -> tuple[list[DownloadedFile], dict[str, list[Path]], list[DownloadFailure], list[str]]:
@@ -133,17 +134,17 @@ def _download_result_files(
     for tile in result.tiles:
         if not tile.primary_url:
             failures.append(_download_failure(provider, result.dataset, tile, "Missing source URL."))
+            _notify_download_progress(on_progress, tile_counter, provider, result.dataset, tile.tile_id, total_tiles, False)
             continue
-        if on_progress is not None and tile_counter is not None:
-            tile_counter[0] += 1
-            on_progress(tile.tile_id or "tile", tile_counter[0], total_tiles)
         target_path = dataset_dir / _target_filename(tile.primary_url, tile.tile_id)
         try:
             _download_file(tile.primary_url, target_path)
         except Exception as exc:
             warnings_list.append(f"{provider}/{result.dataset}/{tile.tile_id or 'unnamed-tile'} failed: {exc}")
             failures.append(_download_failure(provider, result.dataset, tile, str(exc)))
+            _notify_download_progress(on_progress, tile_counter, provider, result.dataset, tile.tile_id, total_tiles, False)
             continue
+        _notify_download_progress(on_progress, tile_counter, provider, result.dataset, tile.tile_id, total_tiles, True)
         downloaded_files.append(
             DownloadedFile(
                 provider=provider,
@@ -157,6 +158,21 @@ def _download_result_files(
         warnings_list.extend(_expanded_source_warnings(provider, result.dataset, tile, target_path, expanded_paths))
         downloaded_by_dataset.setdefault(result.dataset, []).extend(expanded_paths)
     return downloaded_files, downloaded_by_dataset, failures, warnings_list
+
+
+def _notify_download_progress(
+    on_progress: ProgressCallback | None,
+    tile_counter: list[int] | None,
+    provider: str,
+    dataset: str,
+    tile_id: str | None,
+    total_tiles: int,
+    success: bool,
+) -> None:
+    if on_progress is None or tile_counter is None:
+        return
+    tile_counter[0] += 1
+    on_progress(provider, dataset, tile_id or "", tile_counter[0], total_tiles, success)
 
 
 def _download_failure(provider: str, dataset: str, tile: object, reason: str) -> DownloadFailure:
@@ -297,19 +313,18 @@ def _download_file_once(url: str, target_path: Path) -> None:
 
 def _stream_download_file(url: str, target_path: Path, *, verify: bool) -> None:
     partial_path = target_path.with_name(f"{target_path.name}.part")
+    partial_bytes = partial_path.stat().st_size if partial_path.exists() else 0
+    headers = {"Range": f"bytes={partial_bytes}-"} if partial_bytes else {}
     with warnings.catch_warnings():
         if not verify:
             warnings.simplefilter("ignore", InsecureRequestWarning)
         with requests.Session() as session:
             session.trust_env = False
-            with session.get(url, stream=True, timeout=120, verify=verify) as response:
+            with session.get(url, headers=headers, stream=True, timeout=120, verify=verify) as response:
                 response.raise_for_status()
-                try:
-                    with partial_path.open("wb") as handle:
-                        for chunk in response.iter_content(chunk_size=1024 * 256):
-                            if chunk:
-                                handle.write(chunk)
-                    partial_path.replace(target_path)
-                except Exception:
-                    partial_path.unlink(missing_ok=True)
-                    raise
+                mode = "ab" if partial_bytes and response.status_code == 206 else "wb"
+                with partial_path.open(mode) as handle:
+                    for chunk in response.iter_content(chunk_size=1024 * 256):
+                        if chunk:
+                            handle.write(chunk)
+                partial_path.replace(target_path)

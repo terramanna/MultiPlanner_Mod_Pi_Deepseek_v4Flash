@@ -118,6 +118,7 @@ function renderDownloadControls() {
     <label class="prototype-open-toggle"><input id="openFolderAfterDownload" type="checkbox" checked /> Open output folder after download</label>
     <button id="btnOpenDownloadFolder" class="prototype-open-folder" type="button" hidden>Open last output folder</button>
     <div id="downloadStatus" class="prototype-status">Choose a geometry on the map.</div>
+    <progress id="downloadProgress" value="0" max="1" hidden></progress>
     <div id="tileList" class="prototype-tile-list"></div>
     <p class="prototype-note">Downloads use the existing provider API and respect the selected export format.</p>`;
 }

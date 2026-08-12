@@ -6,6 +6,7 @@ import {
   largeDownloadWarning,
   renderTiles,
   selectedDatasets,
+  slugName,
 } from "./leaflet-prototype-utils.js";
 
 export async function requestLeafletSubset(context, download) {
@@ -26,6 +27,8 @@ export async function requestLeafletSubset(context, download) {
 }
 
 function setStatus(context, message) {
+  const completed = message.match(/^Processing tile (\d+) of (\d+)/);
+  if (completed) message = `Processed ${completed[1]} of ${completed[2]} source tiles.`;
   context.downloadStatus.textContent = message;
 }
 
@@ -45,14 +48,22 @@ function buildSubsetRequestBody(context, download, geometry, datasets) {
 
 async function prepareSubsetDownload(context, body) {
   const preview = await fetchSubsetPreview(context, body);
+  setDownloadTiles(context, preview);
   const warning = largeDownloadWarning(preview);
   if (warning && !context.confirm(warning)) return setCancelled(context);
   setStatus(context, "Choose an output folder to start the download/export.");
   try {
-    return await chooseDownloadDirectory();
+    const directoryHandle = await chooseDownloadDirectory();
+    useSelectedDirectoryName(context, body, directoryHandle);
+    return directoryHandle;
   } catch (_error) {
     return setCancelled(context);
   }
+}
+
+function useSelectedDirectoryName(context, body, directoryHandle) {
+  if (context.jobNameInput?.value.trim() || !directoryHandle.name) return;
+  body.selection_name = slugName(directoryHandle.name);
 }
 
 function setCancelled(context) {
@@ -111,12 +122,46 @@ function applyStreamParts(parts, context, payload) {
 
 function applyStreamEvent(event, context, payload) {
   if (event.type === "progress") {
-    setStatus(context, `Downloading tile ${event.current} of ${event.total}…`);
+    markDownloadTileComplete(context, event);
+    setDownloadProgress(context, event.current, event.total);
+    setStatus(context, `Processing tile ${event.current} of ${event.total}…`);
     return payload;
   }
   if (event.type === "done") return event.result;
   if (event.type === "error") throw new Error(event.message);
   return payload;
+}
+
+function setDownloadTiles(context, preview) {
+  context.state.downloadTiles = preview.results.flatMap((result) => result.tiles.map((tile) => ({
+    provider: tile.provider || result.provider || preview.provider,
+    dataset: result.dataset,
+    tileId: tile.tile_id,
+    path: tile.primary_url,
+    downloaded: false,
+  })));
+  renderTiles(context.state.downloadTiles, context.document);
+  setDownloadProgress(context, 0, context.state.downloadTiles.length);
+}
+
+function markDownloadTileComplete(context, event) {
+  const tile = context.state.downloadTiles?.find((candidate) => (
+    candidate.provider === event.provider
+    && candidate.dataset === event.dataset
+    && candidate.tileId === (event.tile_id || null)
+  ));
+  if (!tile) return;
+  tile.downloaded = event.success !== false;
+  tile.failed = event.success === false;
+  renderTiles(context.state.downloadTiles, context.document);
+}
+
+function setDownloadProgress(context, current, total) {
+  const progress = context.downloadProgress;
+  if (!progress) return;
+  progress.hidden = false;
+  progress.max = Math.max(total, 1);
+  progress.value = Math.min(current, progress.max);
 }
 
 async function handleMissingDownloads(context, body, payload, rootDirectoryHandle) {
@@ -153,7 +198,7 @@ async function handleDownloadSubset(context, body, payload, rootDirectoryHandle)
   context.openDownloadFolderButton.hidden = !context.state.lastDownloadedOutputDir;
   const warningHint = payload.warnings?.length ? ` Warnings: ${payload.warnings.join("; ")}.` : "";
   const exportLabel = exportProfileLabel(body.export_profile);
-  setStatus(context, `Saved ${saved.sourceFileCount} source files and ${saved.exportFileCount} ${exportLabel} to ${saved.rootName}\\${saved.selectionName}.${warningHint}`);
+  setStatus(context, `Saved ${saved.sourceFileCount} source files and ${saved.exportFileCount} ${exportLabel} to ${saved.directoryLabel}.${warningHint}`);
   renderTiles(payload.files.map((file) => ({ provider: file.provider, dataset: file.dataset, tileId: file.tile_id, path: file.saved_path })), context.document);
   await maybeOpenOutputFolder(context);
 }

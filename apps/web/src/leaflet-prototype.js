@@ -119,6 +119,7 @@ const searchStatus = document.getElementById("searchStatus");
 const searchResults = document.getElementById("searchResults");
 const selectionReadout = document.getElementById("selectionReadout");
 const downloadStatus = document.getElementById("downloadStatus");
+const downloadProgress = document.getElementById("downloadProgress");
 const tileList = document.getElementById("tileList");
 const providerSelect = document.getElementById("providerSelect");
 const providerSortSelect = document.getElementById("providerSortSelect");
@@ -466,6 +467,7 @@ function subsetRequestContext() {
     confirm: (message) => window.confirm(message),
     currentGeometry,
     document,
+    downloadProgress,
     downloadStatus,
     fetch,
     jobNameInput,

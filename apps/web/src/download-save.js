@@ -117,7 +117,10 @@ export async function chooseDownloadDirectory() {
 
 export async function saveSubsetPayloadToDirectory(apiBaseUrl, payload, rootDirectoryHandle) {
   const selectionName = payload.selection_name || "subset";
-  const selectionDirectory = await rootDirectoryHandle.getDirectoryHandle(selectionName, { create: true });
+  const savesToSelectedDirectory = normalizedName(rootDirectoryHandle.name) === selectionName;
+  const selectionDirectory = savesToSelectedDirectory
+    ? rootDirectoryHandle
+    : await rootDirectoryHandle.getDirectoryHandle(selectionName, { create: true });
   const groupByProvider = payload.provider === "auto";
 
   for (const file of payload.files) {
@@ -138,7 +141,12 @@ export async function saveSubsetPayloadToDirectory(apiBaseUrl, payload, rootDire
   return {
     rootName: rootDirectoryHandle.name,
     selectionName,
+    directoryLabel: savesToSelectedDirectory ? rootDirectoryHandle.name : `${rootDirectoryHandle.name}\\${selectionName}`,
     sourceFileCount: payload.files.length,
     exportFileCount: payload.exports.length,
   };
+}
+
+function normalizedName(value) {
+  return value.trim().replace(/[^A-Za-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "subset_1m_merge";
 }

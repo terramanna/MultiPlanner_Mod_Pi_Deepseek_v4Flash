@@ -6,7 +6,7 @@ import requests
 from fastapi.testclient import TestClient
 
 from multiplanner_api import ellipse_exports
-from multiplanner_api.downloads import download_subset
+from multiplanner_api.downloads import _download_file, download_subset
 from multiplanner_api.main import app
 from multiplanner_api.models import CorridorGeometryInput, DownloadSubsetRequest, LocateSubsetRequest
 from multiplanner_api.subsets import locate_subsets
@@ -190,6 +190,39 @@ def test_download_subset_retries_transient_tile_download_once(monkeypatch, tmp_p
     assert target.read_bytes() == b"tile-bytes"
 
 
+def test_download_resumes_an_interrupted_partial_file(monkeypatch, tmp_path) -> None:
+    requests_sent = []
+    target = tmp_path / "tile.tif"
+    target.with_name("tile.tif.part").write_bytes(b"first-half-")
+
+    class ResumingResponse(FakeResponse):
+        status_code = 206
+
+        def iter_content(self, chunk_size: int):
+            yield b"second-half"
+
+    class ResumingSession:
+        trust_env = True
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def get(self, _url, *, headers, **_kwargs):
+            requests_sent.append(headers)
+            return ResumingResponse()
+
+    monkeypatch.setattr("multiplanner_api.downloads.requests.Session", ResumingSession)
+
+    _download_file("https://example.invalid/tile.tif", target)
+
+    assert requests_sent == [{"Range": "bytes=11-"}]
+    assert target.read_bytes() == b"first-half-second-half"
+    assert not target.with_name("tile.tif.part").exists()
+
+
 def test_download_subset_ignores_environment_proxies(monkeypatch, tmp_path) -> None:
     trust_env_values = []
     patch_download_settings(monkeypatch, tmp_path)
@@ -200,6 +233,7 @@ def test_download_subset_ignores_environment_proxies(monkeypatch, tmp_path) -> N
 
 
 def test_download_subset_reports_missing_files_and_skips_export(monkeypatch, tmp_path) -> None:
+    progress = []
     patch_download_settings(monkeypatch, tmp_path)
     monkeypatch.setattr("multiplanner_api.downloads.locate_subsets", lambda _request: two_tile_response())
 
@@ -210,12 +244,16 @@ def test_download_subset_reports_missing_files_and_skips_export(monkeypatch, tmp
         target_path.write_bytes(b"tile-bytes")
 
     monkeypatch.setattr("multiplanner_api.downloads._download_file", fake_download)
-    response = download_subset(corridor_download_request("partial-download"))
+    response = download_subset(
+        corridor_download_request("partial-download"),
+        on_progress=lambda *event: progress.append(event),
+    )
 
     assert response.expected_file_count == 2
     assert response.file_count == 1
     assert response.failed_downloads[0].tile_id == "tile-b"
     assert response.exports == []
+    assert [event[3:] for event in progress] == [(1, 2, True), (2, 2, False)]
     assert "Export skipped because 1 identified source file(s) failed to download." in response.warnings
 
 
@@ -345,7 +383,7 @@ def fake_retrying_session(
         def __exit__(self, *_exc):
             return False
 
-        def get(self, url, *, stream, timeout, verify):
+        def get(self, url, *, headers, stream, timeout, verify):
             if trust_env_values is not None:
                 trust_env_values.append(self.trust_env)
             calls.append(verify)
@@ -367,7 +405,7 @@ def fake_timeout_once_session(calls: list[bool]):
         def __exit__(self, *_exc):
             return False
 
-        def get(self, url, *, stream, timeout, verify):
+        def get(self, url, *, headers, stream, timeout, verify):
             calls.append(verify)
             if len(calls) == 1:
                 raise requests.exceptions.ReadTimeout("read timed out")
@@ -377,6 +415,7 @@ def fake_timeout_once_session(calls: list[bool]):
 
 
 class FakeResponse:
+    status_code = 200
     def __enter__(self):
         return self
 

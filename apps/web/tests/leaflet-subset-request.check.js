@@ -17,6 +17,7 @@ function baseContext(response) {
     confirm: () => true,
     currentGeometry: () => ({ kind: "point", lon: 7.46, lat: 52.32 }),
     document: doc,
+    downloadProgress: { hidden: true, max: 1, value: 0 },
     downloadStatus: { textContent: "" },
     fetch: async () => response,
     jobNameInput: { value: "" },
@@ -58,12 +59,16 @@ assert.match(boundContext.downloadStatus.textContent, /geobasis-nrw\/dgm1: 1 til
 function recordingDownloadContext(responses) {
   const context = baseContext(null);
   const statusMessages = [];
-  context.fetch = async () => responses.shift();
+  const requests = [];
+  context.fetch = async (url, options) => {
+    requests.push({ url, options });
+    return responses.shift();
+  };
   Object.defineProperty(context.downloadStatus, "textContent", {
     get: () => statusMessages.at(-1) || "",
     set: (value) => statusMessages.push(value),
   });
-  return { context, statusMessages };
+  return { context, requests, statusMessages };
 }
 
 function downloadPayload() {
@@ -107,6 +112,29 @@ function fakeStreamResponse(result) {
   };
 }
 
+function fakeProgressStreamResponse(result) {
+  const events = [
+    { type: "progress", provider: "geobasis-nrw", dataset: "dgm1", tile_id: "tile-a", current: 1, total: 1, success: true },
+    { type: "done", result },
+  ];
+  const bytes = new TextEncoder().encode(events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(""));
+  let consumed = false;
+  return {
+    ok: true,
+    body: {
+      getReader() {
+        return {
+          async read() {
+            if (consumed) return { done: true, value: undefined };
+            consumed = true;
+            return { done: false, value: bytes };
+          },
+        };
+      },
+    },
+  };
+}
+
 function fakeDirectoryHandle(name = "downloads") {
   return {
     name,
@@ -118,9 +146,9 @@ const originalWindow = globalThis.window;
 globalThis.window = {
   showDirectoryPicker: async () => fakeDirectoryHandle(),
 };
-const { context: downloadContext, statusMessages } = recordingDownloadContext([
+const { context: downloadContext, requests: downloadRequests, statusMessages } = recordingDownloadContext([
   { ok: true, json: async () => previewPayload() },
-  fakeStreamResponse(downloadPayload()),
+  fakeStreamResponse({ ...downloadPayload(), selection_name: "downloads", output_dir: "cache/saved_subsets/downloads" }),
 ]);
 await requestLeafletSubset(downloadContext, true);
 assert.deepEqual(statusMessages, [
@@ -128,10 +156,68 @@ assert.deepEqual(statusMessages, [
   "Choose an output folder to start the download/export.",
   "Downloading source tiles and building export...",
   "Saving downloaded files to the selected folder...",
-  "Saved 0 source files and 0 GRD exports to downloads\\point_n52_3200_e7_4600_1m_merge.",
+  "Saved 0 source files and 0 GRD exports to downloads.",
 ]);
 assert.equal(downloadContext.openDownloadFolderButton.hidden, false);
-assert.equal(downloadContext.state.lastDownloadedOutputDir, "cache/saved_subsets/point_n52_3200_e7_4600_1m_merge");
+assert.equal(downloadContext.state.lastDownloadedOutputDir, "cache/saved_subsets/downloads");
+assert.equal(
+  JSON.parse(downloadRequests[1].options.body).selection_name,
+  "downloads",
+  "a blank job name should use the directory selected in the picker",
+);
+globalThis.window = originalWindow;
+
+globalThis.window = {
+  showDirectoryPicker: async () => fakeDirectoryHandle(),
+};
+const { context: progressContext } = recordingDownloadContext([
+  { ok: true, json: async () => previewPayload() },
+  fakeProgressStreamResponse(downloadPayload()),
+]);
+await requestLeafletSubset(progressContext, true);
+assert.equal(progressContext.downloadProgress.value, 1);
+assert.equal(progressContext.downloadProgress.max, 1);
+assert.match(progressContext.document.tileList.innerHTML, /<s><code>geobasis-nrw\/dgm1\/tile-a<\/code><\/s>/);
+globalThis.window = originalWindow;
+
+globalThis.window = {
+  showDirectoryPicker: async () => fakeDirectoryHandle(),
+};
+const failedEvents = [
+  { type: "progress", provider: "geobasis-nrw", dataset: "dgm1", tile_id: "tile-a", current: 1, total: 1, success: false },
+  { type: "error", message: "download stopped" },
+];
+const failedBytes = new TextEncoder().encode(failedEvents.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(""));
+let failedConsumed = false;
+const failedStream = {
+  ok: true,
+  body: { getReader: () => ({ read: async () => failedConsumed
+    ? { done: true, value: undefined }
+    : (failedConsumed = true, { done: false, value: failedBytes }) }) },
+};
+const { context: failedProgressContext } = recordingDownloadContext([
+  { ok: true, json: async () => previewPayload() },
+  failedStream,
+]);
+await requestLeafletSubset(failedProgressContext, true);
+assert.equal(failedProgressContext.downloadProgress.value, 1);
+assert.match(failedProgressContext.document.tileList.innerHTML, /<small>Failed<\/small>/);
+globalThis.window = originalWindow;
+
+globalThis.window = {
+  showDirectoryPicker: async () => fakeDirectoryHandle(),
+};
+const { context: namedContext, requests: namedRequests } = recordingDownloadContext([
+  { ok: true, json: async () => previewPayload() },
+  fakeStreamResponse({ ...downloadPayload(), selection_name: "Customer_Site", output_dir: "cache/saved_subsets/Customer_Site" }),
+]);
+namedContext.jobNameInput.value = "Customer Site";
+await requestLeafletSubset(namedContext, true);
+assert.equal(
+  JSON.parse(namedRequests[1].options.body).selection_name,
+  "Customer_Site",
+  "an explicit job name should override the selected directory name",
+);
 globalThis.window = originalWindow;
 
 const autoOpenRequests = [];

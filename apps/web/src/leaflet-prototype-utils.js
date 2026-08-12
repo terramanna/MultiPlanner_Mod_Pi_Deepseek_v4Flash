@@ -294,7 +294,15 @@ export function renderTiles(tiles, doc = globalThis.document) {
     tileList.textContent = "No provider tiles matched this selection.";
     return;
   }
-  tileList.innerHTML = `<strong>Tiles (${tiles.length})</strong><ul>${tiles.map((tile) => `<li><code>${escapeHtml(tile.provider || "provider")}/${escapeHtml(tile.dataset)}/${escapeHtml(tile.tileId || "unnamed-tile")}</code><br /><small>${escapeHtml(tile.path || "")}</small></li>`).join("")}</ul>`;
+  tileList.innerHTML = `<strong>Tiles (${tiles.length})</strong><ul>${tiles.map((tile) => renderTile(tile)).join("")}</ul>`;
+}
+
+function renderTile(tile) {
+  const label = `<code>${escapeHtml(tile.provider || "provider")}/${escapeHtml(tile.dataset)}/${escapeHtml(tile.tileId || "unnamed-tile")}</code>`;
+  let displayedLabel = label;
+  if (tile.downloaded) displayedLabel = `<s>${label}</s> <small>Downloaded</small>`;
+  if (tile.failed) displayedLabel = `${label} <small>Failed</small>`;
+  return `<li>${displayedLabel}<br /><small>${escapeHtml(tile.path || "")}</small></li>`;
 }
 
 export function escapeHtml(value) {
