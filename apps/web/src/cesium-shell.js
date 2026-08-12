@@ -33,6 +33,15 @@ export function renderCesiumShell(useWorldTerrain) {
           <div><span>Site A</span><strong id="siteAValue">not set</strong></div>
           <div><span>Site B</span><strong id="siteBValue">not set</strong></div>
         </div>
+        <fieldset class="download-options geometry-modes">
+          <legend>Selection geometry</legend>
+          <label><input type="radio" name="geometryMode" value="corridor" checked /> Corridor</label>
+          <label><input type="radio" name="geometryMode" value="point" /> Point</label>
+          <label><input type="radio" name="geometryMode" value="rectangle" /> Rectangle</label>
+          <label><input type="radio" name="geometryMode" value="circle" /> Circle</label>
+          <label><input type="radio" name="geometryMode" value="polygon" /> Polygon</label>
+        </fieldset>
+        <div id="geometryStatus" class="lookup-status">Corridor mode: place Site A and Site B.</div>
         ${lookupPanelHtml()}
       </aside>
       <section class="map-stage">
@@ -55,7 +64,12 @@ export function renderCesiumShell(useWorldTerrain) {
 function lookupPanelHtml() {
   return `
     <div class="lookup-panel">
-      <button id="btnLocate" class="button-ghost">Preview corridor subsets</button>
+      <label class="field-label" for="providerSelect">Data provider</label>
+      <select id="providerSelect"></select>
+      <fieldset id="datasetChoices" class="download-options"></fieldset>
+      <label class="field-label" for="jobNameInput">Job / file name</label>
+      <input id="jobNameInput" type="text" placeholder="automatic from geometry" />
+      <button id="btnLocate" class="button-ghost">Preview selected subsets</button>
       <button id="btnDownload" class="button-ghost">Keep subset tiles</button>
       <fieldset class="download-options">
         <legend>Export format</legend>
@@ -65,7 +79,9 @@ function lookupPanelHtml() {
       </fieldset>
       <label class="download-open-toggle"><input id="openFolderAfterDownload" type="checkbox" checked /> Open output folder after download</label>
       <button id="btnOpenDownloadFolder" class="button-ghost download-open-link" type="button" hidden>Open last output folder</button>
-      <div id="lookupStatus" class="lookup-status">waiting for two sites</div>
+      <progress id="downloadProgress" max="1" value="0" hidden></progress>
+      <div id="lookupStatus" class="lookup-status">complete a selection</div>
+      <div id="tileList" class="lookup-status"></div>
     </div>
   `;
 }

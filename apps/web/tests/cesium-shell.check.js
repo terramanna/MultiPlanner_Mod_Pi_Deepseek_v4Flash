@@ -9,11 +9,15 @@ test("Cesium shell preserves planner controls and local terrain label", () => {
 
   for (const id of [
     "cesiumContainer", "btnSiteA", "btnSiteB", "btnSearch", "btnLocate",
-    "btnDownload", "btnOpenDownloadFolder", "lookupStatus",
+    "btnDownload", "btnOpenDownloadFolder", "lookupStatus", "providerSelect",
+    "datasetChoices", "jobNameInput", "downloadProgress", "tileList",
   ]) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(html, /fast local/);
+  for (const mode of ["corridor", "point", "rectangle", "circle", "polygon"]) {
+    assert.match(html, new RegExp(`name="geometryMode" value="${mode}"`));
+  }
 });
 
 

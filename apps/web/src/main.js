@@ -2,8 +2,12 @@ import "cesium/Build/Cesium/Widgets/widgets.css";
 import "./style.css";
 import * as Cesium from "cesium";
 import { retryUntilReady } from "./bootstrap-retry.js";
+import { createGeometryTools } from "./cesium-geometry-tools.js";
+import { distanceMeters } from "./cesium-geometry.js";
 import { renderCesiumShell } from "./cesium-shell.js";
 import { createCorridorFlow } from "./corridor-flow.js";
+import { requestLeafletSubset } from "./leaflet-subset-request.js";
+import { renderDatasetChoices } from "./leaflet-prototype-utils.js";
 import { createLinkProfileWindow } from "./link-profile-window.js";
 
 window.CESIUM_BASE_URL = "/node_modules/cesium/Build/Cesium";
@@ -82,6 +86,10 @@ const btnDownload = document.getElementById("btnDownload");
 const btnOpenDownloadFolder = document.getElementById("btnOpenDownloadFolder");
 const lookupStatus = document.getElementById("lookupStatus");
 const openFolderAfterDownload = document.getElementById("openFolderAfterDownload");
+const providerSelect = document.getElementById("providerSelect");
+const jobNameInput = document.getElementById("jobNameInput");
+const downloadProgress = document.getElementById("downloadProgress");
+const geometryStatus = document.getElementById("geometryStatus");
 
 const state = {
   selectionMode: "A",
@@ -93,7 +101,17 @@ const state = {
   linkProfileDatasets: ["dgm1", "dom1"],
   apiReady: false,
   lastSelectedSearchLabel: null,
-  lastDownloadedOutputDir: null
+  lastDownloadedOutputDir: null,
+  provider: "auto",
+  providers: [],
+  coverageFeatures: {},
+  downloadTiles: [],
+  geometryMode: "corridor",
+  geometryDraft: null,
+  manualGeometry: null,
+  manualEntity: null,
+  previewEntity: null,
+  point: null,
 };
 
 const bootstrapAbortController = new AbortController();
@@ -105,15 +123,44 @@ const corridorFlow = createCorridorFlow({
   openFolderAfterDownload,
   fetchWithTimeout,
 });
+const geometryTools = createGeometryTools({
+  Cesium,
+  viewer,
+  state,
+  beforeSample: pickedLinkEntity,
+  onCorridorSample: assignSampleToActiveSite,
+  onGeometryChange: updateReadout,
+  setStatus: (message) => { geometryStatus.textContent = message; },
+});
+const subsetContext = {
+  apiBaseUrl,
+  confirm: (message) => window.confirm(message),
+  currentGeometry: geometryTools.currentGeometry,
+  document,
+  downloadProgress,
+  downloadStatus: lookupStatus,
+  fetch,
+  jobNameInput,
+  map: { distance: ([latA, lonA], [latB, lonB]) => distanceMeters({ lat: latA, lon: lonA }, { lat: latB, lon: lonB }) },
+  openDownloadFolderButton: btnOpenDownloadFolder,
+  openFolderAfterDownload,
+  providerCoverage: {},
+  selectedExportProfile,
+  state,
+};
 
 btnSiteA.addEventListener("click", () => setSelectionMode("A"));
 btnSiteB.addEventListener("click", () => setSelectionMode("B"));
 btnCenter.addEventListener("click", centerActiveSite);
 btnClear.addEventListener("click", clearSelections);
 btnSearch.addEventListener("click", runSearch);
-btnLocate.addEventListener("click", corridorFlow.locate);
-btnDownload.addEventListener("click", corridorFlow.download);
+btnLocate.addEventListener("click", () => requestLeafletSubset(subsetContext, false));
+btnDownload.addEventListener("click", () => requestLeafletSubset(subsetContext, true));
 btnOpenDownloadFolder.addEventListener("click", corridorFlow.openLastDownloadedFolder);
+providerSelect.addEventListener("change", updateProviderSelection);
+for (const input of document.querySelectorAll('input[name="geometryMode"]')) {
+  input.addEventListener("change", () => geometryTools.setMode(input.value));
+}
 openFolderAfterDownload.addEventListener("change", () => {
   btnOpenDownloadFolder.hidden = !state.lastDownloadedOutputDir;
 });
@@ -124,21 +171,6 @@ searchInput.addEventListener("keydown", (event) => {
   }
 });
 
-const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-handler.setInputAction((movement) => {
-  if (pickedLinkEntity(movement.position)) {
-    openLinkProfileWindow();
-    return;
-  }
-
-  const sample = pickSampleFromScreen(movement.position);
-  if (!sample) {
-    return;
-  }
-
-  assignSampleToActiveSite(sample);
-}, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-
 setSelectionMode("A");
 updateReadout();
 bootstrapApiState();
@@ -146,6 +178,7 @@ bootstrapApiState();
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     bootstrapAbortController.abort();
+    geometryTools.destroy();
   });
 }
 
@@ -180,6 +213,7 @@ function clearSelections() {
   state.siteBEntity = null;
   state.linkEntity = null;
   state.lastSelectedSearchLabel = null;
+  geometryTools.clear();
   linkProfileWindow.close();
   setSelectionMode("A");
   searchResults.innerHTML = "";
@@ -212,29 +246,6 @@ function centerActiveSite() {
     destination: Cesium.Cartesian3.fromDegrees(sample.lon, sample.lat, 1000)
   });
   viewer.scene.requestRender();
-}
-
-function pickSampleFromScreen(screenPosition) {
-  let cartesian = null;
-
-  if (useWorldTerrain && viewer.scene.pickPositionSupported) {
-    cartesian = viewer.scene.pickPosition(screenPosition);
-  }
-
-  if (!Cesium.defined(cartesian)) {
-    cartesian = viewer.camera.pickEllipsoid(screenPosition, viewer.scene.globe.ellipsoid);
-  }
-
-  if (!Cesium.defined(cartesian)) {
-    return null;
-  }
-
-  const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
-  return {
-    lon: Cesium.Math.toDegrees(cartographic.longitude),
-    lat: Cesium.Math.toDegrees(cartographic.latitude),
-    height: cartographic.height || 0
-  };
 }
 
 function upsertSite(kind, sample) {
@@ -306,7 +317,9 @@ function renderLink() {
 
 function pickedLinkEntity(screenPosition) {
   const picked = viewer.scene.pick(screenPosition);
-  return Cesium.defined(picked) && picked.id === state.linkEntity;
+  if (!(Cesium.defined(picked) && picked.id === state.linkEntity)) return false;
+  openLinkProfileWindow();
+  return true;
 }
 
 function openLinkProfileWindow() {
@@ -326,11 +339,22 @@ function siteLabel(kind, sample) {
 function updateReadout() {
   siteAValue.textContent = state.siteA ? formatSample(state.siteA) : "not set";
   siteBValue.textContent = state.siteB ? formatSample(state.siteB) : "not set";
-  btnLocate.disabled = !(state.siteA && state.siteB);
-  btnDownload.disabled = !(state.siteA && state.siteB);
-  if (!(state.siteA && state.siteB)) {
-    lookupStatus.textContent = "waiting for two sites";
+  const geometry = geometryTools.currentGeometry();
+  btnLocate.disabled = !geometry;
+  btnDownload.disabled = !geometry;
+  if (!geometry) {
+    lookupStatus.textContent = "complete a selection";
   }
+}
+
+function selectedExportProfile() {
+  return document.querySelector('input[name="downloadExportProfile"]:checked')?.value || "ellipse_grd";
+}
+
+function updateProviderSelection() {
+  state.provider = providerSelect.value;
+  const provider = state.providers.find((candidate) => candidate.name === state.provider);
+  renderDatasetChoices(provider?.datasets || []);
 }
 
 function formatSample(sample) {
@@ -342,19 +366,29 @@ async function bootstrapApiState() {
   apiStatus.textContent = "starting";
   providerMode.textContent = "waiting for backend";
   await retryUntilReady(async () => {
-    const [healthResponse, configResponse] = await Promise.all([
+    const [healthResponse, configResponse, providersResponse] = await Promise.all([
       fetchWithTimeout(`${apiBaseUrl}/healthz`, { timeoutMs: 2000 }),
-      fetchWithTimeout(`${apiBaseUrl}/api/v1/config`, { timeoutMs: 2000 })
+      fetchWithTimeout(`${apiBaseUrl}/api/v1/config`, { timeoutMs: 2000 }),
+      fetchWithTimeout(`${apiBaseUrl}/api/v1/providers`, { timeoutMs: 2000 }),
     ]);
 
-    if (!healthResponse.ok || !configResponse.ok) {
+    if (!healthResponse.ok || !configResponse.ok || !providersResponse.ok) {
       throw new Error("API bootstrap failed");
     }
 
     const health = await healthResponse.json();
     const config = await configResponse.json();
+    const providers = await providersResponse.json();
     apiStatus.textContent = health.status;
     providerMode.textContent = config.provider_mode;
+    state.providers = providers.providers || [];
+    providerSelect.innerHTML = state.providers.map((provider) => (
+      `<option value="${provider.name}">${provider.label}</option>`
+    )).join("");
+    providerSelect.value = state.providers.some((provider) => provider.name === "auto")
+      ? "auto"
+      : state.providers[0]?.name || "";
+    updateProviderSelection();
     state.apiReady = true;
   }, {
     signal: bootstrapAbortController.signal,
