@@ -38,14 +38,16 @@ GUI automation. `scripts/convert_mapinfo_mrr.ps1` calls the vendor-documented
 
 ## Output contract
 
-The `semantic_clutter` cache directory contains two independent, aligned Ellipse
+The `semantic_clutter` cache directory contains separate, aligned Ellipse
 inputs:
 
-- `munich_pilot_brd_schema_clutter_2m_source.grd` plus
-  `munich_pilot_brd20_clutter.class` are the MapInfo Classify inputs for the
-  final semantic GRC.
+- `munich_pilot_buildings_2m.grc` contains only LoD2 building cells.
+- `munich_pilot_trees_2m.grc` contains separate forest and woodland classes.
 - `munich_pilot_agl_height_2m.mrr` is a continuous Float32 AGL-height raster in
   metres. It preserves actual height rather than a class label.
+- `munich_pilot_brd_schema_clutter_2m_source.grd` plus
+  `munich_pilot_brd20_clutter.class` remain available for creating the combined
+  18-class BRD20-compatible semantic GRC.
 
 The GeoTIFF and GRD files beside those deliverables are reproducible
 intermediates and inspection copies. The pilot MRR is EPSG:32632, has 2 m cells,
@@ -65,7 +67,19 @@ override the BRD20 background in this order:
 These building classes are categorical ranges, not exact heights. Exact forest
 and building heights remain in the separate AGL MRR.
 
-## Create the semantic GRC
+## Separate building and tree GRC files
+
+The pilot builder uses the installed MapInfo Raster API to create the building
+and tree GRC files directly. The building file classifies LoD2 footprint cells
+as `building` and makes forest, woodland, and background cells null. The tree
+file classifies `AX_Wald` as `forest`, `AX_Gehoelz` as `woodland`, and makes
+building and background cells null.
+
+This separation lets Ellipse load and enable buildings and trees independently.
+Both files describe semantic presence; actual obstacle height remains in the
+shared AGL MRR.
+
+## Create the combined semantic GRC
 
 MapInfo Raster is the validated GRC writer. In its Classify tool:
 
@@ -79,8 +93,9 @@ equivalent and can trigger MapInfo parser errors.
 
 ## Configure Ellipse
 
-Use the existing DTM MRR as the AMSL terrain source. Add the semantic GRC as the
-clutter/ground-type layer without enabling Height. Add
+Use the existing DTM MRR as the AMSL terrain source. Add either separate GRC or
+the combined semantic GRC as clutter/ground-type layers without enabling
+Height. Add
 `munich_pilot_agl_height_2m.mrr` as the AGL layer, set its unit to metres, and
 enable Height in GIS Data Sources.
 

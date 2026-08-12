@@ -1,8 +1,7 @@
 """Download the reproducible Munich semantic-clutter pilot source set.
 
-Run from the repository root with the project virtual environment.  The script
-intentionally stops before proprietary GRC creation: MapInfo/Vertical Mapper is
-the validated writer for that final conversion.
+Run from the repository root with the project virtual environment. The script
+uses the installed MapInfo Raster API to write separate building and tree GRCs.
 """
 
 from __future__ import annotations
@@ -124,6 +123,8 @@ def _build_semantic_intermediate(output_dir: Path) -> None:
     _warp_to_grid(dom_path, dom_2m, "bilinear", "Float32")
     _create_mask(mask_path)
     _rasterize_vectors(semantic_dir, mask_path)
+    mask_grd = _write_grd_source(mask_path)
+    _write_separate_grc(mask_grd, semantic_dir)
     agl_path = _write_agl_height(dgm_2m, dom_2m, mask_path, semantic_dir)
     _warp_brd20_base(base_path)
     _write_brd20_clutter(base_path, agl_path, mask_path, final_path)
@@ -238,10 +239,40 @@ def _finish_raster(path: Path) -> None:
     _write_mapinfo_tab(_gdal_tool("gdalinfo.exe"), path, path.with_suffix(".TAB"), _environment(), require_utm32=True)
 
 
-def _write_grd_source(path: Path) -> None:
+def _write_grd_source(path: Path) -> Path:
     grd_path = path.with_name(path.stem + "_source.grd")
     grd_path.unlink(missing_ok=True)
     _run_gdal(["gdal_translate.exe", "-of", "NWT_GRD", "-ot", "Float32", str(path), str(grd_path)])
+    return grd_path
+
+
+def _write_separate_grc(mask_grd: Path, output_dir: Path) -> None:
+    targets = {
+        "buildings": output_dir / "munich_pilot_buildings_2m.grc",
+        "trees": output_dir / "munich_pilot_trees_2m.grc",
+    }
+    for layer, target in targets.items():
+        _write_mapinfo_grc(mask_grd, target, layer)
+
+
+def _write_mapinfo_grc(source: Path, target: Path, layer: str) -> None:
+    if target.exists() and target.stat().st_mtime >= source.stat().st_mtime:
+        return
+    temporary = target.with_name(target.stem + ".converting.grc")
+    temporary.unlink(missing_ok=True)
+    powershell = shutil.which("powershell.exe")
+    converter = Path(__file__).with_name("convert_mapinfo_grc.ps1")
+    if not powershell or not converter.exists():
+        raise FileNotFoundError("MapInfo GRC converter requires Windows PowerShell and scripts/convert_mapinfo_grc.ps1")
+    try:
+        subprocess.run(
+            [powershell, "-NoProfile", "-File", str(converter), "-InputPath", str(source),
+             "-OutputPath", str(temporary), "-Layer", layer],
+            check=True,
+        )
+        temporary.replace(target)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _write_numeric_grd(path: Path) -> None:
