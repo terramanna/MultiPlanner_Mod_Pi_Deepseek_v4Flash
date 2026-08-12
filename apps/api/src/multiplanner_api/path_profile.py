@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from concurrent.futures import Future, ThreadPoolExecutor
+from functools import lru_cache
 import math
 
 from multiplanner_api.models import (
@@ -15,6 +17,7 @@ from multiplanner_api.subsets import locate_subsets
 
 LIGHT_SPEED_MPS = 299_792_458
 EARTH_RADIUS_M = 6_371_000
+MAX_PARALLEL_PROBES = 8
 
 
 def build_path_profile(request: PathProfileRequest) -> PathProfileResponse:
@@ -23,16 +26,16 @@ def build_path_profile(request: PathProfileRequest) -> PathProfileResponse:
     warnings: list[str] = []
     provider = _resolve_profile_provider(request, warnings)
     request = request.model_copy(update={"provider": provider})
-    samples = [
-        _profile_sample(request, index, sample_count, distance_m, warnings)
-        for index in range(sample_count)
-    ]
+    samples = [_profile_sample(request, index, sample_count, distance_m) for index in range(sample_count)]
+    _apply_sample_heights(samples, request, warnings)
     _apply_los(samples, request)
     return PathProfileResponse(
         provider=provider,
         source=request.source,
         distance_m=distance_m,
         antenna_height_m=max(0.0, request.antenna_height_m),
+        antenna_a_height_m=_antenna_height(request.antenna_a_height_m, request.antenna_height_m),
+        antenna_b_height_m=_antenna_height(request.antenna_b_height_m, request.antenna_height_m),
         frequency_mhz=_positive(request.frequency_mhz, 6000.0),
         fresnel_zone=max(1, request.fresnel_zone),
         samples=samples,
@@ -52,7 +55,6 @@ def _profile_sample(
     index: int,
     sample_count: int,
     distance_m: float,
-    warnings: list[str],
 ) -> PathProfileSample:
     ratio = index / (sample_count - 1)
     lon, lat = _interpolate_wgs84(request, ratio)
@@ -67,20 +69,37 @@ def _profile_sample(
         fresnel_radius_m=fresnel_m,
         fresnel_lower_m=-fresnel_m,
     )
-    _apply_heights(sample, request, warnings)
     return sample
 
 
-def _apply_heights(sample: PathProfileSample, request: PathProfileRequest, warnings: list[str]) -> None:
+def _apply_sample_heights(samples: list[PathProfileSample], request: PathProfileRequest, warnings: list[str]) -> None:
+    tasks = [(sample, dataset) for sample in samples for dataset in _profile_datasets(request.source)]
+    with ThreadPoolExecutor(max_workers=min(MAX_PARALLEL_PROBES, len(tasks))) as executor:
+        futures = {
+            executor.submit(_probe_height, request.provider, dataset, sample.lon, sample.lat): (sample, dataset)
+            for sample, dataset in tasks
+        }
+        for future, (sample, dataset) in futures.items():
+            _apply_probe_result(sample, dataset, future, request.source, warnings)
+
+
+def _apply_probe_result(
+    sample: PathProfileSample,
+    dataset: str,
+    future: Future[float],
+    source: str,
+    warnings: list[str],
+) -> None:
     try:
-        if request.source in {"dgm1", "dgm1_dom1"}:
-            sample.dgm_m = _probe_height(request.provider, "dgm1", sample.lon, sample.lat)
-        if request.source in {"dom1", "dgm1_dom1"}:
-            sample.dom_m = _probe_height(request.provider, "dom1", sample.lon, sample.lat)
+        value = future.result()
+        if dataset == "dgm1":
+            sample.dgm_m = value
+        else:
+            sample.dom_m = value
     except Exception as exc:
         sample.error = str(exc)
         warnings.append(sample.error)
-    sample.selected_height_m = _selected_height(sample, request.source)
+    sample.selected_height_m = _selected_height(sample, source)
 
 
 def _apply_los(samples: list[PathProfileSample], request: PathProfileRequest) -> None:
@@ -115,6 +134,11 @@ def _endpoint_ground_height(
 
 
 def _probe_height(provider: str, dataset: str, lon: float, lat: float) -> float:
+    return _cached_probe_height(provider, dataset, lon, lat)
+
+
+@lru_cache(maxsize=20_000)
+def _cached_probe_height(provider: str, dataset: str, lon: float, lat: float) -> float:
     response = probe_point(PointProbeRequest(provider=provider, dataset=dataset, lon=lon, lat=lat))
     return response.height_m
 
@@ -169,10 +193,14 @@ def _selected_height(sample: PathProfileSample, source: str) -> float | None:
 
 
 def _los_height(request: PathProfileRequest, ratio: float, start_ground_m: float, end_ground_m: float) -> float:
-    antenna = max(0.0, request.antenna_height_m)
-    start_m = start_ground_m + antenna
-    end_m = end_ground_m + antenna
+    start_m = start_ground_m + _antenna_height(request.antenna_a_height_m, request.antenna_height_m)
+    end_m = end_ground_m + _antenna_height(request.antenna_b_height_m, request.antenna_height_m)
     return start_m + (end_m - start_m) * ratio
+
+
+def _antenna_height(value: float | None, fallback: float) -> float:
+    candidate = fallback if value is None else value
+    return max(0.0, candidate) if math.isfinite(candidate) else max(0.0, fallback)
 
 
 def _interpolate_wgs84(request: PathProfileRequest, ratio: float) -> tuple[float, float]:

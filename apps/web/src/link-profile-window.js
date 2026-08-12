@@ -66,6 +66,10 @@ export function fresnelRadiusMeters(distanceM, frequencyMhz, zone = 1, ratio = 0
   return Math.sqrt((safeZone * wavelengthM * firstLeg * secondLeg) / distanceM);
 }
 
+export function gigahertzToMegahertz(value) {
+  return positiveNumber(value, DEFAULT_PROFILE_SETTINGS.frequencyMhz / 1000) * 1000;
+}
+
 export function linkDistanceMeters(siteA, siteB) {
   const radiusM = 6371000;
   const deltaLat = toRadians(siteB.lat - siteA.lat);
@@ -113,8 +117,8 @@ function profileWindowHtml() {
         <input id="profileAntennaHeight" type="number" min="0" max="250" step="0.5" value="30" />
       </label>
       <label>
-        <span>Frequency MHz</span>
-        <input id="profileFrequency" type="number" min="1" max="100000" step="1" value="6000" />
+        <span>Frequency GHz</span>
+        <input id="profileFrequency" type="number" min="0.001" max="100" step="0.1" value="6" />
       </label>
       <label>
         <span>Fresnel zone</span>
@@ -229,7 +233,7 @@ function readProfileSettings(controls) {
   return {
     source,
     antennaHeightM: positiveNumber(controls.antennaHeight.value, DEFAULT_PROFILE_SETTINGS.antennaHeightM),
-    frequencyMhz: positiveNumber(controls.frequency.value, DEFAULT_PROFILE_SETTINGS.frequencyMhz),
+    frequencyMhz: gigahertzToMegahertz(controls.frequency.value),
     fresnelZone,
     fresnelZoneLabel: `F${Math.round(fresnelZone)}`,
   };
@@ -319,7 +323,7 @@ function axisLabels(profile, settings, scale) {
     <text x="${CHART.left}" y="${bottom}">Site A</text>
     <text x="${SVG_WIDTH - CHART.right - 44}" y="${bottom}">Site B</text>
     <text x="${SVG_WIDTH / 2 - 60}" y="${bottom}">${formatDistance(profile.distanceM)}</text>
-    <text x="${CHART.left}" y="16">${settings.fresnelZoneLabel} at ${settings.frequencyMhz.toFixed(0)} MHz</text>
+    <text x="${CHART.left}" y="16">${settings.fresnelZoneLabel} at ${(settings.frequencyMhz / 1000).toFixed(1)} GHz</text>
     <text x="${SVG_WIDTH - 150}" y="16">${settings.antennaHeightM.toFixed(1)} m antenna</text>
     <text x="${CHART.left}" y="${scale.y(profile.startM).toFixed(1) - 8}">LOS</text>
   `;

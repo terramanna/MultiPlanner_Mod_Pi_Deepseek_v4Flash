@@ -1,6 +1,7 @@
 const DEFAULTS = {
   source: "dgm1_dom1",
-  antennaHeightM: 30,
+  antennaAHeightM: 30,
+  antennaBHeightM: 30,
   frequencyMhz: 6000,
   fresnelZone: 1,
   sampleCount: 25,
@@ -25,12 +26,16 @@ export function createLeafletLinkProfile({ L, map, apiBaseUrl, provider, fetchFn
 }
 
 export function buildLeafletPathProfileRequest(link, settings, provider = "auto") {
+  const antennaAHeightM = antennaHeight(settings, "A");
+  const antennaBHeightM = antennaHeight(settings, "B");
   return {
     provider: resolveProfileProvider(link, provider),
     source: settings.source,
     site_a: endpoint(link.siteA),
     site_b: endpoint(link.siteB),
-    antenna_height_m: settings.antennaHeightM,
+    antenna_height_m: antennaAHeightM,
+    antenna_a_height_m: antennaAHeightM,
+    antenna_b_height_m: antennaBHeightM,
     frequency_mhz: settings.frequencyMhz,
     fresnel_zone: Math.round(settings.fresnelZone),
     sample_count: sampleCount(settings.sampleCount),
@@ -47,10 +52,16 @@ function openProfile(context, link, latlng) {
   const content = profileContent(link);
   keepPopupInteractive(context.L, content);
   bindProfileControls(content, context, link);
+  preloadProfile(content, context, link);
   context.L.popup({ maxWidth: 560, className: "leaflet-profile-popup", closeOnClick: false })
     .setLatLng(latlng || midpoint(link))
     .setContent(content)
     .openOn(context.map);
+}
+
+function preloadProfile(content, context, link) {
+  content.querySelector(".leaflet-profile-status").textContent = "Loading sampled profile in the background...";
+  window.setTimeout(() => { void calculateProfile(content, context, link); }, 0);
 }
 
 function keepPopupInteractive(L, content) {
@@ -68,8 +79,9 @@ function profileContent(link) {
     ${linkDetails(link)}
     <fieldset>${SOURCES.map(sourceRadio).join("")}</fieldset>
     <div class="leaflet-profile-grid">
-      <label>Antenna m<input data-profile="antenna" type="number" min="0" max="250" step="0.5" value="${DEFAULTS.antennaHeightM}"></label>
-      <label>MHz<input data-profile="frequency" type="number" min="1" max="100000" step="1" value="${DEFAULTS.frequencyMhz}"></label>
+      <label>Antenna A m<input data-profile="antenna-a" type="number" min="0" max="250" step="0.5" value="${DEFAULTS.antennaAHeightM}"></label>
+      <label>Antenna B m<input data-profile="antenna-b" type="number" min="0" max="250" step="0.5" value="${DEFAULTS.antennaBHeightM}"></label>
+      <label>GHz<input data-profile="frequency" type="number" min="0.001" max="100" step="0.1" value="${DEFAULTS.frequencyMhz / 1000}"></label>
       <label>Fresnel<select data-profile="fresnel">${[1, 2, 3, 4].map((zone) => `<option value="${zone}">F${zone}</option>`).join("")}</select></label>
       <label>Samples<select data-profile="samples">${[11, 25, 51, 101, 201].map(sampleOption).join("")}</select></label>
     </div>
@@ -90,16 +102,23 @@ function bindProfileControls(content, context, link) {
 
 async function calculateProfile(content, context, link) {
   const button = content.querySelector('[data-profile="calculate"]');
+  const settings = readSettings(content);
+  const settingsKey = profileSettingsKey(settings);
   button.disabled = true;
   content.querySelector(".leaflet-profile-status").textContent = "Calculating sampled profile...";
   try {
-    const payload = await requestProfile(context, link, readSettings(content));
+    const payload = await requestProfile(context, link, settings);
+    if (settingsKey !== profileSettingsKey(readSettings(content))) return;
     renderBackendProfile(content, payload, link);
   } catch (error) {
     content.querySelector(".leaflet-profile-status").textContent = `Profile calculation failed: ${error.message}`;
   } finally {
     button.disabled = false;
   }
+}
+
+function profileSettingsKey(settings) {
+  return [settings.source, antennaHeight(settings, "A"), antennaHeight(settings, "B"), settings.frequencyMhz, settings.fresnelZone, settings.sampleCount].join("|");
 }
 
 async function requestProfile(context, link, settings) {
@@ -189,8 +208,9 @@ function readSettings(content) {
   return {
     source,
     sourceLabel: SOURCES.find(([value]) => value === source)?.[1] || "Profile",
-    antennaHeightM: positive(content.querySelector('[data-profile="antenna"]').value, DEFAULTS.antennaHeightM),
-    frequencyMhz: positive(content.querySelector('[data-profile="frequency"]').value, DEFAULTS.frequencyMhz),
+    antennaAHeightM: positive(content.querySelector('[data-profile="antenna-a"]').value, DEFAULTS.antennaAHeightM),
+    antennaBHeightM: positive(content.querySelector('[data-profile="antenna-b"]').value, DEFAULTS.antennaBHeightM),
+    frequencyMhz: gigahertzToMegahertz(content.querySelector('[data-profile="frequency"]').value),
     fresnelZone: positive(content.querySelector('[data-profile="fresnel"]').value, DEFAULTS.fresnelZone),
     sampleCount: sampleCount(content.querySelector('[data-profile="samples"]').value),
   };
@@ -349,8 +369,14 @@ function backendStatus(samples, warnings) {
 }
 
 function losHeight(link, settings, ratio) {
-  return endpoint(link.siteA).height_m + settings.antennaHeightM
-    + (endpoint(link.siteB).height_m - endpoint(link.siteA).height_m) * ratio;
+  const startM = endpoint(link.siteA).height_m + antennaHeight(settings, "A");
+  const endM = endpoint(link.siteB).height_m + antennaHeight(settings, "B");
+  return startM + (endM - startM) * ratio;
+}
+
+function antennaHeight(settings, side) {
+  const value = settings[`antenna${side}HeightM`] ?? settings.antennaHeightM ?? DEFAULTS[`antenna${side}HeightM`];
+  return positive(value, DEFAULTS[`antenna${side}HeightM`]);
 }
 
 function fresnelRadius(distanceM, frequencyMhz, zone, ratio) {
@@ -401,6 +427,10 @@ function endpointName(site, fallback) {
 function positive(value, fallback) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : fallback;
+}
+
+export function gigahertzToMegahertz(value) {
+  return positive(value, DEFAULTS.frequencyMhz / 1000) * 1000;
 }
 
 function sampleCount(value) {

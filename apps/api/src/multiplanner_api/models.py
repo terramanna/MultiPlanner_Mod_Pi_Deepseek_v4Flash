@@ -203,6 +203,8 @@ class PathProfileRequest(BaseModel):
     site_a: ProfileEndpointInput
     site_b: ProfileEndpointInput
     antenna_height_m: float = 30.0
+    antenna_a_height_m: float | None = None
+    antenna_b_height_m: float | None = None
     frequency_mhz: float = 6000.0
     fresnel_zone: int = 1
     sample_count: int = 33
@@ -229,6 +231,8 @@ class PathProfileResponse(BaseModel):
     source: str
     distance_m: float
     antenna_height_m: float
+    antenna_a_height_m: float = 30.0
+    antenna_b_height_m: float = 30.0
     frequency_mhz: float
     fresnel_zone: int
     samples: list[PathProfileSample]

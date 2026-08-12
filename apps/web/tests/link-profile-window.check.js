@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   buildPathProfileRequest,
   fresnelRadiusMeters,
+  gigahertzToMegahertz,
   linkDistanceMeters,
   profileSourceOptions,
 } from "../src/link-profile-window.js";
@@ -26,6 +27,9 @@ const secondZoneRadius = fresnelRadiusMeters(1000, 6000, 2, 0.5);
 assert.ok(firstZoneRadius > 3.4);
 assert.ok(firstZoneRadius < 3.7);
 assert.ok(secondZoneRadius > firstZoneRadius);
+
+assert.equal(gigahertzToMegahertz(6), 6000);
+assert.equal(gigahertzToMegahertz(18), 18000);
 
 const request = buildPathProfileRequest(
   {

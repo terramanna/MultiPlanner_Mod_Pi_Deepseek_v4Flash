@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+from threading import Lock
 
 from pyproj import Transformer
 from pyproj.datadir import get_data_dir
@@ -42,6 +43,9 @@ _PROVIDER_XYZ_CRS: dict[str, str] = {
 _PROVIDER_WCS_MISSING_SRS: dict[str, str] = {
     "geobasis-bb": "EPSG:25833",
 }
+
+_SAMPLE_PATH_LOCKS: dict[Path, Lock] = {}
+_SAMPLE_PATH_LOCKS_GUARD = Lock()
 
 from multiplanner_api.models import (
     LocateSubsetRequest,
@@ -236,11 +240,18 @@ def _locate_point_tile(request: PointProbeRequest) -> TileSummary:
 def _prepare_sample_path(request: PointProbeRequest, tile: TileSummary) -> Path:
     cache_dir = _shared_source_cache_dir(request.provider, request.dataset)
     target_path = cache_dir / _target_filename(tile.primary_url or "", tile.tile_id)
-    if not target_path.exists():
-        _download_file(tile.primary_url or "", target_path)
-        s = load_settings()
-        evict_lru(Path(s.cache_root) / "raster_tile_sources", s.source_cache_max_bytes)
-    return _resolve_sample_path(_expanded_download_paths(target_path, cache_dir), request.provider, lon=request.lon, lat=request.lat)
+    with _sample_path_lock(target_path):
+        if not target_path.exists():
+            _download_file(tile.primary_url or "", target_path)
+            settings = load_settings()
+            evict_lru(Path(settings.cache_root) / "raster_tile_sources", settings.source_cache_max_bytes)
+        paths = _expanded_download_paths(target_path, cache_dir)
+    return _resolve_sample_path(paths, request.provider, lon=request.lon, lat=request.lat)
+
+
+def _sample_path_lock(target_path: Path) -> Lock:
+    with _SAMPLE_PATH_LOCKS_GUARD:
+        return _SAMPLE_PATH_LOCKS.setdefault(target_path, Lock())
 
 
 def _shared_source_cache_dir(provider: str, dataset: str) -> Path:

@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from types import SimpleNamespace
+from time import sleep
 
 from multiplanner_api import path_profile
 from multiplanner_api.main import app
@@ -86,6 +87,60 @@ def test_zero_endpoint_heights_use_sampled_ground(monkeypatch) -> None:
     assert result.samples[1].los_height_m == 140.0
     assert result.samples[2].los_height_m == 150.0
     assert result.samples[0].clearance_m == 30.0
+
+
+def test_path_profile_uses_independent_antenna_heights(monkeypatch) -> None:
+    monkeypatch.setattr(path_profile, "_probe_height", lambda *_args: 100.0)
+    request = PathProfileRequest(
+        provider="lgl-bw",
+        source="dgm1",
+        site_a=ProfileEndpointInput(lon=7.0, lat=52.0),
+        site_b=ProfileEndpointInput(lon=7.02, lat=52.0),
+        antenna_a_height_m=20.0,
+        antenna_b_height_m=50.0,
+        sample_count=3,
+    )
+
+    result = path_profile.build_path_profile(request)
+
+    assert result.samples[0].los_height_m == 120.0
+    assert result.samples[1].los_height_m == 135.0
+    assert result.samples[2].los_height_m == 150.0
+
+
+def test_path_profile_probes_samples_concurrently(monkeypatch) -> None:
+    active = 0
+    maximum_active = 0
+
+    def delayed_probe(*_args) -> float:
+        nonlocal active, maximum_active
+        active += 1
+        maximum_active = max(maximum_active, active)
+        sleep(0.02)
+        active -= 1
+        return 100.0
+
+    monkeypatch.setattr(path_profile, "_probe_height", delayed_probe)
+    result = path_profile.build_path_profile(PathProfileRequest(**request_payload()))
+
+    assert len(result.samples) == 5
+    assert maximum_active > 1
+
+
+def test_profile_height_cache_reuses_identical_sample(monkeypatch) -> None:
+    calls = 0
+
+    def fake_probe(_request):
+        nonlocal calls
+        calls += 1
+        return SimpleNamespace(height_m=123.0)
+
+    path_profile._cached_probe_height.cache_clear()
+    monkeypatch.setattr(path_profile, "probe_point", fake_probe)
+
+    assert path_profile._probe_height("lgl-bw", "dom1", 7.123456, 48.123456) == 123.0
+    assert path_profile._probe_height("lgl-bw", "dom1", 7.123456, 48.123456) == 123.0
+    assert calls == 1
 
 
 def test_endpoint_nodata_uses_nearest_sampled_ground(monkeypatch) -> None:
