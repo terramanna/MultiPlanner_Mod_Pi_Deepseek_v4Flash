@@ -8,9 +8,10 @@ staging, attributable commits, normal merges, and no squash merges.
 
 ## Current status and safety notes
 
-`origin/main` is the lead tree through `e5586d8`. It includes the launcher,
+`origin/main` is the lead tree through `fcb215e`. It includes the launcher,
 isolated-browser, network-search, link-profile, resumable-download, semantic
-clutter, and separate building/tree GRC work integrated during this run.
+clutter, separate building/tree GRC, MapLibre DOM hillshade, and generalized
+Cesium geometry work integrated during this run.
 
 - Do not clean the primary dirty worktree before resolving section 3.6. Its
   categorical export implementation exists only in that dirty diff and in the
@@ -26,6 +27,10 @@ clutter, and separate building/tree GRC work integrated during this run.
   webinar remains pending; continue to stage explicit paths only.
 - The untracked PySide6 status-widget prototype and launcher are preserved in
   the recovery backup, but the productize/archive decision remains open.
+- Fresh-worktree bootstrap now uses pip's system trust store and stops on native
+  command failure. Its final dependency install remains unverified because the
+  corporate package-scanning endpoint at `172.16.31.1:8090` repeatedly timed
+  out; rerun the bootstrap when that service is reachable.
 
 ## 1. Secure the current work
 
@@ -61,7 +66,8 @@ Branch: `fix/launcher-runtime-reliability`
       or revise the launchers to use the runtime that bootstrap already supports.
 - [x] Preserve the underscore-based launcher filenames.
 - [x] Verify start, stop, restart, duplicate-widget handling, and setup diagnostics.
-- [ ] Verify launcher behavior from a fresh bootstrap.
+- [ ] Verify launcher behavior from a fresh bootstrap (currently blocked by the
+      external package-scanning proxy timeout described above).
 - [x] Commit, push, merge, and push `main` (`bf9e576`).
 
 ### 3.2 Isolated Edge browser
@@ -116,7 +122,9 @@ Branch: `feat/categorical-raster-export`
 
 - [ ] Identify the real provider and dataset route supplying categorical rasters.
 - [x] Preserve the stranded dirty patch in the verified external backup.
-- [ ] Decide whether to defer it or connect it to a real route.
+- [x] Defer the token-based categorical export patch until a real provider and
+      dataset route exists; the separate MapInfo GRC workflow covers the current
+      Ellipse building/tree requirement without speculative dataset detection.
 - [ ] If proceeding, port nearest-neighbour warping, fixed grid resolution,
       palette validation, and nearest-neighbour pyramids.
 - [ ] Add an end-to-end `_export_ellipse_dataset` test.
@@ -139,7 +147,9 @@ Branch: `feat/separate-ellipse-grc`
 
 ### PySide6 widget
 
-- [ ] Decide whether to discard it, archive it externally, or productize it.
+- [x] Archive it externally in the verified integration backup. The supported
+      Tk widget is current; do not add a second GUI runtime without a product
+      decision and dependency plan.
 - [ ] If productized, declare PySide6 as a dependency.
 - [ ] Route its Open button through the isolated Edge launcher.
 - [ ] Add lifecycle tests equivalent to the supported Tk widget.
@@ -149,18 +159,24 @@ Branch: `feat/separate-ellipse-grc`
 
 - [x] Add suitable ignore rules for `.tools/`, `.tmp_semantic_test/`, and local
       webinar MP4 files.
-- [ ] Move `archive/video/webinar.mp4` outside the repository or explicitly adopt
+- [x] Move `archive/video/webinar.mp4` outside the repository or explicitly adopt
       Git LFS; do not commit the large file to ordinary Git history.
 - [ ] Confirm no generated TIFF, cache, runtime, database, or video is staged.
 
 ## 5. Reconcile old worktrees
 
-- [ ] Compare `MultiPlanner-cesium-worktree` WIP with current `main`.
-- [ ] Port only still-relevant Cesium behavior onto a fresh branch from `main`.
-- [ ] Compare `MultiPlanner-maplibre-worktree` WIP with current MapLibre code.
-- [ ] Port only still-relevant MapLibre work onto a fresh branch from `main`.
-- [ ] Confirm the old Bavaria provider branch is superseded by current code.
-- [ ] Compare the two unique `test/maplibre-prototype` commits before retirement.
+- [x] Compare `MultiPlanner-cesium-worktree` WIP with current `main`.
+- [x] Port only still-relevant Cesium behavior onto fresh branches from `main`:
+      generalized geometry/provider controls were retained without replacing
+      the newer link-profile and resumable-download implementations.
+- [x] Compare `MultiPlanner-maplibre-worktree` WIP with current MapLibre code.
+- [x] Port only still-relevant MapLibre work onto a fresh branch from `main`:
+      the missing `dom1hs` backend route was retained; unwired Geoman/preview
+      experiments remain preserved in the backup rather than entering main.
+- [x] Confirm the old Bavaria provider branch is superseded by current code.
+- [x] Compare the two unique `test/maplibre-prototype` commits before retirement;
+      their older NRW subset prototype is superseded by the current terrain
+      prototype and the supported Leaflet subset workflow.
 - [ ] Prune missing worktree metadata only after confirming its commits are safe.
 
 ## 6. Clean merged branches and worktrees

@@ -12,6 +12,18 @@ $WebPath = Join-Path $RepoRoot "apps\web"
 $LocalNodeDir = Join-Path $VenvPath "tools\node"
 $LocalNode = Join-Path $LocalNodeDir "node.exe"
 
+function Invoke-Checked {
+    param(
+        [string]$Description,
+        [string]$Executable,
+        [string[]]$Arguments
+    )
+    & $Executable @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Description failed with exit code $LASTEXITCODE."
+    }
+}
+
 Write-Host "Repo root: $RepoRoot"
 
 if (-not (Test-Path $VenvPython)) {
@@ -20,17 +32,19 @@ if (-not (Test-Path $VenvPython)) {
 }
 
 Write-Host "Upgrading pip"
-& $VenvPython -m pip install --upgrade pip
+Invoke-Checked "pip upgrade" $VenvPython @("-m", "pip", "install", "--use-feature=truststore", "--upgrade", "pip")
 
 Write-Host "Installing API dependencies"
-& $VenvPython -m pip install -e $ApiPath pytest httpx
+Invoke-Checked "API dependency install" $VenvPython @(
+    "-m", "pip", "install", "--use-feature=truststore", "-e", $ApiPath, "pytest", "httpx"
+)
 
 if (Test-Path (Join-Path $WebPath "package.json")) {
     $NodeCommand = Get-Command node -CommandType Application -ErrorAction Stop
     Write-Host "Installing frontend dependencies"
     Push-Location $WebPath
     try {
-        npm install
+        Invoke-Checked "frontend dependency install" "npm" @("install")
     }
     finally {
         Pop-Location
