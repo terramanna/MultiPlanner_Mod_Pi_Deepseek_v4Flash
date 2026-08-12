@@ -199,3 +199,27 @@ def test_background_worker_queues_completion_without_calling_tk():
 
     assert widget._ui_events.get_nowait() == ("finish", "stop")
     assert any(entry[0] == "%s action finished in %.2fs" and entry[1] == "stop" for entry in logged)
+
+
+def test_ready_services_open_browser_only_once():
+    module = load_widget_module()
+    widget = object.__new__(module.StatusWidget)
+    configured_messages = []
+    browser_opens = []
+    inert_widget = SimpleNamespace(configure=lambda **kwargs: None, itemconfigure=lambda *args, **kwargs: None)
+    widget.rows = {
+        "Backend": {"led": inert_widget, "dot": 1, "status": inert_widget},
+        "Frontend": {"led": inert_widget, "dot": 1, "status": inert_widget},
+    }
+    widget.message = SimpleNamespace(configure=lambda **kwargs: configured_messages.append(kwargs["text"]))
+    widget._browser_open_pending = True
+    widget._refresh_pending = False
+    widget.open_browser = lambda: browser_opens.append(True)
+    widget.after = lambda *args: None
+    snapshot = [("Backend", "running", ""), ("Frontend", "running", "")]
+
+    module.StatusWidget._apply_refresh_snapshot(widget, snapshot)
+    module.StatusWidget._apply_refresh_snapshot(widget, snapshot)
+
+    assert browser_opens == [True]
+    assert configured_messages[-1] == "Backend and frontend are running."

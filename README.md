@@ -152,7 +152,8 @@ in the scene itself.
 
 The Windows launcher waits for both backend and frontend before opening the
 browser, and the frontend retries API bootstrap during startup to reduce false
-`offline` states.
+`offline` states. It opens Microsoft Edge with a dedicated MultiPlanner data
+directory, bypassing Edge's signed-in profile chooser and first-run checks.
 
 ## Commit audit
 

@@ -9,9 +9,9 @@ import threading
 import time
 import tkinter as tk
 from tkinter import messagebox
-import webbrowser
 from pathlib import Path
 
+from browser_launcher import launch_multiplanner_browser
 from service_manager import (
     Service,
     build_services,
@@ -69,6 +69,7 @@ class StatusWidget(tk.Tk):
         self._refresh_pending = False
         self._action_in_progress = False
         self._stop_requested = False
+        self._browser_open_pending = False
         self._build_ui()
         self.after(1000, self.refresh_status)
         self.after(100, self._process_ui_events)
@@ -114,7 +115,7 @@ class StatusWidget(tk.Tk):
         tk.Button(buttons, text="Start", command=self.start_all, width=6).grid(row=0, column=0, padx=(0, 3))
         tk.Button(buttons, text="Stop", command=self.stop_all, width=6).grid(row=0, column=1, padx=3)
         tk.Button(buttons, text="Restart", command=self.restart_all, width=6).grid(row=0, column=2, padx=3)
-        tk.Button(buttons, text="Open", command=lambda: webbrowser.open("http://127.0.0.1:5173/"), width=6).grid(row=0, column=3, padx=(3, 0))
+        tk.Button(buttons, text="Open", command=self.open_browser, width=6).grid(row=0, column=3, padx=(3, 0))
 
     def _build_message(self, frame: tk.Frame) -> None:
         self.message = tk.Label(frame, text="Starting services...", bg="#f8fafc", fg="#64748b", font=("Segoe UI", 8), wraplength=200, justify="left")
@@ -136,10 +137,12 @@ class StatusWidget(tk.Tk):
         for service in self.services:
             service.display_state = None
         self._stop_requested = False
+        self._browser_open_pending = True
         self._run_background(self._start_services_worker, "Services are starting.", "start")
 
     def stop_all(self) -> None:
         self._stop_requested = True
+        self._browser_open_pending = False
         for service in self.services:
             service.display_state = "stopping"
         self.message.configure(text="Stopping services...")
@@ -147,6 +150,7 @@ class StatusWidget(tk.Tk):
 
     def restart_all(self) -> None:
         self._stop_requested = True
+        self._browser_open_pending = True
         self.message.configure(text="Services restarting.")
         self._run_background(self._restart_services_worker, "Services restarting.", "restart")
 
@@ -180,6 +184,10 @@ class StatusWidget(tk.Tk):
                 service.start()
             except Exception as exc:
                 service.last_error = str(exc)
+
+    def open_browser(self) -> None:
+        if not launch_multiplanner_browser():
+            self.message.configure(text="Could not find Microsoft Edge to open MultiPlanner.")
 
     def _stop_services_worker(self) -> None:
         for service in self.services:
@@ -245,6 +253,9 @@ class StatusWidget(tk.Tk):
             self.message.configure(text=f"{starting} starting...")
         elif all(state == "running" for state in states):
             self.message.configure(text="Backend and frontend are running.")
+            if self._browser_open_pending:
+                self._browser_open_pending = False
+                self.open_browser()
 
         self._refresh_in_progress = False
         if self._refresh_pending:
