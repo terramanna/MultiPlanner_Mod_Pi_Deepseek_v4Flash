@@ -153,6 +153,36 @@ def test_network_link_id_search_works_without_geocoder(monkeypatch) -> None:
     assert geocoder_calls == []
 
 
+def test_network_search_falls_back_when_configured_database_is_empty(monkeypatch) -> None:
+    fallback = {
+        "type": "FeatureCollection",
+        "features": [site_feature("01NEUENBUR01", "Neuenbürg", "LTE", "S900001", "Mast", [8.5, 48.8])],
+    }
+    monkeypatch.setattr(
+        "multiplanner_api.search.load_settings",
+        lambda: SimpleNamespace(
+            network_db_path="empty.sqlite",
+            geocoder_url="https://example.invalid",
+            geocoder_countrycodes="de",
+            geocoder_email="",
+        ),
+    )
+    monkeypatch.setattr(
+        "multiplanner_api.search.load_network_geojson",
+        lambda _path: {"type": "FeatureCollection", "features": []},
+    )
+    monkeypatch.setattr("multiplanner_api.search._static_network_geojson", lambda: fallback)
+    monkeypatch.setattr(
+        "multiplanner_api.search.requests.get",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("offline")),
+    )
+
+    response = client.get("/api/v1/search/places", params={"q": "01NEUENBUR01"})
+
+    assert response.status_code == 200
+    assert response.json()["candidates"][0]["source"] == "network-site"
+
+
 def test_network_search_respects_bounds(monkeypatch) -> None:
     patch_offline_network_search(monkeypatch, bounded_link_feature_collection())
     monkeypatch.setattr("multiplanner_api.search.requests.get", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("offline")))

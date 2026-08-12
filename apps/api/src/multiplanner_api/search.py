@@ -234,7 +234,9 @@ def _build_network_index(features: list[dict]) -> list[tuple[tuple[str, ...], Se
 def _network_feature_collection() -> dict:
     settings = load_settings()
     if settings.network_db_path:
-        return load_network_geojson(settings.network_db_path)
+        network = load_network_geojson(settings.network_db_path)
+        if network.get("features"):
+            return network
     return _static_network_geojson()
 
 
