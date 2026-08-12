@@ -43,13 +43,6 @@ const linkProfileWindow = createLinkProfileWindow({
   fetchWithTimeout,
 });
 
-if (import.meta.hot) {
-  import.meta.hot.dispose(() => {
-    linkProfileWindow.destroy();
-    viewer.destroy();
-  });
-}
-
 viewer.scene.globe.enableLighting = false;
 viewer.scene.skyAtmosphere.show = false;
 viewer.scene.globe.showGroundAtmosphere = false;
@@ -179,6 +172,8 @@ if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     bootstrapAbortController.abort();
     geometryTools.destroy();
+    linkProfileWindow.destroy();
+    viewer.destroy();
   });
 }
 

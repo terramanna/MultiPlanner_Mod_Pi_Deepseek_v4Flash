@@ -33,6 +33,8 @@ function setMode(context, mode) {
   context.state.geometryMode = mode;
   context.state.geometryDraft = null;
   clearManualEntity(context);
+  removeEntity(context.state.previewEntity, context.viewer);
+  context.state.previewEntity = null;
   context.state.manualGeometry = null;
   context.setStatus(modeMessage(mode));
   context.onGeometryChange(currentGeometry(context.state));
