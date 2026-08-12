@@ -77,6 +77,22 @@ def test_pids_to_stop_includes_frontend_wrapper_chain(monkeypatch):
     assert set(pids) == {6624, 17020, 25116, 30280}
 
 
+def test_pids_to_stop_does_not_scan_command_lines(monkeypatch):
+    module = load_widget_module()
+    service = module.Service(
+        name="Backend",
+        url="http://127.0.0.1:8000/healthz",
+        command=["python", "backend"],
+        cwd=Path("."),
+    )
+    monkeypatch.setattr(service, "pids_from_registry", lambda: [28368])
+    monkeypatch.setattr(service, "find_listener_pids", lambda: [])
+    monkeypatch.setattr(service, "expand_related_pids", lambda pids: set(pids))
+
+    assert not hasattr(service, "find_commandline_pids")
+    assert service.pids_to_stop() == [28368]
+
+
 def test_stop_keeps_registry_when_backend_is_still_running(monkeypatch):
     module = load_widget_module()
     service = module.Service(
@@ -151,3 +167,35 @@ def test_status_lamp_mapping_is_stable():
         "problem": "Problem",
         "stopped": "Stopped",
     }
+
+
+def test_launcher_commands_use_project_local_runtime_without_reload():
+    module = load_widget_module()
+    services = {service.name: service for service in module.build_services()}
+
+    assert "--reload" not in services["Backend"].command
+    assert services["Frontend"].command[0].endswith(r".venv\tools\node\node.exe")
+    assert services["Frontend"].command[1].endswith(r"node_modules\vite\bin\vite.js")
+
+
+def test_bootstrap_provisions_the_node_runtime_required_by_launchers():
+    bootstrap = (Path(__file__).resolve().parents[1] / "scripts" / "bootstrap_local.ps1").read_text(encoding="utf-8")
+
+    assert 'Join-Path $VenvPath "tools\\node"' in bootstrap
+    assert "Copy-Item -LiteralPath $NodeCommand.Source -Destination $LocalNode" in bootstrap
+
+
+def test_background_worker_queues_completion_without_calling_tk():
+    module = load_widget_module()
+    widget = object.__new__(module.StatusWidget)
+    widget._ui_events = module.queue.SimpleQueue()
+    logged = []
+    widget._logger = SimpleNamespace(
+        exception=lambda *args: logged.append(args),
+        info=lambda *args: logged.append(args),
+    )
+
+    module.StatusWidget._run_background_worker(widget, lambda: None, "stop")
+
+    assert widget._ui_events.get_nowait() == ("finish", "stop")
+    assert any(entry[0] == "%s action finished in %.2fs" and entry[1] == "stop" for entry in logged)

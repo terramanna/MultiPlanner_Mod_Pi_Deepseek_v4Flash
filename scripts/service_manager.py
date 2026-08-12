@@ -15,6 +15,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 API_ROOT = REPO_ROOT / "apps" / "api"
 WEB_ROOT = REPO_ROOT / "apps" / "web"
 VENV_PYTHON = REPO_ROOT / ".venv" / "Scripts" / "python.exe"
+VENV_NODE = REPO_ROOT / ".venv" / "tools" / "node" / "node.exe"
+VITE_ENTRYPOINT = WEB_ROOT / "node_modules" / "vite" / "bin" / "vite.js"
 CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 PID_REGISTRY_PATH = REPO_ROOT / ".tmp" / "multiplanner_service_pids.json"
 
@@ -33,14 +35,20 @@ def build_services() -> list["Service"]:
                 "127.0.0.1",
                 "--port",
                 "8000",
-                "--reload",
             ],
             cwd=API_ROOT,
         ),
         Service(
             name="Frontend",
             url="http://127.0.0.1:5173",
-            command=["npm.cmd", "run", "dev"],
+            command=[
+                str(VENV_NODE),
+                str(VITE_ENTRYPOINT),
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "5173",
+            ],
             cwd=WEB_ROOT,
         ),
     ]
@@ -52,6 +60,8 @@ def environment_issues() -> list[str]:
         missing.append(str(VENV_PYTHON))
     if not (WEB_ROOT / "node_modules").exists():
         missing.append(str(WEB_ROOT / "node_modules"))
+    if not VENV_NODE.exists():
+        missing.append(str(VENV_NODE))
     return missing
 
 
@@ -122,7 +132,6 @@ class Service:
         self.last_error = ""
         self.display_state: str | None = None
         self.port = self._parse_port(url)
-        self.commandline_marker = self._commandline_marker(name)
 
     def start(self) -> None:
         if self.is_process_running() or self.is_port_running():
@@ -167,7 +176,6 @@ class Service:
             pids.append(self.process.pid)
         pids.extend(self.pids_from_registry())
         pids.extend(self.find_listener_pids())
-        pids.extend(self.find_commandline_pids())
         related = self.expand_related_pids(pids)
         ordered = []
         for pid in pids:
@@ -210,36 +218,6 @@ class Service:
 
     def is_port_running(self) -> bool:
         return bool(self.find_listener_pids())
-
-    def find_commandline_pids(self) -> list[int]:
-        if sys.platform != "win32":
-            return []
-        marker = self.commandline_marker.replace("'", "''")
-        return self._powershell_pids(
-            f"Get-CimInstance Win32_Process | Where-Object {{$_.CommandLine -like '*{marker}*'}} | Select-Object -ExpandProperty ProcessId"
-        )
-
-    def _powershell_pids(self, command: str) -> list[int]:
-        try:
-            result = subprocess.run(
-                ["powershell.exe", "-NoProfile", "-Command", command],
-                check=True,
-                capture_output=True,
-                text=True,
-                creationflags=CREATE_NO_WINDOW,
-            )
-        except Exception:
-            return []
-        pids = []
-        for line in result.stdout.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                pids.append(int(line))
-            except ValueError:
-                continue
-        return sorted(set(pids))
 
     def expand_related_pids(self, seed_pids: list[int]) -> set[int]:
         parent_by_pid = self.process_parent_map()
@@ -337,12 +315,6 @@ class Service:
             return parsed.port
         except Exception:
             return None
-
-    @staticmethod
-    def _commandline_marker(name: str) -> str:
-        if name == "Backend":
-            return "multiplanner_api.main:app"
-        return "vite --host 127.0.0.1 --port 5173"
 
     def health(self) -> str:
         try:

@@ -9,6 +9,8 @@ $VenvPath = Join-Path $RepoRoot ".venv"
 $VenvPython = Join-Path $VenvPath "Scripts\python.exe"
 $ApiPath = Join-Path $RepoRoot "apps\api"
 $WebPath = Join-Path $RepoRoot "apps\web"
+$LocalNodeDir = Join-Path $VenvPath "tools\node"
+$LocalNode = Join-Path $LocalNodeDir "node.exe"
 
 Write-Host "Repo root: $RepoRoot"
 
@@ -24,6 +26,7 @@ Write-Host "Installing API dependencies"
 & $VenvPython -m pip install -e $ApiPath pytest httpx
 
 if (Test-Path (Join-Path $WebPath "package.json")) {
+    $NodeCommand = Get-Command node -CommandType Application -ErrorAction Stop
     Write-Host "Installing frontend dependencies"
     Push-Location $WebPath
     try {
@@ -32,6 +35,10 @@ if (Test-Path (Join-Path $WebPath "package.json")) {
     finally {
         Pop-Location
     }
+
+    Write-Host "Installing project-local Node runtime"
+    New-Item -ItemType Directory -Force -Path $LocalNodeDir | Out-Null
+    Copy-Item -LiteralPath $NodeCommand.Source -Destination $LocalNode -Force
 }
 
 Write-Host ""

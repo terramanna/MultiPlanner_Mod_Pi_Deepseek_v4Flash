@@ -4,12 +4,20 @@ setlocal
 set "REPO_ROOT=%~dp0"
 set "PYTHON=%REPO_ROOT%.venv\Scripts\python.exe"
 set "PYTHONW=%REPO_ROOT%.venv\Scripts\pythonw.exe"
+set "NODE=%REPO_ROOT%.venv\tools\node\node.exe"
 set "WEB_ROOT=%REPO_ROOT%apps\web"
 
 cd /d "%REPO_ROOT%"
 
 if not exist "%PYTHON%" (
   echo Missing virtual environment: "%REPO_ROOT%\.venv"
+  echo Run scripts\bootstrap_local.ps1 first.
+  pause
+  exit /b 1
+)
+
+if not exist "%NODE%" (
+  echo Missing project-local Node runtime: "%NODE%"
   echo Run scripts\bootstrap_local.ps1 first.
   pause
   exit /b 1

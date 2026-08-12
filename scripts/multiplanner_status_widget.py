@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import logging
+import queue
 import sys
 import threading
+import time
 import tkinter as tk
 from tkinter import messagebox
 import webbrowser
+from pathlib import Path
 
 from service_manager import (
     Service,
@@ -18,6 +22,19 @@ from service_manager import (
 
 WIDGET_WINDOW_TITLE = "MultiPlanner"
 WIDGET_MUTEX_NAME = "Global\\MultiPlannerStatusWidget"
+WIDGET_LOG_PATH = Path(__file__).resolve().parent.parent / ".tmp" / "multiplanner_widget.log"
+
+
+def _widget_logger() -> logging.Logger:
+    logger = logging.getLogger("multiplanner.widget")
+    if logger.handlers:
+        return logger
+    WIDGET_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    handler = logging.FileHandler(WIDGET_LOG_PATH, encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    return logger
 
 
 class StatusWidget(tk.Tk):
@@ -45,6 +62,8 @@ class StatusWidget(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         self.services = build_services()
+        self._logger = _widget_logger()
+        self._ui_events: queue.SimpleQueue[tuple[str, object]] = queue.SimpleQueue()
         self.rows: dict[str, dict[str, tk.Widget]] = {}
         self._refresh_in_progress = False
         self._refresh_pending = False
@@ -52,6 +71,7 @@ class StatusWidget(tk.Tk):
         self._stop_requested = False
         self._build_ui()
         self.after(1000, self.refresh_status)
+        self.after(100, self._process_ui_events)
 
     def _build_ui(self) -> None:
         frame = tk.Frame(self, bg="#f8fafc", padx=10, pady=8)
@@ -116,32 +136,37 @@ class StatusWidget(tk.Tk):
         for service in self.services:
             service.display_state = None
         self._stop_requested = False
-        self._run_background(self._start_services_worker, "Services are starting.")
+        self._run_background(self._start_services_worker, "Services are starting.", "start")
 
     def stop_all(self) -> None:
         self._stop_requested = True
         for service in self.services:
             service.display_state = "stopping"
         self.message.configure(text="Stopping services...")
-        threading.Thread(target=self._stop_services_worker_with_refresh, daemon=True).start()
+        self._run_background(self._stop_services_worker, "Stopping services...", "stop")
 
     def restart_all(self) -> None:
         self._stop_requested = True
         self.message.configure(text="Services restarting.")
-        threading.Thread(target=self._run_background_worker, args=(self._restart_services_worker,), daemon=True).start()
+        self._run_background(self._restart_services_worker, "Services restarting.", "restart")
 
-    def _run_background(self, worker, message: str) -> None:
+    def _run_background(self, worker, message: str, action: str) -> None:
         if self._action_in_progress:
             return
         self._action_in_progress = True
         self.message.configure(text=message)
-        threading.Thread(target=self._run_background_worker, args=(worker,), daemon=True).start()
+        threading.Thread(target=self._run_background_worker, args=(worker, action), daemon=True).start()
 
-    def _run_background_worker(self, worker) -> None:
+    def _run_background_worker(self, worker, action: str) -> None:
+        started = time.perf_counter()
         try:
             worker()
+        except Exception:
+            self._logger.exception("%s action crashed", action)
         finally:
-            self.after(0, self._finish_background_action)
+            elapsed = time.perf_counter() - started
+            self._logger.info("%s action finished in %.2fs", action, elapsed)
+            self._ui_events.put(("finish", action))
 
     def _finish_background_action(self) -> None:
         self._action_in_progress = False
@@ -159,12 +184,8 @@ class StatusWidget(tk.Tk):
     def _stop_services_worker(self) -> None:
         for service in self.services:
             service.stop()
-
-    def _stop_services_worker_with_refresh(self) -> None:
-        self._stop_services_worker()
         for service in self.services:
             service.display_state = None
-        self.after(0, self.refresh_status)
 
     def _restart_services_worker(self) -> None:
         self._stop_services_worker()
@@ -182,10 +203,26 @@ class StatusWidget(tk.Tk):
         threading.Thread(target=self._refresh_status_worker, daemon=True).start()
 
     def _refresh_status_worker(self) -> None:
+        started = time.perf_counter()
         snapshot = []
         for service in self.services:
             snapshot.append((service.name, service.effective_state(), service.last_error))
-        self.after(0, lambda: self._apply_refresh_snapshot(snapshot))
+        elapsed = time.perf_counter() - started
+        if elapsed >= 1.0:
+            self._logger.info("status refresh finished in %.2fs", elapsed)
+        self._ui_events.put(("refresh", snapshot))
+
+    def _process_ui_events(self) -> None:
+        try:
+            while True:
+                event, payload = self._ui_events.get_nowait()
+                if event == "finish":
+                    self._finish_background_action()
+                elif event == "refresh":
+                    self._apply_refresh_snapshot(payload)
+        except queue.Empty:
+            pass
+        self.after(100, self._process_ui_events)
 
     def _apply_refresh_snapshot(self, snapshot: list[tuple[str, str, str]]) -> None:
         problems = []
