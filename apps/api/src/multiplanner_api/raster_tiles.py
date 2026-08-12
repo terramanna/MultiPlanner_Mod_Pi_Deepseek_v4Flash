@@ -19,7 +19,7 @@ from multiplanner_api.models import BboxGeometryInput, LocateSubsetRequest, Tile
 from multiplanner_api.subsets import locate_subsets
 
 WEB_MERCATOR_WORLD = 20037508.342789244
-SUPPORTED_DATASETS = frozenset({"dgm1", "dom1", "ndsm"})
+SUPPORTED_DATASETS = frozenset({"dgm1", "dom1", "dom1hs", "ndsm"})
 TILE_STYLE_VERSION = "v2"
 NDSM_COLOR_RELIEF_FILE = Path(__file__).with_name("ndsm-color-relief.txt")
 WEB_MERCATOR_WKT = (
@@ -64,15 +64,25 @@ def _tile_cache_path(provider: str, dataset: str, z: int, x: int, y: int) -> Pat
 
 
 def _source_paths(provider: str, dataset: str, z: int, x: int, y: int) -> list[Path]:
+    source_dataset = _source_dataset(dataset)
     west, south, east, north = _tile_bounds_wgs84(z, x, y)
     response = locate_subsets(
         LocateSubsetRequest(
             provider=provider,
-            datasets=[dataset],
+            datasets=[source_dataset],
             geometry=BboxGeometryInput(kind="bbox", west=west, south=south, east=east, north=north),
         )
     )
-    return [path for result in response.results for tile in result.tiles for path in _download_tile_sources(provider, dataset, tile)]
+    return [
+        path
+        for result in response.results
+        for tile in result.tiles
+        for path in _download_tile_sources(provider, source_dataset, tile)
+    ]
+
+
+def _source_dataset(dataset: str) -> str:
+    return "dom1" if dataset == "dom1hs" else dataset
 
 
 def _download_tile_sources(provider: str, dataset: str, tile: TileSummary) -> list[Path]:
@@ -120,7 +130,7 @@ def _warp_to_tile(vrt_path: Path, warped_path: Path, z: int, x: int, y: int) -> 
 
 
 def _render_dataset_png(warped_path: Path, target_path: Path, dataset: str) -> None:
-    if dataset == "dgm1":
+    if dataset in {"dgm1", "dom1hs"}:
         _render_hillshade_png(warped_path, target_path)
         return
     _render_grayscale_png(warped_path, target_path)
