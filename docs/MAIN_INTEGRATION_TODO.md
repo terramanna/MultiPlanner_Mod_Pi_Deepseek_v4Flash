@@ -21,9 +21,9 @@ clutter, and separate building/tree GRC work integrated during this run.
   worktree. Its editable install points at the primary checkout and can produce
   false `ModuleNotFoundError` failures. Set `PYTHONPATH` to the worktree's
   `apps/api/src`, or create a worktree-local environment.
-- The primary checkout still contains untracked `archive/video/webinar.mp4`
-  (about 407 MiB) and `.tools/node` (about 143 MiB). Until ignore rules and
-  external archival are complete, never use broad staging such as `git add -A`.
+- The primary checkout still contains ignored `archive/video/webinar.mp4`
+  (about 407 MiB) and `.tools/node` (about 143 MiB). External archival of the
+  webinar remains pending; continue to stage explicit paths only.
 - The untracked PySide6 status-widget prototype and launcher are preserved in
   the recovery backup, but the productize/archive decision remains open.
 
@@ -147,7 +147,8 @@ Branch: `feat/separate-ellipse-grc`
 
 ### Local artifacts
 
-- [ ] Add suitable ignore rules for `.tools/` and `.tmp_semantic_test/`.
+- [x] Add suitable ignore rules for `.tools/`, `.tmp_semantic_test/`, and local
+      webinar MP4 files.
 - [ ] Move `archive/video/webinar.mp4` outside the repository or explicitly adopt
       Git LFS; do not commit the large file to ordinary Git history.
 - [ ] Confirm no generated TIFF, cache, runtime, database, or video is staged.

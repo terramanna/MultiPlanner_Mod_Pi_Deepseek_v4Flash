@@ -25,4 +25,7 @@ apps/api/data/cache/
 data/tmp/
 .tmp/
 .tmp_fcb_remote/
+.tmp_semantic_test/
+.tools/
+archive/video/*.mp4
 apps/web/public/network.geojson
