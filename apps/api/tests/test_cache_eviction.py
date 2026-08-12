@@ -10,7 +10,8 @@ def _write(path: Path, size: int, mtime: float) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(b"x" * size)
     import os
-    os.utime(path, (mtime, mtime))
+    safe_mtime = time.time() - 10_000 + mtime
+    os.utime(path, (safe_mtime, safe_mtime))
     return path
 
 
