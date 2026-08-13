@@ -8,10 +8,11 @@ staging, attributable commits, normal merges, and no squash merges.
 
 ## Current status and safety notes
 
-`origin/main` is the lead tree through `fcb215e`. It includes the launcher,
+`origin/main` is the lead tree. Integrated work includes the launcher,
 isolated-browser, network-search, link-profile, resumable-download, semantic
 clutter, separate building/tree GRC, MapLibre DOM hillshade, and generalized
-Cesium geometry work integrated during this run.
+Cesium geometry work. The completed `fix/leaflet-planner-controls` branch adds
+the retained Leaflet planning-control, search, and provider-selection updates.
 
 - Do not clean the primary dirty worktree before resolving section 3.6. Its
   categorical export implementation exists only in that dirty diff and in the
@@ -143,6 +144,30 @@ Branch: `feat/separate-ellipse-grc`
 - [x] Verify class labels, palettes, and cell values with a live MapInfo/GDAL smoke test.
 - [x] Add orchestration tests and update the Ellipse workflow documentation.
 - [x] Commit, push, merge, and push `main` (`e5586d8`).
+
+### 3.8 Leaflet planning controls and universal search
+
+Branch: `fix/leaflet-planner-controls`
+
+- [x] Move the planning-mode selector into the left panel and remove the
+      experimental Cesium comparison link from the normal planner controls.
+- [x] Restrict Geoman drawing controls and measurement guidance to area mode.
+- [x] Restore a compact top-centre universal search with All, Sites, Links, and
+      Places filters.
+- [x] Balance All network results as up to five sites followed by five links;
+      return up to ten results for a focused Sites or Links search.
+- [x] Preserve city, town, address, postcode, and coordinate lookup through the
+      Places filter and place geographic results before network matches in All.
+- [x] Route browser search through the same-origin Vite `/api` proxy.
+- [x] Update results after two typed characters with a 250 ms debounce and
+      cancel stale requests.
+- [x] Detect the provider from the current point, corridor, rectangle, circle,
+      or polygon while preserving explicit manual provider selection.
+- [x] Release search-derived sites or links on an empty-map click and reset the
+      provider to automatic detection; do not release when clicking the selected
+      marker or link itself.
+- [x] Verify focused API search tests, web tests, ESLint, production build,
+      diff checks, and repository size policy.
 
 ## 4. Resolve prototypes and local artifacts
 
