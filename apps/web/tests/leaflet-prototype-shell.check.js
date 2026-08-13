@@ -29,3 +29,11 @@ test("drawing guidance is limited to area mode", () => {
   assert.match(renderPrototypeShell("area"), /id="measurementReadout"/);
   assert.doesNotMatch(renderPrototypeShell("point"), /measurementReadout/);
 });
+
+test("separate Bayern building and tree GRC export is selectable", () => {
+  const html = renderPrototypeShell("area");
+
+  assert.match(html, /value="ellipse_semantic_grc"/);
+  assert.match(html, /Bayern DGM \+ DOM \+ buildings \+ trees GRC/);
+  assert.match(html, />Download \+ export</);
+});

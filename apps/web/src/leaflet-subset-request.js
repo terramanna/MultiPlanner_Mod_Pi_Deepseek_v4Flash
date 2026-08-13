@@ -15,7 +15,11 @@ export async function requestLeafletSubset(context, download) {
   const datasets = selectedDatasets(context.document);
   if (!datasets.length) return setStatus(context, "Choose at least one dataset.");
 
-  const body = buildSubsetRequestBody(context, download, geometry, datasets);
+  const exportProfile = download ? context.selectedExportProfile() : null;
+  const profileError = exportProfileError(exportProfile, context.state.provider);
+  if (profileError) return setStatus(context, profileError);
+
+  const body = buildSubsetRequestBody(context, download, geometry, datasets, exportProfile);
   setStatus(context, download ? "Checking selected 1 m tiles..." : "Resolving available 1 m tiles...");
   try {
     const rootDirectoryHandle = download ? await prepareSubsetDownload(context, body) : null;
@@ -37,13 +41,25 @@ function failureStatus(download, error) {
   return error?.message ? `${prefix}: ${error.message}` : `${prefix}.`;
 }
 
-function buildSubsetRequestBody(context, download, geometry, datasets) {
+function buildSubsetRequestBody(context, download, geometry, datasets, exportProfile) {
   const body = { provider: context.state.provider, datasets, geometry: apiGeometry(geometry) };
   if (download) {
     body.selection_name = buildSelectionName(geometry, context.state, context.map, context.jobNameInput, context.providerCoverage);
-    body.export_profile = context.selectedExportProfile();
+    body.export_profile = exportProfile;
+    body.datasets = datasetsForExport(body.datasets, exportProfile, body.provider);
   }
   return body;
+}
+
+function exportProfileError(exportProfile, provider) {
+  if (exportProfile !== "ellipse_semantic_grc" || provider === "ldbv-by") return "";
+  return "Buildings + trees GRC currently requires the Bayern LDBV provider.";
+}
+
+export function datasetsForExport(datasets, exportProfile, provider) {
+  if (exportProfile !== "ellipse_semantic_grc" || provider !== "ldbv-by") return datasets;
+  const required = ["dgm1", "dom1", "bdom"];
+  return [...datasets, ...required.filter((dataset) => !datasets.includes(dataset))];
 }
 
 async function prepareSubsetDownload(context, body) {
@@ -208,6 +224,7 @@ function hasMissingDownloads(payload) {
 }
 
 function exportProfileLabel(exportProfile) {
+  if (exportProfile === "ellipse_semantic_grc") return "separate building + tree GRC exports";
   if (exportProfile === "ellipse_mapinfo_tab") return "UTM32N GeoTIFF + TAB exports";
   if (exportProfile === "ellipse_mapinfo_tab_pyramids") return "UTM32N GeoTIFF + TAB + pyramid exports";
   return "GRD exports";

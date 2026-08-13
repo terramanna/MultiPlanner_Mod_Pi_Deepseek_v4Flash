@@ -12,6 +12,7 @@ from urllib3.exceptions import InsecureRequestWarning
 
 from multiplanner_api.config import load_settings
 from multiplanner_api.ellipse_exports import _export_for_ellipse, _export_grd
+from multiplanner_api.semantic_grc_exports import export_semantic_grc
 from multiplanner_api.models import (
     DownloadFailure,
     DownloadSubsetRequest,
@@ -215,7 +216,30 @@ def _export_or_skip(
 ) -> tuple[list[str], list[str]]:
     if failures:
         return [], [f"Export skipped because {len(failures)} identified source file(s) failed to download."]
+    if request.export_profile == "ellipse_semantic_grc":
+        if request.provider != "ldbv-by":
+            return [], ["Buildings + trees GRC export currently supports Bayern LDBV selections only."]
+        return _export_bayern_ellipse_bundle(request, downloaded_by_dataset, output_dir, ellipse_gdal_dir)
     return _export_subset(request.export_profile, downloaded_by_dataset, output_dir, ellipse_gdal_dir)
+
+
+def _export_bayern_ellipse_bundle(
+    request: DownloadSubsetRequest,
+    downloaded_by_dataset: dict[str, list[Path]],
+    output_dir: Path,
+    ellipse_gdal_dir: str,
+) -> tuple[list[str], list[str]]:
+    terrain_sources = {name: downloaded_by_dataset.get(name, []) for name in ("dgm1", "dom1")}
+    terrain_exports, terrain_warnings = _export_for_ellipse(
+        terrain_sources, output_dir, ellipse_gdal_dir, build_pyramids=True
+    )
+    semantic_exports, semantic_warnings = export_semantic_grc(
+        geometry=request.geometry,
+        lod2_paths=downloaded_by_dataset.get("bdom", []),
+        output_dir=output_dir,
+        ellipse_gdal_dir=ellipse_gdal_dir,
+    )
+    return [*terrain_exports, *semantic_exports], [*terrain_warnings, *semantic_warnings]
 
 
 def _default_selection_name() -> str:

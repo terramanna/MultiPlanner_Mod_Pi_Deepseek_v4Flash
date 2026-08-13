@@ -131,7 +131,7 @@ function renderProbeControls() {
 function renderDownloadControls() {
   return `<div class="prototype-actions prototype-download-actions">
       <button id="locateButton" class="secondary">Preview 1 m subset</button>
-      <button id="downloadButton">Download + GRD export</button>
+      <button id="downloadButton">Download + export</button>
       <button id="clearButton" class="secondary">Clear selection</button>
     </div>
     ${renderExportOptions()}
@@ -149,6 +149,7 @@ function renderExportOptions() {
       <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_grd" checked /> GRD</label>
       <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_mapinfo_tab" /> UTM32N GeoTIFF + TAB</label>
       <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_mapinfo_tab_pyramids" /> UTM32N GeoTIFF + TAB + pyramids</label>
+      <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_semantic_grc" /> Bayern DGM + DOM + buildings + trees GRC</label>
     </fieldset>`;
 }
 

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { missingDownloadPrompt, requestLeafletSubset } from "../src/leaflet-subset-request.js";
+import { datasetsForExport, missingDownloadPrompt, requestLeafletSubset } from "../src/leaflet-subset-request.js";
 
 function fakeDocument() {
   const tileList = { innerHTML: "", textContent: "" };
@@ -272,4 +272,14 @@ globalThis.window = originalWindow;
 assert.match(
   missingDownloadPrompt([{ provider: "p", dataset: "d", tile_id: "t" }]),
   /Retry the missing files now/,
+);
+
+assert.deepEqual(
+  datasetsForExport(["dgm1"], "ellipse_semantic_grc", "ldbv-by"),
+  ["dgm1", "dom1", "bdom"],
+  "the Bayern semantic bundle must include DGM, DOM, and LoD2/BDOM source data",
+);
+assert.deepEqual(
+  datasetsForExport(["dgm1"], "ellipse_grd", "ldbv-by"),
+  ["dgm1"],
 );

@@ -30,6 +30,19 @@ used by this workflow expect one projection, and UTM 33N exports are not loaded
 properly even when they would be geographically reasonable.
 This requires GDAL tools from the local Ellipse installation.
 
+With `export_profile: "ellipse_semantic_grc"` and provider `ldbv-by`, the
+download becomes a Bayern Ellipse bundle. The backend automatically includes
+`dgm1`, `dom1`, and `bdom` sources and writes:
+
+- DGM and DOM as WGS 84 / UTM zone 32N GeoTIFF + `.TAB` with pyramids
+- `semantic_grc/buildings_2m_utm32n.grc` from LDBV LoD2 footprints
+- `semantic_grc/trees_2m_utm32n.grc` from Bayern Basis-DLM forest/woodland
+
+Both classified GRCs use the selected geometry, a 2 m UTM32N grid, and No Data
+outside their own class. A point selection uses a bounded 1 km work area. The
+profile currently supports Bayern only; other state providers require their
+semantic-source route to be validated before the same option is enabled.
+
 The search endpoint accepts direct coordinates locally and otherwise forwards
 free-text place/address search to a configurable Nominatim-compatible geocoder.
 

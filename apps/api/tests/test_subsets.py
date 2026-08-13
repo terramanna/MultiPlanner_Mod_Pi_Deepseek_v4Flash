@@ -5,10 +5,10 @@ import zipfile
 import requests
 from fastapi.testclient import TestClient
 
-from multiplanner_api import ellipse_exports
+from multiplanner_api import downloads, ellipse_exports
 from multiplanner_api.downloads import _download_file, download_subset
 from multiplanner_api.main import app
-from multiplanner_api.models import CorridorGeometryInput, DownloadSubsetRequest, LocateSubsetRequest
+from multiplanner_api.models import BboxGeometryInput, CorridorGeometryInput, DownloadSubsetRequest, LocateSubsetRequest
 from multiplanner_api.subsets import locate_subsets
 
 
@@ -365,6 +365,48 @@ def test_ellipse_export_with_pyramids_runs_gdaladdo(monkeypatch, tmp_path) -> No
     assert any(command[0].endswith("gdaladdo.exe") for command in commands)
     assert exports[0].endswith(".tif")
     assert exports[1].endswith(".TAB")
+
+
+def test_semantic_grc_profile_uses_bayern_geometry_and_lod2(monkeypatch, tmp_path) -> None:
+    request = DownloadSubsetRequest(
+        provider="ldbv-by", datasets=["bdom"], selection_name="munich-selection",
+        export_profile="ellipse_semantic_grc",
+        geometry=BboxGeometryInput(kind="bbox", west=11.55, south=48.12, east=11.60, north=48.16),
+    )
+    source = tmp_path / "lod2.gml"
+    source.write_text("<CityModel/>", encoding="utf-8")
+    captured = {}
+
+    def fake_export(**kwargs):
+        captured.update(kwargs)
+        return [str(tmp_path / "buildings.grc"), str(tmp_path / "trees.grc")], []
+
+    monkeypatch.setattr(
+        "multiplanner_api.downloads._export_for_ellipse",
+        lambda *_args, **_kwargs: ([
+            str(tmp_path / "dgm.tif"), str(tmp_path / "dgm.TAB"),
+            str(tmp_path / "dom.tif"), str(tmp_path / "dom.TAB"),
+        ], []),
+    )
+    monkeypatch.setattr("multiplanner_api.downloads.export_semantic_grc", fake_export)
+    sources = {"dgm1": [tmp_path / "dgm.tif"], "dom1": [tmp_path / "dom.tif"], "bdom": [source]}
+    exports, warnings = downloads._export_or_skip(request, sources, [], tmp_path, "gdal-dir")
+
+    assert warnings == []
+    assert [Path(path).suffix for path in exports] == [".tif", ".TAB", ".tif", ".TAB", ".grc", ".grc"]
+    assert captured["geometry"] == request.geometry
+    assert captured["lod2_paths"] == [source]
+
+
+def test_semantic_grc_profile_rejects_non_bayern_provider(tmp_path) -> None:
+    request = DownloadSubsetRequest(**point_payload(), export_profile="ellipse_semantic_grc")
+
+    exports, warnings = downloads._export_or_skip(request, {}, [], tmp_path, "gdal-dir")
+
+    assert exports == []
+    assert warnings == ["Buildings + trees GRC export currently supports Bayern LDBV selections only."]
+
+
 
 
 def fake_retrying_session(

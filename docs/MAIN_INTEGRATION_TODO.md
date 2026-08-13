@@ -145,6 +145,10 @@ Branch: `feat/separate-ellipse-grc`
 - [x] Add orchestration tests and update the Ellipse workflow documentation.
 - [x] Commit, push, merge, and push `main` (`e5586d8`).
 
+The original `e5586d8` implementation was a fixed Munich command-line pilot;
+it did not add an API export profile or planner control. The geometry-driven
+workflow is tracked separately below.
+
 ### 3.8 Leaflet planning controls and universal search
 
 Branch: `fix/leaflet-planner-controls`
@@ -168,6 +172,27 @@ Branch: `fix/leaflet-planner-controls`
       marker or link itself.
 - [x] Verify focused API search tests, web tests, ESLint, production build,
       diff checks, and repository size policy.
+
+### 3.9 Geometry-driven Ellipse semantic bundle
+
+Branch: `fix/geometry-driven-grc-export`
+
+- [x] Add a visible Bayern DGM + DOM + buildings + trees GRC export option.
+- [x] Automatically include `dgm1`, `dom1`, and `bdom` in the bundle request.
+- [x] Preserve the Ellipse WGS 84 / UTM zone 32N terrain-export invariant.
+- [x] Export DGM and DOM as GeoTIFF + TAB with pyramids.
+- [x] Query Bayern Basis-DLM using only the selected geometry bounds.
+- [x] Rasterize LDBV LoD2 buildings and Basis-DLM forest/woodland to one aligned
+      2 m semantic mask, then write separate classified GRC files.
+- [x] Keep unrelated cells No Data and warn when a selected layer is empty.
+- [x] Bound point selections to a 1 km work area and reject overly large grids.
+- [x] Verify a live Munich bundle with one DGM, one DOM, and one LoD2 tile; both
+      501 by 501 GRCs were readable through the Ellipse GDAL `NWT_GRC` driver.
+- [ ] Extend the same workflow to state providers that already expose LoD2 or
+      BDOM, validating each state's vegetation source and CRS before enabling it.
+- [ ] Implement one controlled fallback pilot in a state without the required
+      building data, then compare completeness and accuracy before wider use.
+- [ ] Commit, push, merge, and push `main`.
 
 ## 4. Resolve prototypes and local artifacts
 

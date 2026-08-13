@@ -79,6 +79,24 @@ This separation lets Ellipse load and enable buildings and trees independently.
 Both files describe semantic presence; actual obstacle height remains in the
 shared AGL MRR.
 
+## Geometry-driven planner export
+
+The supported Leaflet planner now exposes `Bayern DGM + DOM + buildings +
+trees GRC`. Unlike this document's fixed 4 km pilot builder, the planner export
+uses the current point, corridor, rectangle, circle, or polygon. It produces one
+Ellipse bundle containing:
+
+- DGM UTM32N GeoTIFF + TAB with pyramids for the terrain strip
+- DOM UTM32N GeoTIFF + TAB with pyramids as the surface comparison layer
+- a building-only 2 m GRC from the downloaded LDBV LoD2 source
+- a tree-only 2 m GRC from the geometry-bounded Bayern Basis-DLM request
+
+The two GRCs have identical UTM32N bounds, cell size, and No Data policy. A
+point selection is expanded to a 1 km work area. The live Munich smoke test
+created 501 by 501 GRC grids, retained the building palette, and produced an
+empty but valid tree layer with an explicit warning because the city-centre
+selection contained no Basis-DLM forest or woodland.
+
 ## Create the combined semantic GRC
 
 MapInfo Raster is the validated GRC writer. In its Classify tool:

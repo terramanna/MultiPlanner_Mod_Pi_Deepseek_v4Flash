@@ -22,6 +22,7 @@ Current scaffold:
 - API bootstrap against the local FastAPI backend
 - corridor subset preview against the API
 - keep selected subset tiles through the API
+- Bayern Ellipse bundle export containing DGM, DOM, building GRC, and tree GRC
 
 Run locally:
 
@@ -33,6 +34,11 @@ npm run dev
 The Vite development server proxies `/api` to `http://127.0.0.1:8000`. This
 keeps universal search on the frontend origin and avoids a separate browser CORS
 hop. Start the FastAPI backend before using search or provider operations.
+
+For a Bayern selection, choose `Bayern DGM + DOM + buildings + trees GRC`.
+The planner automatically requests DGM, DOM, and LoD2/BDOM even if one of those
+dataset boxes was not selected. The export is deliberately rejected for other
+providers until their building and vegetation sources are validated.
 
 Renderer routes:
 
