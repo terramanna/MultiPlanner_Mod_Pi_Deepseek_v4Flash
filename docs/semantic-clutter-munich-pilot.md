@@ -106,8 +106,8 @@ derived from `max(DOM - DGM, 0)`, not constant semantic labels:
 - the accompanying `.vse` files reproduce the GRC colour/value legends
 - the accompanying Height Definition `.xml` files map every GRC class to its
   numeric AGL height in metres
-- the tree Ground Type `.xml` assigns `tree_foliage_medium` to forest classes
-  and `unknown` to No Data
+- Ground Type `.xml` files assign `average_ground` to building classes,
+  `tree_foliage_medium` to forest classes, and `unknown` to No Data
 
 In Ellipse, load each GRC as its classified clutter layer, load its `.vse` in
 the colour/value editor, and load its matching Height Definition `.xml` in the

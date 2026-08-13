@@ -40,7 +40,8 @@ download becomes a Bayern Ellipse bundle. The backend automatically includes
 - matching continuous Float32 building and tree AGL-height MRRs
 - matching `.vse` colour/value tables
 - matching Ellipse Height Definition `.xml` tables with numeric metre values
-- a tree Ground Type `.xml` table using `tree_foliage_medium`
+- Ground Type `.xml` tables using `average_ground` for buildings and
+  `tree_foliage_medium` for forest
 
 Both classified GRCs use the selected geometry, the selected 1 m or 2 m UTM32N
 grid, and No Data outside their own class. Heights are `max(DOM - DGM, 0)` in

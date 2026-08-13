@@ -84,7 +84,7 @@ def test_height_grcs_use_variable_height_classification(monkeypatch, tmp_path) -
         "buildings_2m_utm32n.grc", "trees_2m_utm32n.grc",
         "buildings_2m_height_table.vse", "trees_2m_height_table.vse",
         "buildings_2m_height_definition.xml", "trees_2m_height_definition.xml",
-        "trees_2m_ground_type.xml",
+        "buildings_2m_ground_type.xml", "trees_2m_ground_type.xml",
     ]
     assert [(call[2], call[3]) for call in calls] == [
         ("building_heights", np.float32(10.7)), ("tree_heights", 41.0),
@@ -106,14 +106,24 @@ def test_height_grcs_use_variable_height_classification(monkeypatch, tmp_path) -
     }
     assert settings[-1].attrib["height"] == "41"
     assert values[-1].attrib["clutter_item_text"] == "Forest 41.0m"
-    ground_types = ElementTree.parse(tmp_path / "trees_2m_ground_type.xml")
-    ground_settings = ground_types.findall("./echelle/settings_type")
-    ground_values = ground_types.findall("./echelle/echelle_values")
-    assert ground_settings[0].attrib["ground_type"] == "unknown"
-    assert {item.attrib["ground_type"] for item in ground_settings[1:]} == {
+    _assert_ground_types(tmp_path)
+
+
+def _assert_ground_types(output_dir: Path) -> None:
+    tree_ground = ElementTree.parse(output_dir / "trees_2m_ground_type.xml")
+    tree_settings = tree_ground.findall("./echelle/settings_type")
+    tree_values = tree_ground.findall("./echelle/echelle_values")
+    assert tree_settings[0].attrib["ground_type"] == "unknown"
+    assert {item.attrib["ground_type"] for item in tree_settings[1:]} == {
         "tree_foliage_medium"
     }
-    assert ground_values[-1].attrib["clutter_item_text"] == "Forest 41.0m"
+    assert tree_values[-1].attrib["clutter_item_text"] == "Forest 41.0m"
+    building_ground = ElementTree.parse(output_dir / "buildings_2m_ground_type.xml")
+    building_settings = building_ground.findall("./echelle/settings_type")
+    assert building_settings[0].attrib["ground_type"] == "unknown"
+    assert {item.attrib["ground_type"] for item in building_settings[1:]} == {
+        "average_ground"
+    }
 
 
 def test_export_reports_missing_gdal_tools_as_warning(tmp_path) -> None:

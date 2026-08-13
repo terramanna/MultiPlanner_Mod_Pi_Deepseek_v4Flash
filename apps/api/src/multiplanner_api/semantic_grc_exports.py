@@ -314,15 +314,23 @@ def _write_height_grcs(
         export_dir / f"buildings_{resolution_m}m_height_definition.xml",
         export_dir / f"trees_{resolution_m}m_height_definition.xml",
     ]
-    tree_ground_types = export_dir / f"trees_{resolution_m}m_ground_type.xml"
+    ground_types = [
+        export_dir / f"buildings_{resolution_m}m_ground_type.xml",
+        export_dir / f"trees_{resolution_m}m_ground_type.xml",
+    ]
     building_colors = _building_colors(building_max)
     tree_colors = _forest_colors(tree_max)
     _write_height_vse(styles[0], "Building", building_colors)
     _write_height_vse(styles[1], "Forest", tree_colors)
     _write_height_definition(definitions[0], "Building", len(building_colors))
     _write_height_definition(definitions[1], "Forest", len(tree_colors))
-    _write_ground_type_definition(tree_ground_types, "Forest", len(tree_colors))
-    return [*targets, *styles, *definitions, tree_ground_types]
+    _write_ground_type_definition(
+        ground_types[0], "Building", len(building_colors), "average_ground"
+    )
+    _write_ground_type_definition(
+        ground_types[1], "Forest", len(tree_colors), "tree_foliage_medium"
+    )
+    return [*targets, *styles, *definitions, *ground_types]
 
 
 def _maximum_height(values: np.ndarray, minimum: float = 1.0) -> float:
@@ -382,7 +390,9 @@ def _write_height_definition(path: Path, prefix: str, class_count: int) -> None:
     tree.write(path, encoding="utf-8", xml_declaration=True)
 
 
-def _write_ground_type_definition(path: Path, prefix: str, class_count: int) -> None:
+def _write_ground_type_definition(
+    path: Path, prefix: str, class_count: int, class_ground_type: str,
+) -> None:
     root = ET.Element("generic_scale")
     scale = ET.SubElement(root, "echelle", {
         "type": "CEchelleDiscrete_Raster`1", "name": "Ground Type",
@@ -390,7 +400,7 @@ def _write_ground_type_definition(path: Path, prefix: str, class_count: int) -> 
     })
     for index in range(class_count + 1):
         label = "No data" if index == 0 else f"{prefix} {(index / 2):.1f}m"
-        ground_type = "unknown" if index == 0 else "tree_foliage_medium"
+        ground_type = "unknown" if index == 0 else class_ground_type
         ET.SubElement(scale, "settings_type", {
             "name": "CSettingsType_GroundTypes", "type": "CSettingsType_GroundTypes",
             "ground_type": ground_type,

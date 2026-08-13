@@ -44,8 +44,8 @@ providers until their building and vegetation sources are validated.
 Each semantic bundle contains a height-classified building GRC, a
 height-classified forest GRC, exact continuous AGL-height MRRs, and `.vse`
 tables. Matching Height Definition `.xml` files populate Ellipse's numeric
-height column for each GRC class. The tree bundle also includes a Ground Type
-XML assigning `tree_foliage_medium` to every forest-height class. The 2 m profile is the practical default; the 1 m profile uses roughly
+height column for each GRC class. Ground Type XML files assign `average_ground`
+to building classes and `tree_foliage_medium` to forest classes. The 2 m profile is the practical default; the 1 m profile uses roughly
 four times as many semantic cells for the same area.
 
 Renderer routes:
