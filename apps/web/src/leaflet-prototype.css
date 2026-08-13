@@ -2,8 +2,13 @@ html, body, #app, .leaflet-prototype-shell, #leafletMap { height: 100%; margin: 
 :root { font-family: "Segoe UI", sans-serif; color: #162332; background: #e9eef2; }
 .leaflet-prototype-shell { display: grid; grid-template-columns: 360px 1fr; }
 .leaflet-prototype-panel { box-sizing: border-box; overflow-y: auto; padding: 20px; background: #f7fafc; border-right: 1px solid #cbd5df; }
+.prototype-kicker-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .prototype-kicker { color: #197a98; font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+.prototype-api-status { color: #4d6170; font-size: 10px; white-space: nowrap; }
 h1 { margin: 6px 0 10px; font-size: 24px; } h2 { font-size: 14px; margin: 0 0 8px; }
+.prototype-mode-selector { display: grid; gap: 5px; margin: 0 0 14px; }
+.prototype-mode-selector label { color: #26495d; font-size: 12px; font-weight: 700; }
+.prototype-mode-selector select { width: 100%; border: 1px solid #9db1c0; border-radius: 5px; padding: 9px 10px; background: white; font: inherit; }
 .prototype-help, .prototype-note, .prototype-status { color: #4d6170; font-size: 13px; line-height: 1.4; }
 .prototype-actions, .prototype-search-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
 .prototype-search-row input { flex: 1; min-width: 180px; }
@@ -12,13 +17,19 @@ button { background: #147a9a; color: white; cursor: pointer; } button.secondary 
 .prototype-actions button.is-active { background: #0a4054; color: white; box-shadow: inset 0 0 0 2px #8ce8ff; }
 .placement-state { width: 100%; color: #17647d; font-size: 12px; font-weight: 600; }
 .prototype-results { display: grid; gap: 6px; }.prototype-result { text-align: left; background: white; color: #1d4c61; }
+.prototype-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.prototype-universal-search { position: absolute; z-index: 700; top: 12px; left: 50%; transform: translateX(-50%); box-sizing: border-box; width: min(380px, calc(100% - 140px)); padding: 6px; background: rgba(247, 250, 252, .96); border: 1px solid #cbd5df; border-radius: 8px; box-shadow: 0 4px 14px #0004; }
+.prototype-universal-search .prototype-search-row { flex-wrap: nowrap; margin: 0; }
+.prototype-universal-search input, .prototype-universal-search button { padding: 6px 8px; font-size: 13px; }
+.prototype-universal-search .prototype-results { max-height: 360px; overflow-y: auto; }
+.prototype-universal-search .prototype-result { width: 100%; }
 .prototype-selection { margin-top: 18px; padding: 12px; border: 1px solid #d1dde5; background: white; border-radius: 6px; }
 .prototype-datasets { display: grid; gap: 7px; margin: 16px 0; padding: 10px; border: 1px solid #d1dde5; border-radius: 6px; background: white; font-size: 13px; }.prototype-datasets legend { padding: 0 4px; font-weight: 700; }.prototype-datasets input { width: auto; padding: 0; }
 .prototype-coverage-toggle { display: block; margin-top: 8px; font-size: 13px; color: #26495d; }.prototype-coverage-toggle input { width: auto; padding: 0; }
 pre { margin: 0; white-space: pre-wrap; font: 12px/1.5 Consolas, monospace; }
 .prototype-tile-list { max-height: 180px; overflow: auto; margin-top: 10px; font-size: 12px; }.prototype-tile-list ul { margin: 6px 0; padding-left: 18px; }.prototype-tile-list li { margin-bottom: 8px; }.prototype-tile-list small { color: #5b6e7b; overflow-wrap: anywhere; }
 .prototype-download-actions { margin-top: 18px; }.prototype-status { white-space: pre-wrap; min-height: 22px; }
-.leaflet-prototype-map-wrap { position: relative; min-width: 0; }.prototype-map-note { position: absolute; z-index: 500; right: 12px; top: 12px; padding: 7px 9px; background: rgba(255,255,255,.9); border-radius: 4px; font-size: 12px; }
+.leaflet-prototype-map-wrap { position: relative; min-width: 0; }
 .prototype-measurement { position: absolute; z-index: 500; left: 52px; bottom: 28px; padding: 8px 10px; background: rgba(8, 30, 43, .9); color: white; border-radius: 4px; font-size: 13px; font-weight: 600; }
 #leafletMap.is-site-placement,
 #leafletMap.is-site-placement .leaflet-pane,
@@ -70,5 +81,4 @@ pre { margin: 0; white-space: pre-wrap; font: 12px/1.5 Consolas, monospace; }
 .prototype-probe .probe-mode-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
 .prototype-probe .probe-mode-cell input { width: 20px; height: 20px; cursor: pointer; }
 .prototype-probe .probe-mode-label { font-size: 11px; color: #4d6170; }
-.prototype-switcher { position: fixed; z-index: 1000; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px; background: #102b3a; color: white; border-radius: 999px; box-shadow: 0 5px 20px #0005; }.prototype-switcher button { padding: 5px 10px; }.prototype-switcher a { color: #aeeaff; font-size: 12px; }
 @media (max-width: 850px) { .leaflet-prototype-shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }.leaflet-prototype-panel { max-height: 52vh; border-right: 0; border-bottom: 1px solid #cbd5df; } }

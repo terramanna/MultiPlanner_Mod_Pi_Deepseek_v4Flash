@@ -183,6 +183,23 @@ def test_network_search_falls_back_when_configured_database_is_empty(monkeypatch
     assert response.json()["candidates"][0]["source"] == "network-site"
 
 
+def test_network_search_returns_at_most_ten_ranked_candidates(monkeypatch) -> None:
+    features = [
+        site_feature(f"SITE_MATCH_{index:02d}", "", "LTE", f"S{index:06d}", "", [7.0, 52.0])
+        for index in range(12)
+    ]
+    patch_offline_network_search(monkeypatch, {"type": "FeatureCollection", "features": features})
+    monkeypatch.setattr(
+        "multiplanner_api.search.requests.get",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("offline")),
+    )
+
+    response = client.get("/api/v1/search/places", params={"q": "SITE_MATCH"})
+
+    assert response.status_code == 200
+    assert len(response.json()["candidates"]) == 10
+
+
 def test_network_search_respects_bounds(monkeypatch) -> None:
     patch_offline_network_search(monkeypatch, bounded_link_feature_collection())
     monkeypatch.setattr("multiplanner_api.search.requests.get", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("offline")))

@@ -20,15 +20,13 @@ const labels = {
 export function renderPrototypeShell(variant) {
   return `<main class="leaflet-prototype-shell">
     ${renderPanel(variant)}
-    ${renderMapSection()}
-    ${renderVariantSwitcher(variant)}
+    ${renderMapSection(variant)}
   </main>`;
 }
 
 function renderPanel(variant) {
   return `<aside class="leaflet-prototype-panel">
     ${renderIntro(variant)}
-    ${renderSearch()}
     ${renderProviderControls()}
     ${renderSelection()}
     ${renderProbeControls()}
@@ -37,20 +35,35 @@ function renderPanel(variant) {
 }
 
 function renderIntro(variant) {
-  return `<div class="prototype-kicker">PROTOTYPE - 2D local planning</div>
+  return `<div class="prototype-kicker-row">
+      <div class="prototype-kicker">PROTOTYPE - 2D local planning</div>
+      <div id="searchStatus" class="prototype-api-status">API: starting</div>
+    </div>
     <h1>${labels[variant]}</h1>
+    ${renderModeSelector(variant)}
     <p id="modeHelp" class="prototype-help"></p>
     <div class="prototype-actions" id="placementActions"></div>`;
 }
 
+function renderModeSelector(variant) {
+  const options = Object.entries(labels)
+    .map(([value, label]) => `<option value="${value}"${value === variant ? " selected" : ""}>${label}</option>`)
+    .join("");
+  return `<div class="prototype-mode-selector">
+    <label for="variantSelect">Planning mode</label>
+    <select id="variantSelect">${options}</select>
+  </div>`;
+}
+
 function renderSearch() {
-  return `<label for="searchInput">Search place or coordinates</label>
+  return `<section class="prototype-universal-search" aria-label="Universal map search">
+    <label class="prototype-sr-only" for="searchInput">Search sites, links, places, or coordinates</label>
     <div class="prototype-search-row">
-      <input id="searchInput" placeholder="52.324784, 7.467435 or address" />
+      <input id="searchInput" placeholder="Search sites, links, places, or coordinates" />
       <button id="searchButton">Find</button>
     </div>
-    <div id="searchStatus" class="prototype-status">API: starting</div>
-    <div id="searchResults" class="prototype-results"></div>`;
+    <div id="searchResults" class="prototype-results"></div>
+  </section>`;
 }
 
 function renderProviderControls() {
@@ -62,6 +75,7 @@ function renderProviderControls() {
         <option value="desc">Z to A</option>
       </select>
     </div>
+    <div id="providerModeStatus" class="prototype-status">Auto-detect follows the current selection.</div>
     <label for="jobNameInput">Job / file name</label>
     <input id="jobNameInput" placeholder="01wzoming01_2km_diam_1m_res" />
     <label class="prototype-coverage-toggle"><input id="coverageToggle" type="checkbox" checked /> Show selected provider coverage</label>
@@ -132,21 +146,15 @@ function renderExportOptions() {
     </fieldset>`;
 }
 
-function renderMapSection() {
+function renderMapSection(variant) {
+  const measurement = variant === "area"
+    ? `<div id="measurementReadout" class="prototype-measurement">Draw a circle, rectangle, or polygon to see dimensions.</div>`
+    : "";
   return `<section class="leaflet-prototype-map-wrap">
     <div id="leafletMap"></div>
-    <div class="prototype-map-note">Use the layer button for street or satellite imagery. Draw tools select download areas.</div>
-    <div id="measurementReadout" class="prototype-measurement">Draw a circle, rectangle, or lasso to see dimensions.</div>
+    ${renderSearch()}
+    ${measurement}
   </section>`;
-}
-
-function renderVariantSwitcher(variant) {
-  return `<nav class="prototype-switcher" aria-label="Prototype variants">
-    <button id="previousVariant" aria-label="Previous variant">&lt;</button>
-    <strong id="variantLabel">${labels[variant]}</strong>
-    <button id="nextVariant" aria-label="Next variant">&gt;</button>
-    <a href="?renderer=cesium">Open Cesium comparison</a>
-  </nav>`;
 }
 
 function providerOptions() {

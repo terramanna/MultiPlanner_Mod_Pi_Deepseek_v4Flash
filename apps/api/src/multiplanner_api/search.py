@@ -110,7 +110,7 @@ def _search_network(query: str, bounds: tuple[float, float, float, float] | None
             continue
         ranked.append((score, candidate))
     ranked.sort(key=lambda item: (item[0], item[1].label))
-    return _unique_candidates(candidate for _score, candidate in ranked)[:8]
+    return _unique_candidates(candidate for _score, candidate in ranked)[:10]
 
 
 def _unique_candidates(candidates: Iterable[SearchCandidate]) -> list[SearchCandidate]:

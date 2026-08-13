@@ -30,7 +30,10 @@ import {
 
 export function addLeafletLayerControl(L, map, bbLod2Layer) {
   streets.addTo(map);
-  L.control.layers(baseLayers(), overlays(bbLod2Layer), { position: "topright" }).addTo(map);
+  const control = L.control.layers(baseLayers(), overlays(bbLod2Layer), { position: "topright" }).addTo(map);
+  const toggle = control.getContainer()?.querySelector(".leaflet-control-layers-toggle");
+  if (toggle) toggle.title = "Choose street, satellite, terrain, or surface layers";
+  return control;
 }
 
 function baseLayers() {

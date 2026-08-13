@@ -15,10 +15,12 @@ import { requestLeafletSubset } from "./leaflet-subset-request.js";
 import { bindPersistedInput } from "./persisted-input.js";
 import { renderPrototypeShell } from "./leaflet-prototype-shell.js";
 import { createCoverageOverlay } from "./leaflet-coverage-overlay.js";
+import { addAreaDrawingControls } from "./leaflet-drawing-controls.js";
 import { addLeafletLayerControl } from "./leaflet-layer-control.js";
 import { applySearchCandidateToState } from "./leaflet-search-results.js";
 import { openSelectedLinkPopup } from "./leaflet-selected-link.js";
 import { buildSearchPlacesUrl } from "./leaflet-search-request.js";
+import { autoProviderForGeometry } from "./provider-auto-selection.js";
 import { applyProviderSelection, sortProviders } from "./provider-selection.js";
 import {
   currentGeometryFrom,
@@ -70,26 +72,12 @@ zoomLevelControl.onAdd = function (m) {
   return div;
 };
 zoomLevelControl.addTo(map);
-map.pm.addControls({
-  position: "topleft",
-  drawMarker: false,
-  drawCircleMarker: false,
-  drawText: false,
-  drawPolyline: false,
-  drawRectangle: true,
-  drawPolygon: true,
-  drawCircle: true,
-  editMode: true,
-  dragMode: false,
-  cutMode: false,
-  rotateMode: false,
-  scaleMode: false,
-  removalMode: true,
-});
+addAreaDrawingControls(map, variant);
 
 const state = {
   activeSite: null,
   provider: "auto",
+  providerAutoDetect: true,
   providers: [],
   providerSortDirection: "asc",
   apiReady: false,
@@ -123,6 +111,7 @@ const downloadProgress = document.getElementById("downloadProgress");
 const tileList = document.getElementById("tileList");
 const providerSelect = document.getElementById("providerSelect");
 const providerSortSelect = document.getElementById("providerSortSelect");
+const providerModeStatus = document.getElementById("providerModeStatus");
 const jobNameInput = document.getElementById("jobNameInput");
 const measurementReadout = document.getElementById("measurementReadout");
 const coverageToggle = document.getElementById("coverageToggle");
@@ -136,7 +125,7 @@ const { loadProviderCoverage, updateCoverageOverlay } = createCoverageOverlay(
 configureVariant();
 refreshReadout();
 bootstrapApi();
-loadProviderCoverage();
+loadProviderCoverage().then(refreshReadout);
 const pointProbe = createPointProbe(
   map, apiBaseUrl,
   () => state.provider,
@@ -191,8 +180,7 @@ document.getElementById("locateButton").addEventListener("click", () => requestL
 document.getElementById("downloadButton").addEventListener("click", () => requestLeafletSubset(subsetRequestContext(), true));
 document.getElementById("clearButton").addEventListener("click", () => clearLeafletSelection({ state, map, redrawGeometry, refreshReadout, downloadStatus, tileList }));
 openDownloadFolderButton.addEventListener("click", openLastDownloadedFolder);
-document.getElementById("previousVariant").addEventListener("click", () => switchVariant(-1));
-document.getElementById("nextVariant").addEventListener("click", () => switchVariant(1));
+document.getElementById("variantSelect").addEventListener("change", (event) => switchVariant(event.target.value));
 providerSelect.addEventListener("input", handleProviderSelection);
 providerSelect.addEventListener("change", handleProviderSelection);
 providerSortSelect.addEventListener("input", handleProviderSortChange);
@@ -304,6 +292,7 @@ function currentGeometry() {
 }
 
 function refreshReadout() {
+  autoSelectProvider();
   if (state.manualGeometry) {
     selectionReadout.textContent = `Manual ${state.manualGeometry.kind} selection\nDraw tools override the site/corridor selection.`;
     return;
@@ -381,7 +370,9 @@ function populateProviderSelect(providers, sortDirection) {
 
 function handleProviderSelection() {
   if (!state.providers.length) return;
+  state.providerAutoDetect = providerSelect.value === "auto";
   syncProviderSelection(true);
+  refreshReadout();
 }
 
 function handleProviderSortChange() {
@@ -400,16 +391,40 @@ function syncProviderSelection(clearTiles) {
   });
 }
 
+function autoSelectProvider() {
+  if (!state.providerAutoDetect || !state.providers.length) {
+    providerModeStatus.textContent = "Manual provider selection.";
+    return;
+  }
+  const detected = autoProviderForGeometry(
+    currentGeometry(),
+    state,
+    state.coverageFeatures,
+    state.providers.map((provider) => provider.name),
+  );
+  if (!detected) return;
+  providerModeStatus.textContent = detected === "auto"
+    ? "Auto-detect: selection crosses or is outside one provider area."
+    : `Auto-detected from selection: ${providerLabel(detected)}.`;
+  if (detected === state.provider) return;
+  providerSelect.value = detected;
+  syncProviderSelection(true);
+}
+
+function providerLabel(providerName) {
+  return state.providers.find((provider) => provider.name === providerName)?.label || providerName;
+}
+
 async function searchPlaces() {
   const query = searchInput.value.trim();
   if (!query) return;
   searchStatus.textContent = "Searching...";
   searchResults.innerHTML = "";
   try {
-    const response = await fetch(buildSearchPlacesUrl(apiBaseUrl, query, map.getBounds()));
+    const response = await fetch(buildSearchPlacesUrl(apiBaseUrl, query));
     if (!response.ok) throw new Error("Search failed");
     const payload = await response.json();
-    const candidates = payload.candidates || [];
+    const candidates = (payload.candidates || []).slice(0, 10);
     if (candidates.length === 1 && candidates[0].source === "coordinates") {
       chooseCandidate(candidates[0]);
       return;
@@ -551,9 +566,7 @@ async function openDownloadedOutputFolder(outputDir) {
   return response.json();
 }
 
-function switchVariant(step) {
-  const currentIndex = variants.indexOf(variant);
-  const next = variants[(currentIndex + step + variants.length) % variants.length];
+function switchVariant(next) {
   params.set("variant", next);
   window.location.search = params.toString();
 }
