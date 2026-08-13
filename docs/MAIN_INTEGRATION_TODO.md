@@ -27,10 +27,9 @@ Cesium geometry work integrated during this run.
   webinar remains pending; continue to stage explicit paths only.
 - The untracked PySide6 status-widget prototype and launcher are preserved in
   the recovery backup, but the productize/archive decision remains open.
-- Fresh-worktree bootstrap now uses pip's system trust store and stops on native
-  command failure. Its final dependency install remains unverified because the
-  corporate package-scanning endpoint at `172.16.31.1:8090` repeatedly timed
-  out; rerun the bootstrap when that service is reachable.
+- Fresh-worktree bootstrap uses pip's system trust store and stops on native
+  command failure. It completed successfully in a disposable worktree after the
+  external proxy was disabled on 2026-08-13.
 
 ## 1. Secure the current work
 
@@ -66,8 +65,10 @@ Branch: `fix/launcher-runtime-reliability`
       or revise the launchers to use the runtime that bootstrap already supports.
 - [x] Preserve the underscore-based launcher filenames.
 - [x] Verify start, stop, restart, duplicate-widget handling, and setup diagnostics.
-- [ ] Verify launcher behavior from a fresh bootstrap (currently blocked by the
-      external package-scanning proxy timeout described above).
+- [x] Verify launcher behavior from a fresh bootstrap: API and web reached HTTP
+      200, duplicate start retained one widget instance and one service pair,
+      Edge used the isolated profile flags, stop cleared both listeners and the
+      PID registry, and restart returned both services to HTTP 200.
 - [x] Commit, push, merge, and push `main` (`bf9e576`).
 
 ### 3.2 Isolated Edge browser
