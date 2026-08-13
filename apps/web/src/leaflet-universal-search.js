@@ -3,14 +3,17 @@ import { buildSearchPlacesUrl } from "./leaflet-search-request.js";
 export function bindUniversalSearch(context) {
   const search = () => runUniversalSearch(context);
   context.button.addEventListener("click", search);
-  context.typeSelect.addEventListener("change", () => {
-    if (context.input.value.trim()) search();
-  });
+  context.typeSelect.addEventListener("change", () => resetUniversalSearch(context));
   context.input.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
     search();
   });
+}
+
+export function resetUniversalSearch(context) {
+  context.results.innerHTML = "";
+  context.status.textContent = "";
 }
 
 export async function runUniversalSearch(context) {

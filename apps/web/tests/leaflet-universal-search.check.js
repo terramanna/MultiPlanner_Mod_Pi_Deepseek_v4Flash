@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { runUniversalSearch } from "../src/leaflet-universal-search.js";
+import { resetUniversalSearch, runUniversalSearch } from "../src/leaflet-universal-search.js";
 
 test("universal search sends the selected type and renders results", async () => {
   const context = searchContext([{ label: "Site A", source: "network-site" }]);
@@ -11,6 +11,17 @@ test("universal search sends the selected type and renders results", async () =>
   assert.equal(context.results.children.length, 1);
   assert.equal(context.results.children[0].textContent, "Site A");
   assert.equal(context.status.textContent, "Choose a result.");
+});
+
+test("changing search type clears stale results and errors", () => {
+  const context = searchContext([]);
+  context.results.innerHTML = "old result";
+  context.status.textContent = "Search failed.";
+
+  resetUniversalSearch(context);
+
+  assert.equal(context.results.innerHTML, "");
+  assert.equal(context.status.textContent, "");
 });
 
 function searchContext(candidates) {
