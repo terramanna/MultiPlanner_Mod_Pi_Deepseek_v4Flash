@@ -121,7 +121,7 @@ const openFolderAfterDownload = document.getElementById("openFolderAfterDownload
 const openDownloadFolderButton = document.getElementById("btnOpenDownloadFolder");
 bindPersistedInput(searchInput, "multiplanner.leaflet.searchInput");
 bindUniversalSearch({
-  apiBaseUrl, button: searchButton, fetchFn: fetch, input: searchInput,
+  apiBaseUrl: window.location.origin, button: searchButton, fetchFn: (url, options) => window.fetch(url, options), input: searchInput,
   onCandidate: chooseCandidate, results: searchResults, status: searchStatus,
   typeSelect: searchTypeSelect,
 });
