@@ -34,6 +34,7 @@ test("separate Bayern building and tree GRC export is selectable", () => {
   const html = renderPrototypeShell("area");
 
   assert.match(html, /value="ellipse_semantic_grc"/);
-  assert.match(html, /Bayern DGM \+ DOM \+ buildings \+ trees GRC/);
+  assert.match(html, /building\/tree heights \(2 m\)/);
+  assert.match(html, /building\/tree heights \(1 m comparison\)/);
   assert.match(html, />Download \+ export</);
 });

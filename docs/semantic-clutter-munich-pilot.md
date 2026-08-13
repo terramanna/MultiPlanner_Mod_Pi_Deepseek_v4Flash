@@ -91,11 +91,28 @@ Ellipse bundle containing:
 - a building-only 2 m GRC from the downloaded LDBV LoD2 source
 - a tree-only 2 m GRC from the geometry-bounded Bayern Basis-DLM request
 
-The two GRCs have identical UTM32N bounds, cell size, and No Data policy. A
-point selection is expanded to a 1 km work area. The live Munich smoke test
-created 501 by 501 GRC grids, retained the building palette, and produced an
-empty but valid tree layer with an explicit warning because the city-centre
-selection contained no Basis-DLM forest or woodland.
+The planner offers 2 m and 1 m comparison bundles. Within a bundle, the two
+GRCs and two height MRRs have matching UTM32N origins and cell sizes. A point
+selection is expanded to a 1 km work area. The GRC values are height classes
+derived from `max(DOM - DGM, 0)`, not constant semantic labels:
+
+- forest and buildings use No Data plus 0.5 m increments through the observed
+  maximum
+- the forest palette preserves the supplied table colours at their original
+  heights and interpolates colours for the added half-metre classes
+- forest classes always extend through at least 41 m, including selections
+  where no tree pixels are detected
+- the accompanying MRRs retain continuous Float32 AGL heights in metres
+- the accompanying `.vse` files reproduce the GRC colour/value legends
+- the accompanying Height Definition `.xml` files map every GRC class to its
+  numeric AGL height in metres
+
+In Ellipse, load each GRC as its classified clutter layer, load its `.vse` in
+the colour/value editor, and load its matching Height Definition `.xml` in the
+Height Definition dialog. The separate MRR preserves the exact continuous AGL
+values for comparison and can be enabled as a variable AGL source with unit
+metres. Do not add DOM as an AGL height; it is an absolute surface comparison
+layer.
 
 ## Create the combined semantic GRC
 

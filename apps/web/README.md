@@ -35,10 +35,17 @@ The Vite development server proxies `/api` to `http://127.0.0.1:8000`. This
 keeps universal search on the frontend origin and avoids a separate browser CORS
 hop. Start the FastAPI backend before using search or provider operations.
 
-For a Bayern selection, choose `Bayern DGM + DOM + buildings + trees GRC`.
+For a Bayern selection, choose the 2 m or 1 m comparison
+`Bayern DGM + DOM + building/tree heights` profile.
 The planner automatically requests DGM, DOM, and LoD2/BDOM even if one of those
 dataset boxes was not selected. The export is deliberately rejected for other
 providers until their building and vegetation sources are validated.
+
+Each semantic bundle contains a height-classified building GRC, a
+height-classified forest GRC, exact continuous AGL-height MRRs, and `.vse`
+tables. Matching Height Definition `.xml` files populate Ellipse's numeric
+height column for each GRC class. The 2 m profile is the practical default; the 1 m profile uses roughly
+four times as many semantic cells for the same area.
 
 Renderer routes:
 

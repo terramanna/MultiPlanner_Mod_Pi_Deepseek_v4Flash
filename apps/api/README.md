@@ -30,16 +30,25 @@ used by this workflow expect one projection, and UTM 33N exports are not loaded
 properly even when they would be geographically reasonable.
 This requires GDAL tools from the local Ellipse installation.
 
-With `export_profile: "ellipse_semantic_grc"` and provider `ldbv-by`, the
+With `export_profile: "ellipse_semantic_grc"` (2 m) or
+`"ellipse_semantic_grc_1m"` (1 m comparison) and provider `ldbv-by`, the
 download becomes a Bayern Ellipse bundle. The backend automatically includes
 `dgm1`, `dom1`, and `bdom` sources and writes:
 
 - DGM and DOM as WGS 84 / UTM zone 32N GeoTIFF + `.TAB` with pyramids
-- `semantic_grc/buildings_2m_utm32n.grc` from LDBV LoD2 footprints
-- `semantic_grc/trees_2m_utm32n.grc` from Bayern Basis-DLM forest/woodland
+- separate building and forest GRCs classified by AGL height
+- matching continuous Float32 building and tree AGL-height MRRs
+- matching `.vse` colour/value tables
+- matching Ellipse Height Definition `.xml` tables with numeric metre values
 
-Both classified GRCs use the selected geometry, a 2 m UTM32N grid, and No Data
-outside their own class. A point selection uses a bounded 1 km work area. The
+Both classified GRCs use the selected geometry, the selected 1 m or 2 m UTM32N
+grid, and No Data outside their own class. Heights are `max(DOM - DGM, 0)` in
+metres. Both GRCs use 0.5 m height classes through the observed maximum. The
+forest palette interpolates the supplied Ellipse forest table at the added
+half-metre steps, while each MRR retains the exact continuous value. A point
+selection uses a bounded 1 km work area. Forest class and height-definition
+tables always cover at least 0–41 m so an empty or low-canopy selection does
+not produce an unusably short reusable table. The
 profile currently supports Bayern only; other state providers require their
 semantic-source route to be validated before the same option is enabled.
 

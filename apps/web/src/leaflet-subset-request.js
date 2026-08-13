@@ -52,14 +52,18 @@ function buildSubsetRequestBody(context, download, geometry, datasets, exportPro
 }
 
 function exportProfileError(exportProfile, provider) {
-  if (exportProfile !== "ellipse_semantic_grc" || provider === "ldbv-by") return "";
+  if (!isSemanticProfile(exportProfile) || provider === "ldbv-by") return "";
   return "Buildings + trees GRC currently requires the Bayern LDBV provider.";
 }
 
 export function datasetsForExport(datasets, exportProfile, provider) {
-  if (exportProfile !== "ellipse_semantic_grc" || provider !== "ldbv-by") return datasets;
+  if (!isSemanticProfile(exportProfile) || provider !== "ldbv-by") return datasets;
   const required = ["dgm1", "dom1", "bdom"];
   return [...datasets, ...required.filter((dataset) => !datasets.includes(dataset))];
+}
+
+function isSemanticProfile(exportProfile) {
+  return exportProfile === "ellipse_semantic_grc" || exportProfile === "ellipse_semantic_grc_1m";
 }
 
 async function prepareSubsetDownload(context, body) {
@@ -224,7 +228,7 @@ function hasMissingDownloads(payload) {
 }
 
 function exportProfileLabel(exportProfile) {
-  if (exportProfile === "ellipse_semantic_grc") return "separate building + tree GRC exports";
+  if (isSemanticProfile(exportProfile)) return "building/tree class and variable-height exports";
   if (exportProfile === "ellipse_mapinfo_tab") return "UTM32N GeoTIFF + TAB exports";
   if (exportProfile === "ellipse_mapinfo_tab_pyramids") return "UTM32N GeoTIFF + TAB + pyramid exports";
   return "GRD exports";

@@ -379,7 +379,11 @@ def test_semantic_grc_profile_uses_bayern_geometry_and_lod2(monkeypatch, tmp_pat
 
     def fake_export(**kwargs):
         captured.update(kwargs)
-        return [str(tmp_path / "buildings.grc"), str(tmp_path / "trees.grc")], []
+        return [
+            str(tmp_path / "buildings.grc"), str(tmp_path / "trees.grc"),
+            str(tmp_path / "buildings.vse"), str(tmp_path / "trees.vse"),
+            str(tmp_path / "building_heights.mrr"), str(tmp_path / "tree_heights.mrr"),
+        ], []
 
     monkeypatch.setattr(
         "multiplanner_api.downloads._export_for_ellipse",
@@ -393,9 +397,32 @@ def test_semantic_grc_profile_uses_bayern_geometry_and_lod2(monkeypatch, tmp_pat
     exports, warnings = downloads._export_or_skip(request, sources, [], tmp_path, "gdal-dir")
 
     assert warnings == []
-    assert [Path(path).suffix for path in exports] == [".tif", ".TAB", ".tif", ".TAB", ".grc", ".grc"]
+    assert [Path(path).suffix for path in exports] == [
+        ".tif", ".TAB", ".tif", ".TAB", ".grc", ".grc", ".vse", ".vse", ".mrr", ".mrr",
+    ]
     assert captured["geometry"] == request.geometry
     assert captured["lod2_paths"] == [source]
+    assert captured["dgm_paths"] == [tmp_path / "dgm.tif"]
+    assert captured["dom_paths"] == [tmp_path / "dom.tif"]
+    assert captured["resolution_m"] == 2
+
+
+def test_one_metre_semantic_profile_selects_one_metre_export(monkeypatch, tmp_path) -> None:
+    request = DownloadSubsetRequest(
+        provider="ldbv-by", datasets=["dgm1", "dom1", "bdom"],
+        export_profile="ellipse_semantic_grc_1m",
+        geometry=BboxGeometryInput(kind="bbox", west=11.55, south=48.12, east=11.60, north=48.16),
+    )
+    captured = {}
+    monkeypatch.setattr("multiplanner_api.downloads._export_for_ellipse", lambda *_a, **_k: ([], []))
+    monkeypatch.setattr(
+        "multiplanner_api.downloads.export_semantic_grc",
+        lambda **kwargs: (captured.update(kwargs) or [], []),
+    )
+
+    downloads._export_or_skip(request, {"dgm1": [], "dom1": [], "bdom": []}, [], tmp_path, "gdal")
+
+    assert captured["resolution_m"] == 1
 
 
 def test_semantic_grc_profile_rejects_non_bayern_provider(tmp_path) -> None:

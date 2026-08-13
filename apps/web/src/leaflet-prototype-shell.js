@@ -149,7 +149,8 @@ function renderExportOptions() {
       <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_grd" checked /> GRD</label>
       <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_mapinfo_tab" /> UTM32N GeoTIFF + TAB</label>
       <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_mapinfo_tab_pyramids" /> UTM32N GeoTIFF + TAB + pyramids</label>
-      <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_semantic_grc" /> Bayern DGM + DOM + buildings + trees GRC</label>
+      <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_semantic_grc" /> Bayern DGM + DOM + building/tree heights (2 m)</label>
+      <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_semantic_grc_1m" /> Bayern DGM + DOM + building/tree heights (1 m comparison)</label>
     </fieldset>`;
 }
 

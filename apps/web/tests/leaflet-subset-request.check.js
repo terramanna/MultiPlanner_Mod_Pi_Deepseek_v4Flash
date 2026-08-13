@@ -283,3 +283,7 @@ assert.deepEqual(
   datasetsForExport(["dgm1"], "ellipse_grd", "ldbv-by"),
   ["dgm1"],
 );
+assert.deepEqual(
+  datasetsForExport(["dom1"], "ellipse_semantic_grc_1m", "ldbv-by"),
+  ["dom1", "dgm1", "bdom"],
+);

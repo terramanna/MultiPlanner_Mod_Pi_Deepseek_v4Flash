@@ -216,10 +216,13 @@ def _export_or_skip(
 ) -> tuple[list[str], list[str]]:
     if failures:
         return [], [f"Export skipped because {len(failures)} identified source file(s) failed to download."]
-    if request.export_profile == "ellipse_semantic_grc":
+    if request.export_profile in {"ellipse_semantic_grc", "ellipse_semantic_grc_1m"}:
         if request.provider != "ldbv-by":
             return [], ["Buildings + trees GRC export currently supports Bayern LDBV selections only."]
-        return _export_bayern_ellipse_bundle(request, downloaded_by_dataset, output_dir, ellipse_gdal_dir)
+        resolution_m = 1 if request.export_profile == "ellipse_semantic_grc_1m" else 2
+        return _export_bayern_ellipse_bundle(
+            request, downloaded_by_dataset, output_dir, ellipse_gdal_dir, resolution_m
+        )
     return _export_subset(request.export_profile, downloaded_by_dataset, output_dir, ellipse_gdal_dir)
 
 
@@ -228,6 +231,7 @@ def _export_bayern_ellipse_bundle(
     downloaded_by_dataset: dict[str, list[Path]],
     output_dir: Path,
     ellipse_gdal_dir: str,
+    resolution_m: int,
 ) -> tuple[list[str], list[str]]:
     terrain_sources = {name: downloaded_by_dataset.get(name, []) for name in ("dgm1", "dom1")}
     terrain_exports, terrain_warnings = _export_for_ellipse(
@@ -236,8 +240,11 @@ def _export_bayern_ellipse_bundle(
     semantic_exports, semantic_warnings = export_semantic_grc(
         geometry=request.geometry,
         lod2_paths=downloaded_by_dataset.get("bdom", []),
+        dgm_paths=downloaded_by_dataset.get("dgm1", []),
+        dom_paths=downloaded_by_dataset.get("dom1", []),
         output_dir=output_dir,
         ellipse_gdal_dir=ellipse_gdal_dir,
+        resolution_m=resolution_m,
     )
     return [*terrain_exports, *semantic_exports], [*terrain_warnings, *semantic_warnings]
 

@@ -188,6 +188,15 @@ Branch: `fix/geometry-driven-grc-export`
 - [x] Bound point selections to a 1 km work area and reject overly large grids.
 - [x] Verify a live Munich bundle with one DGM, one DOM, and one LoD2 tile; both
       501 by 501 GRCs were readable through the Ellipse GDAL `NWT_GRC` driver.
+- [x] Derive variable AGL heights as `max(DOM - DGM, 0)` and mask buildings and
+      forest/woodland independently.
+- [x] Offer 2 m and 1 m comparison profiles with resolution-specific filenames.
+- [x] Use the supplied forest `.vse` as the palette reference and interpolate
+      it into 0.5 m height classes through the observed maximum.
+- [x] Export height-classified building/tree GRCs, exact Float32 height MRRs,
+      and reusable `.vse` tables.
+- [x] Export matching Ellipse Height Definition XML tables so every classified
+      GRC value loads with its numeric AGL height instead of the default zero.
 - [ ] Extend the same workflow to state providers that already expose LoD2 or
       BDOM, validating each state's vegetation source and CRS before enabling it.
 - [ ] Implement one controlled fallback pilot in a state without the required
