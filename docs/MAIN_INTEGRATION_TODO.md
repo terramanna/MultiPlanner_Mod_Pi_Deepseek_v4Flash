@@ -192,7 +192,7 @@ Branch: `fix/geometry-driven-grc-export`
       BDOM, validating each state's vegetation source and CRS before enabling it.
 - [ ] Implement one controlled fallback pilot in a state without the required
       building data, then compare completeness and accuracy before wider use.
-- [ ] Commit, push, merge, and push `main`.
+- [x] Commit, push, merge, and push `main` (`8740a21`).
 
 ## 4. Resolve prototypes and local artifacts
 
