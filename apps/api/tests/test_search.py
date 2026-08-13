@@ -120,6 +120,7 @@ def test_geocoder_search_route_passes_bounds(monkeypatch) -> None:
     assert response.status_code == 200
     assert captured == {
         "query": "Demo Place",
+        "kind": "all",
         "west": 7.0,
         "south": 50.0,
         "east": 8.0,
@@ -194,10 +195,51 @@ def test_network_search_returns_at_most_ten_ranked_candidates(monkeypatch) -> No
         lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("offline")),
     )
 
-    response = client.get("/api/v1/search/places", params={"q": "SITE_MATCH"})
+    response = client.get("/api/v1/search/places", params={"q": "SITE_MATCH", "kind": "site"})
 
     assert response.status_code == 200
     assert len(response.json()["candidates"]) == 10
+
+
+def test_network_search_can_limit_results_to_sites_or_links(monkeypatch) -> None:
+    patch_offline_network_search(monkeypatch, network_link_feature_collection())
+    monkeypatch.setattr(
+        "multiplanner_api.search.requests.get",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("offline")),
+    )
+
+    sites = client.get("/api/v1/search/places", params={"q": "SITE", "kind": "site"})
+    links = client.get("/api/v1/search/places", params={"q": "SITE", "kind": "link"})
+
+    assert {candidate["source"] for candidate in sites.json()["candidates"]} == {"network-site"}
+    assert {candidate["source"] for candidate in links.json()["candidates"]} == {"network-link"}
+
+
+def test_all_network_search_balances_five_sites_then_five_links(monkeypatch) -> None:
+    sites = [site_feature(f"01SITE{index}", "", "LTE", f"S{index}", "", [7.0, 52.0]) for index in range(6)]
+    links = [link_feature(f"01LINK{index}", "A", "B", "", [[7.0, 52.0], [7.2, 52.2]]) for index in range(6)]
+    patch_offline_network_search(monkeypatch, {"type": "FeatureCollection", "features": [*links, *sites]})
+    monkeypatch.setattr(
+        "multiplanner_api.search.requests.get",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("offline")),
+    )
+
+    response = client.get("/api/v1/search/places", params={"q": "01", "kind": "all"})
+    sources = [candidate["source"] for candidate in response.json()["candidates"]]
+
+    assert sources == ["network-site"] * 5 + ["network-link"] * 5
+
+
+def test_place_search_excludes_network_matches(monkeypatch) -> None:
+    patch_offline_network_search(monkeypatch, network_link_feature_collection())
+    monkeypatch.setattr(
+        "multiplanner_api.search._search_nominatim",
+        lambda _query, _bounds: [{"label": "Site, City", "lon": 7.1, "lat": 52.1, "source": "nominatim"}],
+    )
+
+    response = client.get("/api/v1/search/places", params={"q": "SITE", "kind": "place"})
+
+    assert [candidate["source"] for candidate in response.json()["candidates"]] == ["nominatim"]
 
 
 def test_network_search_respects_bounds(monkeypatch) -> None:

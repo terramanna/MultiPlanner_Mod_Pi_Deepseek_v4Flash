@@ -12,6 +12,8 @@ const state = {
   rectangle: "rectangle-layer",
   manualLayer: "manual-layer",
   manualGeometry: { kind: "bbox" },
+  activeSite: "A",
+  searchSelectionActive: true,
 };
 const downloadStatus = { textContent: "" };
 const tileList = { innerHTML: "tiles" };
@@ -27,6 +29,9 @@ clearLeafletSelection({
   },
   downloadStatus,
   tileList,
+  releaseProvider: () => {
+    state.providerReleased = true;
+  },
 });
 
 assert.deepEqual(removed, ["rectangle-layer", "manual-layer"]);
@@ -37,6 +42,9 @@ assert.equal(state.areaStart, null);
 assert.equal(state.rectangle, null);
 assert.equal(state.manualLayer, null);
 assert.equal(state.manualGeometry, null);
+assert.equal(state.activeSite, null);
+assert.equal(state.searchSelectionActive, false);
+assert.equal(state.providerReleased, true);
 assert.equal(redrawn, true);
 assert.equal(refreshed, true);
 assert.equal(downloadStatus.textContent, "Selection cleared.");

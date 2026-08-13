@@ -9,17 +9,20 @@ export function applySearchCandidateToState(context) {
   const { candidate, state, variant, redrawGeometry, refreshReadout } = context;
   if (variant !== "corridor") return { applied: false };
   if (isNetworkLink(candidate)) {
+    state.activeSite = null;
     state.siteA = siteFromCandidate(candidate, "a");
     state.siteB = siteFromCandidate(candidate, "b");
     state.selectedNetworkLink = candidate;
+    state.searchSelectionActive = true;
     redrawGeometry();
     refreshReadout();
     return { applied: true, bounds: [state.siteA, state.siteB], status: "Placed network link." };
   }
   const target = searchPlacementTarget(state);
-  state.activeSite = target;
+  state.activeSite = null;
   state.selectedNetworkLink = null;
   state[target === "A" ? "siteA" : "siteB"] = { lat: candidate.lat, lon: candidate.lon };
+  state.searchSelectionActive = true;
   redrawGeometry();
   refreshReadout();
   return { applied: true, panTo: { lat: candidate.lat, lon: candidate.lon }, status: `Placed Site ${target}.` };

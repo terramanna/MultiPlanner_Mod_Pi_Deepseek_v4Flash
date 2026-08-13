@@ -20,7 +20,8 @@ button { background: #147a9a; color: white; cursor: pointer; } button.secondary 
 .prototype-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .prototype-universal-search { position: absolute; z-index: 700; top: 12px; left: 50%; transform: translateX(-50%); box-sizing: border-box; width: min(380px, calc(100% - 140px)); padding: 6px; background: rgba(247, 250, 252, .96); border: 1px solid #cbd5df; border-radius: 8px; box-shadow: 0 4px 14px #0004; }
 .prototype-universal-search .prototype-search-row { flex-wrap: nowrap; margin: 0; }
-.prototype-universal-search input, .prototype-universal-search button { padding: 6px 8px; font-size: 13px; }
+.prototype-universal-search input, .prototype-universal-search button, .prototype-universal-search select { padding: 6px 8px; font-size: 13px; }
+.prototype-universal-search select { width: 76px; border: 1px solid #9db1c0; border-radius: 5px; background: white; }
 .prototype-universal-search .prototype-results { max-height: 360px; overflow-y: auto; }
 .prototype-universal-search .prototype-result { width: 100%; }
 .prototype-selection { margin-top: 18px; padding: 12px; border: 1px solid #d1dde5; background: white; border-radius: 6px; }

@@ -59,6 +59,12 @@ function renderSearch() {
   return `<section class="prototype-universal-search" aria-label="Universal map search">
     <label class="prototype-sr-only" for="searchInput">Search sites, links, places, or coordinates</label>
     <div class="prototype-search-row">
+      <select id="searchTypeSelect" aria-label="Search type">
+        <option value="all">All</option>
+        <option value="site">Sites</option>
+        <option value="link">Links</option>
+        <option value="place">Places</option>
+      </select>
       <input id="searchInput" placeholder="Search sites, links, places, or coordinates" />
       <button id="searchButton">Find</button>
     </div>

@@ -18,8 +18,8 @@ import { createCoverageOverlay } from "./leaflet-coverage-overlay.js";
 import { addAreaDrawingControls } from "./leaflet-drawing-controls.js";
 import { addLeafletLayerControl } from "./leaflet-layer-control.js";
 import { applySearchCandidateToState } from "./leaflet-search-results.js";
+import { bindUniversalSearch } from "./leaflet-universal-search.js";
 import { openSelectedLinkPopup } from "./leaflet-selected-link.js";
-import { buildSearchPlacesUrl } from "./leaflet-search-request.js";
 import { autoProviderForGeometry } from "./provider-auto-selection.js";
 import { applyProviderSelection, sortProviders } from "./provider-selection.js";
 import {
@@ -80,6 +80,7 @@ const state = {
   providerAutoDetect: true,
   providers: [],
   providerSortDirection: "asc",
+  searchSelectionActive: false,
   apiReady: false,
   siteA: null,
   siteB: null,
@@ -103,6 +104,7 @@ const providerSelectionMonitor = window.setInterval(monitorProviderSelection, 25
 const placementActions = document.getElementById("placementActions");
 const searchInput = document.getElementById("searchInput");
 const searchButton = document.getElementById("searchButton");
+const searchTypeSelect = document.getElementById("searchTypeSelect");
 const searchStatus = document.getElementById("searchStatus");
 const searchResults = document.getElementById("searchResults");
 const selectionReadout = document.getElementById("selectionReadout");
@@ -118,6 +120,11 @@ const coverageToggle = document.getElementById("coverageToggle");
 const openFolderAfterDownload = document.getElementById("openFolderAfterDownload");
 const openDownloadFolderButton = document.getElementById("btnOpenDownloadFolder");
 bindPersistedInput(searchInput, "multiplanner.leaflet.searchInput");
+bindUniversalSearch({
+  apiBaseUrl, button: searchButton, fetchFn: fetch, input: searchInput,
+  onCandidate: chooseCandidate, results: searchResults, status: searchStatus,
+  typeSelect: searchTypeSelect,
+});
 const { loadProviderCoverage, updateCoverageOverlay } = createCoverageOverlay(
   map, state, providerCoverage, coverageToggle, downloadStatus
 );
@@ -157,6 +164,7 @@ window.addEventListener(
 map.on("click", (event) => {
   if (state.isDrawing) return;
   if (pointProbe.isActive()) { pointProbe.probe(event.latlng); return; }
+  if (state.searchSelectionActive) { releaseCurrentSelection(); return; }
   placeFromMap(event.latlng);
 });
 map.on("pm:drawstart", (event) => {
@@ -169,16 +177,9 @@ map.on("pm:drawend", () => {
   map.getContainer().classList.add("is-site-placement");
 });
 map.on("pm:create", (event) => setManualGeometry(event.layer));
-searchButton.addEventListener("click", searchPlaces);
-searchInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    searchPlaces();
-  }
-});
 document.getElementById("locateButton").addEventListener("click", () => requestLeafletSubset(subsetRequestContext(), false));
 document.getElementById("downloadButton").addEventListener("click", () => requestLeafletSubset(subsetRequestContext(), true));
-document.getElementById("clearButton").addEventListener("click", () => clearLeafletSelection({ state, map, redrawGeometry, refreshReadout, downloadStatus, tileList }));
+document.getElementById("clearButton").addEventListener("click", releaseCurrentSelection);
 openDownloadFolderButton.addEventListener("click", openLastDownloadedFolder);
 document.getElementById("variantSelect").addEventListener("change", (event) => switchVariant(event.target.value));
 providerSelect.addEventListener("input", handleProviderSelection);
@@ -243,6 +244,7 @@ function placeFromMap(latlng) {
 }
 
 function placeSample(sample, panTo) {
+  state.searchSelectionActive = false;
   state.selectedNetworkLink = null;
   if (variant === "corridor") {
     if (state.activeSite === "A") state.siteA = sample;
@@ -277,7 +279,8 @@ function redrawGeometry() {
 }
 
 function circle(sample, color, label) {
-  return L.circleMarker([sample.lat, sample.lon], { radius: 8, color, fillColor: color, fillOpacity: 0.9, weight: 2 }).bindTooltip(label, { permanent: true, direction: "top" }).addTo(map);
+  const options = { radius: 8, color, fillColor: color, fillOpacity: 0.9, weight: 2, bubblingMouseEvents: false };
+  return L.circleMarker([sample.lat, sample.lon], options).bindTooltip(label, { permanent: true, direction: "top" }).addTo(map);
 }
 
 function drawArea(first, second) {
@@ -308,6 +311,7 @@ function refreshReadout() {
 }
 
 function toggleActiveSite(site) {
+  state.searchSelectionActive = false;
   state.activeSite = state.activeSite === site ? null : site;
   refreshReadout();
 }
@@ -415,33 +419,6 @@ function providerLabel(providerName) {
   return state.providers.find((provider) => provider.name === providerName)?.label || providerName;
 }
 
-async function searchPlaces() {
-  const query = searchInput.value.trim();
-  if (!query) return;
-  searchStatus.textContent = "Searching...";
-  searchResults.innerHTML = "";
-  try {
-    const response = await fetch(buildSearchPlacesUrl(apiBaseUrl, query));
-    if (!response.ok) throw new Error("Search failed");
-    const payload = await response.json();
-    const candidates = (payload.candidates || []).slice(0, 10);
-    if (candidates.length === 1 && candidates[0].source === "coordinates") {
-      chooseCandidate(candidates[0]);
-      return;
-    }
-    for (const candidate of candidates) {
-      const button = document.createElement("button");
-      button.className = "prototype-result";
-      button.textContent = candidate.label;
-      button.addEventListener("click", () => chooseCandidate(candidate));
-      searchResults.appendChild(button);
-    }
-    searchStatus.textContent = candidates.length ? "Choose a result." : "No matches found.";
-  } catch {
-    searchStatus.textContent = "Search failed.";
-  }
-}
-
 function chooseCandidate(candidate) {
   const applied = applySearchCandidateToState({ candidate, state, variant, redrawGeometry, refreshReadout });
   if (applied.applied) {
@@ -500,6 +477,7 @@ function selectedExportProfile() {
 }
 
 function setManualGeometry(layer) {
+  state.searchSelectionActive = false;
   if (state.manualLayer) map.removeLayer(state.manualLayer);
   state.manualLayer = layer;
   state.manualGeometry = geometryFromLayer(layer, L);
@@ -569,4 +547,19 @@ async function openDownloadedOutputFolder(outputDir) {
 function switchVariant(next) {
   params.set("variant", next);
   window.location.search = params.toString();
+}
+
+function releaseCurrentSelection() {
+  clearLeafletSelection({
+    state, map, redrawGeometry, refreshReadout, downloadStatus, tileList,
+    releaseProvider: resetProviderDetection,
+  });
+}
+
+function resetProviderDetection() {
+  state.providerAutoDetect = true;
+  state.provider = "auto";
+  providerSelect.value = "auto";
+  providerModeStatus.textContent = "Auto-detect follows the current selection.";
+  if (state.providers.length) syncProviderSelection(true);
 }

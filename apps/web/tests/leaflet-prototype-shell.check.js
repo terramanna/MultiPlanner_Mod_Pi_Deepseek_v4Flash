@@ -17,6 +17,10 @@ test("universal search is rendered over the map rather than in the side panel", 
 
   assert.ok(searchStart > panelEnd);
   assert.match(html, /Search sites, links, places, or coordinates/);
+  assert.match(html, /<option value="all">All<\/option>/);
+  assert.match(html, /<option value="site">Sites<\/option>/);
+  assert.match(html, /<option value="link">Links<\/option>/);
+  assert.match(html, /<option value="place">Places<\/option>/);
   assert.doesNotMatch(html, /Use the layer button/);
 });
 

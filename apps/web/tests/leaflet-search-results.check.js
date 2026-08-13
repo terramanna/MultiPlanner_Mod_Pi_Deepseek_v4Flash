@@ -18,7 +18,8 @@ applySearchCandidateToState({
 });
 
 assert.deepEqual(state.siteA, { lat: 52.0, lon: 7.0 });
-assert.equal(state.activeSite, "A");
+assert.equal(state.activeSite, null);
+assert.equal(state.searchSelectionActive, true);
 assert.equal(redraws.length, 1);
 assert.equal(refreshes.length, 1);
 
@@ -46,3 +47,4 @@ applySearchCandidateToState({
 assert.deepEqual(state.siteA, { lat: 51.0, lon: 7.1, name: "SITE_A", label: "", id: "S1", type: "", structure: "Mast" });
 assert.deepEqual(state.siteB, { lat: 51.5, lon: 7.6, name: "SITE_B", label: "", id: "S2", type: "", structure: "Dach" });
 assert.equal(state.selectedNetworkLink.link_name, "HND_A_B");
+assert.equal(state.searchSelectionActive, true);

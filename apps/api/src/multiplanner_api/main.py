@@ -4,6 +4,7 @@ import os
 import queue as queue_module
 import subprocess
 import threading
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -73,13 +74,14 @@ def read_config() -> ConfigResponse:
 @app.get("/api/v1/search/places", response_model=SearchPlacesResponse)
 def search_place_candidates(
     q: str,
+    kind: Literal["all", "site", "link", "place"] = "all",
     west: float | None = None,
     south: float | None = None,
     east: float | None = None,
     north: float | None = None,
 ) -> SearchPlacesResponse:
     try:
-        return search_places(q, west=west, south=south, east=east, north=north)
+        return search_places(q, kind=kind, west=west, south=south, east=east, north=north)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

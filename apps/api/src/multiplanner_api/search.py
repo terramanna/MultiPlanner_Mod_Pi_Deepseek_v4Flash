@@ -4,7 +4,7 @@ import json
 import math
 import re
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Literal
 
 import requests
 
@@ -33,11 +33,13 @@ NETWORK_SEARCH_FIELDS = (
 )
 _STATIC_NETWORK_CACHE: dict[str, object] = {}
 _NETWORK_INDEX_CACHE: dict[str, object] = {}
+SearchKind = Literal["all", "site", "link", "place"]
 
 
 def search_places(
     query: str,
     *,
+    kind: SearchKind = "all",
     west: float | None = None,
     south: float | None = None,
     east: float | None = None,
@@ -49,12 +51,23 @@ def search_places(
     bounds = _search_bounds(west, south, east, north)
 
     coordinate_candidate = _parse_coordinates(cleaned)
-    if coordinate_candidate is not None:
+    if coordinate_candidate is not None and kind in {"all", "place"}:
         return SearchPlacesResponse(query=query, candidates=[coordinate_candidate])
 
-    network_candidates = _search_network(cleaned, bounds)
-    geocoder_candidates = _safe_search_nominatim(cleaned, network_candidates, bounds)
-    return SearchPlacesResponse(query=query, candidates=[*network_candidates, *geocoder_candidates])
+    network_candidates = [] if kind == "place" else _search_network(cleaned, bounds, kind)
+    geocoder_candidates = _place_candidates(cleaned, network_candidates, bounds, kind)
+    return SearchPlacesResponse(query=query, candidates=[*geocoder_candidates, *network_candidates][:10])
+
+
+def _place_candidates(
+    query: str,
+    network_candidates: list[SearchCandidate],
+    bounds: tuple[float, float, float, float] | None,
+    kind: SearchKind,
+) -> list[SearchCandidate]:
+    if kind not in {"all", "place"}:
+        return []
+    return _safe_search_nominatim(query, network_candidates, bounds)
 
 
 def _search_bounds(
@@ -100,9 +113,15 @@ def _parse_coordinates(query: str) -> SearchCandidate | None:
     )
 
 
-def _search_network(query: str, bounds: tuple[float, float, float, float] | None) -> list[SearchCandidate]:
+def _search_network(
+    query: str,
+    bounds: tuple[float, float, float, float] | None,
+    kind: SearchKind,
+) -> list[SearchCandidate]:
     ranked: list[tuple[int, SearchCandidate]] = []
     for values, candidate in _network_index():
+        if not _candidate_matches_kind(candidate, kind):
+            continue
         if bounds is not None and not _candidate_in_bounds(candidate, bounds):
             continue
         score = _network_match_score(values, query)
@@ -110,7 +129,16 @@ def _search_network(query: str, bounds: tuple[float, float, float, float] | None
             continue
         ranked.append((score, candidate))
     ranked.sort(key=lambda item: (item[0], item[1].label))
-    return _unique_candidates(candidate for _score, candidate in ranked)[:10]
+    candidates = _unique_candidates(candidate for _score, candidate in ranked)
+    if kind != "all":
+        return candidates[:10]
+    sites = [candidate for candidate in candidates if candidate.source == "network-site"][:5]
+    links = [candidate for candidate in candidates if candidate.source == "network-link"][:5]
+    return [*sites, *links]
+
+
+def _candidate_matches_kind(candidate: SearchCandidate, kind: SearchKind) -> bool:
+    return kind == "all" or candidate.source == f"network-{kind}"
 
 
 def _unique_candidates(candidates: Iterable[SearchCandidate]) -> list[SearchCandidate]:
