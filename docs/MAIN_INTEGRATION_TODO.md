@@ -197,6 +197,8 @@ Branch: `fix/geometry-driven-grc-export`
       and reusable `.vse` tables.
 - [x] Export matching Ellipse Height Definition XML tables so every classified
       GRC value loads with its numeric AGL height instead of the default zero.
+- [x] Export a matching Ellipse tree Ground Type XML using the neutral
+      `tree_foliage_medium` default for every forest height class.
 - [ ] Extend the same workflow to state providers that already expose LoD2 or
       BDOM, validating each state's vegetation source and CRS before enabling it.
 - [ ] Implement one controlled fallback pilot in a state without the required
