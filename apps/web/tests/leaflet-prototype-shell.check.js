@@ -30,9 +30,17 @@ test("drawing guidance is limited to area mode", () => {
   assert.doesNotMatch(renderPrototypeShell("point"), /measurementReadout/);
 });
 
-test("separate Bayern building and tree GRC export is selectable", () => {
+test("export profiles are grouped in a categorized pick list", () => {
   const html = renderPrototypeShell("area");
 
+  assert.match(html, /id="prototypeDownloadExportProfile"/);
+  assert.match(html, /<optgroup label="Source files">/);
+  assert.match(html, /<optgroup label="MapInfo intermediate terrain\/surface">/);
+  assert.match(html, /<optgroup label="Ellipse building\/tree bundle \+ MapInfo terrain">/);
+  assert.match(html, /MapInfo step required/);
+  assert.match(html, /final MapInfo conversion\/import step before use in Ellipse/);
+  assert.match(html, /value="source_tiles"/);
+  assert.match(html, /value="ellipse_grd" selected/);
   assert.match(html, /value="ellipse_semantic_grc"/);
   assert.match(html, /building\/tree heights \(2 m\)/);
   assert.match(html, /building\/tree heights \(1 m comparison\)/);

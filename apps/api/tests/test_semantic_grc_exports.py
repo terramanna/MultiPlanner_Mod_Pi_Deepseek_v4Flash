@@ -7,6 +7,7 @@ import numpy as np
 from multiplanner_api.models import BboxGeometryInput, PointGeometryInput
 from multiplanner_api.semantic_grc_exports import (
     RESOLUTION_M,
+    _download_vegetation,
     _masked_height_grids,
     _selection_bounds,
     _write_height_grcs,
@@ -128,6 +129,7 @@ def _assert_ground_types(output_dir: Path) -> None:
 
 def test_export_reports_missing_gdal_tools_as_warning(tmp_path) -> None:
     exports, warnings = export_semantic_grc(
+        provider="ldbv-by",
         geometry=PointGeometryInput(kind="point", lon=11.5756, lat=48.1372),
         lod2_paths=[],
         dgm_paths=[],
@@ -138,3 +140,19 @@ def test_export_reports_missing_gdal_tools_as_warning(tmp_path) -> None:
 
     assert exports == []
     assert warnings[0].startswith("Buildings + trees GRC export failed: missing Ellipse GDAL tool(s):")
+
+
+def test_sh_vegetation_download_queries_forest_and_woodland_wfs(monkeypatch, tmp_path) -> None:
+    calls = []
+
+    def fake_get(url, *, params, timeout):
+        calls.append((url, params, timeout))
+        return SimpleNamespace(content=f"<{params['TYPENAMES']}/>​".encode(), raise_for_status=lambda: None)
+
+    monkeypatch.setattr("multiplanner_api.semantic_grc_exports.get_with_ssl_fallback", fake_get)
+    paths = _download_vegetation("lvermgeo-sh", (593000, 5953000, 594000, 5954000), tmp_path)
+
+    assert [path.name for path in paths] == ["sh_basis_dlm_wald.gml", "sh_basis_dlm_gehoelz.gml"]
+    assert [call[1]["TYPENAMES"] for call in calls] == ["adv:AX_Wald", "adv:AX_Gehoelz"]
+    assert all(call[1]["BBOX"].startswith("593000,5953000,594000,5954000") for call in calls)
+    assert all(path.exists() for path in paths)

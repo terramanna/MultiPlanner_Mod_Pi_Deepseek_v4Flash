@@ -199,8 +199,10 @@ Branch: `fix/geometry-driven-grc-export`
       GRC value loads with its numeric AGL height instead of the default zero.
 - [x] Export matching Ellipse Ground Type XML files using `average_ground` for
       building classes and `tree_foliage_medium` for forest height classes.
-- [ ] Extend the same workflow to state providers that already expose LoD2 or
-      BDOM, validating each state's vegetation source and CRS before enabling it.
+- [ ] Extend the same workflow beyond Bayern and Schleswig-Holstein to state
+      providers that expose LoD2 or BDOM, validating each state's vegetation
+      source and CRS before enabling it. Schleswig-Holstein now uses LoD2 plus
+      Basis-DLM `AX_Wald` and `AX_Gehoelz` in EPSG:25832.
 - [ ] Implement one controlled fallback pilot in a state without the required
       building data, then compare completeness and accuracy before wider use.
 - [x] Commit, push, merge, and push `main` (`8740a21`).

@@ -266,12 +266,12 @@ export function selectedDatasets(doc = globalThis.document) {
 export function renderDatasetChoices(datasets, doc = globalThis.document) {
   const labels = {
     dgm1: "DGM1 - terrain model",
-    dom1: "DOM - surface model",
+    dom1: "DOM1 - surface model",
     dop20: "DOP20 - 20 cm orthophoto",
-    bdom: "BDOM / LOD2 - 3D buildings",
+    bdom: "BDOM / LoD2 - provider building data",
     dgm: "DGM - terrain model",
     dom: "DOM - surface model",
-    lod2: "LOD2 - 3D buildings (Cesium)"
+    lod2: "LoD2 CityGML - 3D buildings"
   };
   const defaultChecked = new Set(["dgm1", "dom1", "dop20", "dgm", "dom"]);
   const fieldset = doc.getElementById("datasetChoices");

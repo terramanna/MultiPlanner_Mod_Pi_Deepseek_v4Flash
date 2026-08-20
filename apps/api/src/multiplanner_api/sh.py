@@ -6,10 +6,12 @@ Index URLs follow the pattern:
 
 Dataset       GeoJSON file                         ID field   URL field
 dgm1          DGM1_SH__Massendownload.geojson      kachel     link_data
+dom1          bDOM_SH_Massendownload.geojson       kachel     link_data
 dop20         DOP20_SH__Massendownload.geojson     kachel     link_data
 lod2          LOD2_SH_Massendownload.geojson       id         data_link
 
 Tile size: 1 km x 1 km; CRS: EPSG:25832.
+The logical ``dom1`` surface slot uses SH's official image-based bDOM product.
 """
 
 from __future__ import annotations
@@ -46,7 +48,7 @@ _DATASET_CONFIG: dict[str, dict[str, str]] = {
         "url_field": "link_data",
     },
     "dom1": {
-        "geojson_file": "DOM1_SH__Massendownload.geojson",
+        "geojson_file": "bDOM_SH_Massendownload.geojson",
         "id_field": "kachel",
         "url_field": "link_data",
     },

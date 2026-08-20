@@ -17,10 +17,13 @@ const PROFILE_PROVIDER_BBOXES = [
   { provider: "lgl-bw", west: 7.51, south: 47.53, east: 10.49, north: 49.79 },
 ];
 
-export function createLeafletLinkProfile({ L, map, apiBaseUrl, provider, fetchFn = fetch }) {
+export function createLeafletLinkProfile({
+  L, map, apiBaseUrl, provider, fetchFn = fetch,
+  confirmFn = (message) => window.confirm(message),
+}) {
   return {
-    openSites: (siteA, siteB, latlng) => openProfile({ L, map, apiBaseUrl, provider, fetchFn }, linkFromSites(siteA, siteB), latlng),
-    openNetwork: (properties, latlng) => openProfile({ L, map, apiBaseUrl, provider, fetchFn }, linkFromNetwork(properties), latlng),
+    openSites: (siteA, siteB, latlng) => openProfile({ L, map, apiBaseUrl, provider, fetchFn, confirmFn }, linkFromSites(siteA, siteB), latlng),
+    openNetwork: (properties, latlng) => openProfile({ L, map, apiBaseUrl, provider, fetchFn, confirmFn }, linkFromNetwork(properties), latlng),
     close: () => map.closePopup(),
   };
 }
@@ -48,20 +51,37 @@ export function resolveProfileProvider(link, selectedProvider = "auto") {
   return PROFILE_PROVIDER_BBOXES.find((bbox) => insideBbox(mid, bbox))?.provider || "auto";
 }
 
+export function buildLeafletProfilePreviewRequest(link, settings, provider = "auto") {
+  return {
+    provider: resolveProfileProvider(link, provider),
+    datasets: profileDatasets(settings.source),
+    geometry: {
+      kind: "corridor",
+      from_lon: link.siteA.lon,
+      from_lat: link.siteA.lat,
+      to_lon: link.siteB.lon,
+      to_lat: link.siteB.lat,
+      buffer_m: 1,
+    },
+  };
+}
+
+export function profilePreflightMessage(preview) {
+  const results = preview?.results || [];
+  const bytes = results.reduce((total, result) => total + (result.estimated_source_bytes || 0), 0);
+  const tiles = results.reduce((total, result) => total + (result.match_count || 0), 0);
+  if (!tiles || bytes < 250_000_000) return "";
+  return `This profile needs ${tiles} source tiles (up to ${formatBytes(bytes)} on the first run). Download and calculate?`;
+}
+
 function openProfile(context, link, latlng) {
   const content = profileContent(link);
   keepPopupInteractive(context.L, content);
   bindProfileControls(content, context, link);
-  preloadProfile(content, context, link);
   context.L.popup({ maxWidth: 560, className: "leaflet-profile-popup", closeOnClick: false })
     .setLatLng(latlng || midpoint(link))
     .setContent(content)
     .openOn(context.map);
-}
-
-function preloadProfile(content, context, link) {
-  content.querySelector(".leaflet-profile-status").textContent = "Loading sampled profile in the background...";
-  window.setTimeout(() => { void calculateProfile(content, context, link); }, 0);
 }
 
 function keepPopupInteractive(L, content) {
@@ -105,9 +125,11 @@ async function calculateProfile(content, context, link) {
   const settings = readSettings(content);
   const settingsKey = profileSettingsKey(settings);
   button.disabled = true;
-  content.querySelector(".leaflet-profile-status").textContent = "Calculating sampled profile...";
+  content.querySelector(".leaflet-profile-status").textContent = "Checking required source tiles...";
   try {
-    const payload = await requestProfile(context, link, settings);
+    if (!await confirmProfileDownload(content, context, link, settings)) return;
+    content.querySelector(".leaflet-profile-status").textContent = "Calculating sampled profile...";
+    const payload = await requestProfile(content, context, link, settings);
     if (settingsKey !== profileSettingsKey(readSettings(content))) return;
     renderBackendProfile(content, payload, link);
   } catch (error) {
@@ -117,18 +139,59 @@ async function calculateProfile(content, context, link) {
   }
 }
 
+async function confirmProfileDownload(content, context, link, settings) {
+  const response = await callFetch(context.fetchFn, `${context.apiBaseUrl}/api/v1/subsets/locate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(buildLeafletProfilePreviewRequest(link, settings, context.provider())),
+  });
+  if (!response.ok) throw new Error(await responseErrorText(response));
+  const message = profilePreflightMessage(await response.json());
+  if (!message || context.confirmFn(message)) return true;
+  content.querySelector(".leaflet-profile-status").textContent = "Profile calculation cancelled.";
+  return false;
+}
+
 function profileSettingsKey(settings) {
   return [settings.source, antennaHeight(settings, "A"), antennaHeight(settings, "B"), settings.frequencyMhz, settings.fresnelZone, settings.sampleCount].join("|");
 }
 
-async function requestProfile(context, link, settings) {
-  const response = await callFetch(context.fetchFn, `${context.apiBaseUrl}/api/v1/profile/path`, {
+async function requestProfile(content, context, link, settings) {
+  const response = await callFetch(context.fetchFn, `${context.apiBaseUrl}/api/v1/profile/path-stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(buildLeafletPathProfileRequest(link, settings, context.provider())),
   });
   if (!response.ok) throw new Error(await responseErrorText(response));
-  return response.json();
+  return readProfileStream(response.body, content);
+}
+
+async function readProfileStream(body, content) {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const chunk = await reader.read();
+    if (chunk.done) throw new Error("Profile stream ended without a result.");
+    buffer += decoder.decode(chunk.value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop();
+    const result = applyProfileStreamParts(parts, content);
+    if (result) return result;
+  }
+}
+
+function applyProfileStreamParts(parts, content) {
+  for (const part of parts) {
+    if (!part.startsWith("data: ")) continue;
+    const event = JSON.parse(part.slice(6));
+    if (event.type === "done") return event.result;
+    if (event.type === "error") throw new Error(event.message);
+    if (event.type === "progress") {
+      content.querySelector(".leaflet-profile-status").textContent = `Sampled ${event.current} of ${event.total} DGM/DOM points...`;
+    }
+  }
+  return null;
 }
 
 function callFetch(fetchFn, url, options) {
@@ -214,6 +277,12 @@ function readSettings(content) {
     fresnelZone: positive(content.querySelector('[data-profile="fresnel"]').value, DEFAULTS.fresnelZone),
     sampleCount: sampleCount(content.querySelector('[data-profile="samples"]').value),
   };
+}
+
+function profileDatasets(source) {
+  if (source === "dgm1") return ["dgm1"];
+  if (source === "dom1") return ["dom1"];
+  return ["dgm1", "dom1"];
 }
 
 function linkFromSites(siteA, siteB) {
@@ -427,6 +496,11 @@ function endpointName(site, fallback) {
 function positive(value, fallback) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : fallback;
+}
+
+function formatBytes(bytes) {
+  if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
+  return `${Math.ceil(bytes / 1_000_000)} MB`;
 }
 
 export function gigahertzToMegahertz(value) {

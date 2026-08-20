@@ -144,14 +144,24 @@ function renderDownloadControls() {
 }
 
 function renderExportOptions() {
-  return `<fieldset class="prototype-download-options">
-      <legend>Export format</legend>
-      <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_grd" checked /> GRD</label>
-      <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_mapinfo_tab" /> UTM32N GeoTIFF + TAB</label>
-      <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_mapinfo_tab_pyramids" /> UTM32N GeoTIFF + TAB + pyramids</label>
-      <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_semantic_grc" /> Bayern DGM + DOM + building/tree heights (2 m)</label>
-      <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_semantic_grc_1m" /> Bayern DGM + DOM + building/tree heights (1 m comparison)</label>
-    </fieldset>`;
+  return `<label class="prototype-download-options" for="prototypeDownloadExportProfile">
+      <span>Export format</span>
+      <select id="prototypeDownloadExportProfile">
+        <optgroup label="Source files">
+          <option value="source_tiles">Original provider files (no conversion)</option>
+        </optgroup>
+        <optgroup label="MapInfo intermediate terrain/surface">
+          <option value="ellipse_grd" selected>Northwood GRD + TAB (MapInfo step required)</option>
+          <option value="ellipse_mapinfo_tab">UTM32N GeoTIFF + TAB (MapInfo step required)</option>
+          <option value="ellipse_mapinfo_tab_pyramids">UTM32N GeoTIFF + TAB + pyramids (MapInfo step required)</option>
+        </optgroup>
+        <optgroup label="Ellipse building/tree bundle + MapInfo terrain">
+          <option value="ellipse_semantic_grc">DGM + DOM + building/tree heights (2 m)</option>
+          <option value="ellipse_semantic_grc_1m">DGM + DOM + building/tree heights (1 m comparison)</option>
+        </optgroup>
+      </select>
+      <small>MapInfo intermediate files require a final MapInfo conversion/import step before use in Ellipse.</small>
+    </label>`;
 }
 
 function renderMapSection(variant) {

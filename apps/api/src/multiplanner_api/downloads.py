@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from functools import lru_cache
+from threading import Lock
 from typing import Callable
 import re
 import warnings
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
 import zipfile
 
 import requests
@@ -217,16 +220,16 @@ def _export_or_skip(
     if failures:
         return [], [f"Export skipped because {len(failures)} identified source file(s) failed to download."]
     if request.export_profile in {"ellipse_semantic_grc", "ellipse_semantic_grc_1m"}:
-        if request.provider != "ldbv-by":
-            return [], ["Buildings + trees GRC export currently supports Bayern LDBV selections only."]
+        if request.provider not in {"ldbv-by", "lvermgeo-sh"}:
+            return [], ["Buildings + trees GRC export supports Bayern and Schleswig-Holstein selections only."]
         resolution_m = 1 if request.export_profile == "ellipse_semantic_grc_1m" else 2
-        return _export_bayern_ellipse_bundle(
+        return _export_semantic_ellipse_bundle(
             request, downloaded_by_dataset, output_dir, ellipse_gdal_dir, resolution_m
         )
     return _export_subset(request.export_profile, downloaded_by_dataset, output_dir, ellipse_gdal_dir)
 
 
-def _export_bayern_ellipse_bundle(
+def _export_semantic_ellipse_bundle(
     request: DownloadSubsetRequest,
     downloaded_by_dataset: dict[str, list[Path]],
     output_dir: Path,
@@ -237,9 +240,11 @@ def _export_bayern_ellipse_bundle(
     terrain_exports, terrain_warnings = _export_for_ellipse(
         terrain_sources, output_dir, ellipse_gdal_dir, build_pyramids=True
     )
+    lod2_dataset = "bdom" if request.provider == "ldbv-by" else "lod2"
     semantic_exports, semantic_warnings = export_semantic_grc(
+        provider=request.provider,
         geometry=request.geometry,
-        lod2_paths=downloaded_by_dataset.get("bdom", []),
+        lod2_paths=downloaded_by_dataset.get(lod2_dataset, []),
         dgm_paths=downloaded_by_dataset.get("dgm1", []),
         dom_paths=downloaded_by_dataset.get("dom1", []),
         output_dir=output_dir,
@@ -259,10 +264,13 @@ def _slugify(value: str) -> str:
 
 
 def _target_filename(url: str, tile_id: str | None) -> str:
-    suffix = Path(url).suffix or ".tif"
+    parsed = urlparse(url)
+    query_file = parse_qs(parsed.query).get("file", [""])[0]
+    source_name = Path(unquote(query_file or parsed.path)).name
+    suffix = Path(source_name).suffix or ".tif"
     if tile_id:
         return f"{tile_id}{suffix}"
-    return Path(url).name or f"download{suffix}"
+    return source_name or f"download{suffix}"
 
 
 def _expanded_download_paths(path: Path, dest_dir: Path) -> list[Path]:
@@ -316,19 +324,48 @@ def _extract_supported_sources(zip_path: Path, dest_dir: Path) -> list[Path]:
     return []
 
 
+@lru_cache(maxsize=2_048)
+def _download_lock(target_path: str) -> Lock:
+    return Lock()
+
+
 def _download_file(url: str, target_path: Path) -> None:
+    with _download_lock(str(target_path.resolve())):
+        _download_file_locked(url, target_path)
+
+
+def _download_file_locked(url: str, target_path: Path) -> None:
     if target_path.exists() and target_path.stat().st_size > 0:
+        _strip_sh_portal_html_footer(url, target_path)
         return
     first_error: Exception | None = None
     for _attempt in range(2):
         try:
             _download_file_once(url, target_path)
+            _strip_sh_portal_html_footer(url, target_path)
             return
         except _TRANSIENT_DOWNLOAD_ERRORS as exc:
             if first_error is None:
                 first_error = exc
                 continue
             raise RuntimeError(f"Download failed after retry for {url}: {exc}") from exc
+
+
+def _strip_sh_portal_html_footer(url: str, target_path: Path) -> None:
+    parsed = urlparse(url)
+    source_name = parse_qs(parsed.query).get("file", [""])[0]
+    is_sh_download = parsed.hostname == "geodaten.schleswig-holstein.de" and parsed.path.endswith("/massen.php")
+    if not is_sh_download or Path(source_name).suffix.casefold() not in {".xml", ".xyz"}:
+        return
+    tail_size = min(target_path.stat().st_size, 16_384)
+    with target_path.open("r+b") as handle:
+        handle.seek(-tail_size, 2)
+        tail = handle.read(tail_size)
+        marker_index = tail.find(b"<!DOCTYPE html>")
+        if marker_index < 0:
+            return
+        handle.seek(-tail_size + marker_index, 2)
+        handle.truncate()
 
 
 def _download_file_once(url: str, target_path: Path) -> None:

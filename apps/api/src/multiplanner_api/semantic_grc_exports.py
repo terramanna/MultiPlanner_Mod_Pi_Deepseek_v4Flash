@@ -1,4 +1,4 @@
-"""Geometry-driven Bayern building and tree GRC exports for Ellipse."""
+"""Geometry-driven building and tree GRC exports for Ellipse."""
 
 from __future__ import annotations
 
@@ -25,8 +25,9 @@ from multiplanner_api.models import (
 )
 from multiplanner_api.semantic_clutter import dlm_vegetation_features, lod2_building_features, write_geojson
 
-WFS_URL = "https://geoservices.bayern.de/wfs/v1/ogc_atkis_basisdlm.cgi"
-WFS_QUERY = "urn:adv:def:query:OGC-WFS::AlleObjekteAnhandBboxUndCrs"
+BAYERN_WFS_URL = "https://geoservices.bayern.de/wfs/v1/ogc_atkis_basisdlm.cgi"
+BAYERN_WFS_QUERY = "urn:adv:def:query:OGC-WFS::AlleObjekteAnhandBboxUndCrs"
+SH_WFS_URL = "https://dienste.gdi-sh.de/WFS_SH_ATKIS_BDLM_SF_OpenGBD"
 RESOLUTION_M = 2
 MAX_CELLS = 50_000_000
 FOREST_COLORS = (
@@ -44,20 +45,21 @@ GeometryInput = PointGeometryInput | BboxGeometryInput | PolygonGeometryInput | 
 
 
 def export_semantic_grc(
-    *, geometry: GeometryInput, lod2_paths: list[Path], dgm_paths: list[Path],
+    *, provider: str, geometry: GeometryInput, lod2_paths: list[Path], dgm_paths: list[Path],
     dom_paths: list[Path], output_dir: Path, ellipse_gdal_dir: str, resolution_m: int = RESOLUTION_M,
 ) -> tuple[list[str], list[str]]:
     """Write separate semantic classes and variable AGL heights."""
     try:
         return _build_semantic_grc(
-            geometry, lod2_paths, dgm_paths, dom_paths, output_dir, Path(ellipse_gdal_dir), resolution_m
+            provider, geometry, lod2_paths, dgm_paths, dom_paths,
+            output_dir, Path(ellipse_gdal_dir), resolution_m,
         )
     except (FileNotFoundError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
         return [], [f"Buildings + trees GRC export failed: {exc}"]
 
 
 def _build_semantic_grc(
-    geometry: GeometryInput, lod2_paths: list[Path], dgm_paths: list[Path],
+    provider: str, geometry: GeometryInput, lod2_paths: list[Path], dgm_paths: list[Path],
     dom_paths: list[Path], output_dir: Path, gdal_dir: Path, resolution_m: int,
 ) -> tuple[list[str], list[str]]:
     tools = _required_tools(gdal_dir)
@@ -65,11 +67,10 @@ def _build_semantic_grc(
     _validate_grid(bounds, resolution_m)
     export_dir = output_dir / "semantic_grc"
     export_dir.mkdir(parents=True, exist_ok=True)
-    vegetation_path = export_dir / "bayern_basis_dlm.gml"
-    _download_vegetation(bounds, vegetation_path)
+    vegetation_paths = _download_vegetation(provider, bounds, export_dir)
     mask_path = export_dir / f"semantic_mask_{resolution_m}m.tif"
     _create_mask(mask_path, bounds, tools, gdal_dir, resolution_m)
-    warnings = _burn_semantics(mask_path, vegetation_path, lod2_paths, export_dir, tools, gdal_dir)
+    warnings = _burn_semantics(mask_path, vegetation_paths, lod2_paths, export_dir, tools, gdal_dir)
     exports = _write_height_files(
         dgm_paths, dom_paths, mask_path, bounds, export_dir, tools, gdal_dir, resolution_m
     )
@@ -134,19 +135,62 @@ def _validate_grid(bounds: tuple[float, float, float, float], resolution_m: int)
         raise ValueError(f"{resolution_m} m semantic grid would contain {cells:,} cells; reduce the selected area")
 
 
-def _download_vegetation(bounds: tuple[float, float, float, float], target: Path) -> None:
+def _download_vegetation(
+    provider: str, bounds: tuple[float, float, float, float], export_dir: Path,
+) -> list[Path]:
+    if provider == "ldbv-by":
+        target = export_dir / "bayern_basis_dlm.gml"
+        _download_bayern_vegetation(bounds, target)
+        return [target]
+    if provider == "lvermgeo-sh":
+        return _download_sh_vegetation(bounds, export_dir)
+    raise ValueError(f"Unsupported semantic source provider: {provider}")
+
+
+def _download_bayern_vegetation(bounds: tuple[float, float, float, float], target: Path) -> None:
     west, south, east, north = bounds
     response = get_with_ssl_fallback(
-        WFS_URL,
+        BAYERN_WFS_URL,
         params={
             "SERVICE": "WFS", "VERSION": "2.0.0", "REQUEST": "GetFeature",
-            "STOREDQUERY_ID": WFS_QUERY, "CRS": "urn:ogc:def:crs:EPSG::25832",
+            "STOREDQUERY_ID": BAYERN_WFS_QUERY, "CRS": "urn:ogc:def:crs:EPSG::25832",
             "x1": west, "y1": south, "x2": east, "y2": north,
         },
         timeout=180,
     )
     response.raise_for_status()
     target.write_bytes(response.content)
+
+
+def _download_sh_vegetation(
+    bounds: tuple[float, float, float, float], export_dir: Path,
+) -> list[Path]:
+    west, south, east, north = bounds
+    coordinates = ",".join(_wfs_coordinate(value) for value in (west, south, east, north))
+    bbox = f"{coordinates},urn:ogc:def:crs:EPSG::25832"
+    targets = []
+    for type_name, filename in (
+        ("adv:AX_Wald", "sh_basis_dlm_wald.gml"),
+        ("adv:AX_Gehoelz", "sh_basis_dlm_gehoelz.gml"),
+    ):
+        response = get_with_ssl_fallback(
+            SH_WFS_URL,
+            params={
+                "SERVICE": "WFS", "VERSION": "2.0.0", "REQUEST": "GetFeature",
+                "TYPENAMES": type_name, "SRSNAME": "urn:ogc:def:crs:EPSG::25832",
+                "BBOX": bbox, "COUNT": 10_000,
+            },
+            timeout=180,
+        )
+        response.raise_for_status()
+        target = export_dir / filename
+        target.write_bytes(response.content)
+        targets.append(target)
+    return targets
+
+
+def _wfs_coordinate(value: float) -> str:
+    return f"{value:.3f}".rstrip("0").rstrip(".")
 
 
 def _create_mask(
@@ -164,10 +208,14 @@ def _create_mask(
 
 
 def _burn_semantics(
-    mask_path: Path, vegetation_path: Path, lod2_paths: list[Path], export_dir: Path,
+    mask_path: Path, vegetation_paths: list[Path], lod2_paths: list[Path], export_dir: Path,
     tools: dict[str, Path], gdal_dir: Path,
 ) -> list[str]:
-    tree_features = dlm_vegetation_features(vegetation_path)
+    tree_features = [
+        feature
+        for vegetation_path in vegetation_paths
+        for feature in dlm_vegetation_features(vegetation_path)
+    ]
     building_features = lod2_building_features(_gml_paths(lod2_paths))
     tree_path = export_dir / "trees.geojson"
     building_path = export_dir / "buildings.geojson"
@@ -187,7 +235,7 @@ def _gml_paths(paths: list[Path]) -> list[Path]:
 def _empty_layer_warnings(tree_features: list[object], building_features: list[object]) -> list[str]:
     warnings = []
     if not building_features:
-        warnings.append("No LoD2 building features intersected the selected Bayern source tiles.")
+        warnings.append("No LoD2 building features intersected the selected source tiles.")
     if not tree_features:
         warnings.append("No Basis-DLM forest or woodland features intersected the selection.")
     return warnings

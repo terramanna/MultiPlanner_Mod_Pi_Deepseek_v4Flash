@@ -473,7 +473,7 @@ function subsetRequestContext() {
 }
 
 function selectedExportProfile() {
-  return document.querySelector('input[name="prototypeDownloadExportProfile"]:checked')?.value || "ellipse_grd";
+  return document.getElementById("prototypeDownloadExportProfile")?.value || "ellipse_grd";
 }
 
 function setManualGeometry(layer) {

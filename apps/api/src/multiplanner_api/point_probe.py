@@ -36,6 +36,7 @@ _PROVIDER_XYZ_CRS: dict[str, str] = {
     "lgv-hh": "EPSG:25832",
     "lginf-hb": "EPSG:25832",
     "gdi-be": "EPSG:25833",
+    "lvermgeo-sh": "EPSG:25832",
 }
 
 # Providers whose WCS servers return GeoTIFFs without an embedded SRS.
@@ -241,8 +242,9 @@ def _prepare_sample_path(request: PointProbeRequest, tile: TileSummary) -> Path:
     cache_dir = _shared_source_cache_dir(request.provider, request.dataset)
     target_path = cache_dir / _target_filename(tile.primary_url or "", tile.tile_id)
     with _sample_path_lock(target_path):
-        if not target_path.exists():
-            _download_file(tile.primary_url or "", target_path)
+        was_cached = target_path.exists()
+        _download_file(tile.primary_url or "", target_path)
+        if not was_cached:
             settings = load_settings()
             evict_lru(Path(settings.cache_root) / "raster_tile_sources", settings.source_cache_max_bytes)
         paths = _expanded_download_paths(target_path, cache_dir)
