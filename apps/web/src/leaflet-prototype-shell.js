@@ -1,3 +1,5 @@
+import { PLANNING_MODE_LABELS as labels } from "./leaflet-planning-mode.js";
+
 const defaultProviders = [
   { name: "auto", label: "Auto (split by provider)" },
   { name: "lgln-ni", label: "Niedersachsen LGLN" },
@@ -10,12 +12,6 @@ const defaultProviders = [
   { name: "ldbv-by", label: "Bayern LDBV" },
   { name: "lgv-hh", label: "Hamburg LGV" },
 ];
-
-const labels = {
-  corridor: "A - Two sites / corridor",
-  area: "B - Draw rectangular area",
-  point: "C - Single point",
-};
 
 export function renderPrototypeShell(variant) {
   return `<main class="leaflet-prototype-shell">
@@ -39,7 +35,7 @@ function renderIntro(variant) {
       <div class="prototype-kicker">PROTOTYPE - 2D local planning</div>
       <div id="searchStatus" class="prototype-api-status">API: starting</div>
     </div>
-    <h1>${labels[variant]}</h1>
+    <h1 id="planningModeHeading">${labels[variant]}</h1>
     ${renderModeSelector(variant)}
     <p id="modeHelp" class="prototype-help"></p>
     <div class="prototype-actions" id="placementActions"></div>`;
@@ -165,13 +161,11 @@ function renderExportOptions() {
 }
 
 function renderMapSection(variant) {
-  const measurement = variant === "area"
-    ? `<div id="measurementReadout" class="prototype-measurement">Draw a circle, rectangle, or polygon to see dimensions.</div>`
-    : "";
+  const measurementHidden = variant === "area" ? "" : " hidden";
   return `<section class="leaflet-prototype-map-wrap">
     <div id="leafletMap"></div>
     ${renderSearch()}
-    ${measurement}
+    <div id="measurementReadout" class="prototype-measurement"${measurementHidden}>Draw a circle, rectangle, or polygon to see dimensions.</div>
   </section>`;
 }
 

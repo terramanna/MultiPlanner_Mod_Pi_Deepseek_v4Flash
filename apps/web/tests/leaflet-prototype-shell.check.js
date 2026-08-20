@@ -25,9 +25,9 @@ test("universal search is rendered over the map rather than in the side panel", 
 });
 
 test("drawing guidance is limited to area mode", () => {
-  assert.doesNotMatch(renderPrototypeShell("corridor"), /measurementReadout/);
-  assert.match(renderPrototypeShell("area"), /id="measurementReadout"/);
-  assert.doesNotMatch(renderPrototypeShell("point"), /measurementReadout/);
+  assert.match(renderPrototypeShell("corridor"), /id="measurementReadout"[^>]* hidden/);
+  assert.doesNotMatch(renderPrototypeShell("area"), /id="measurementReadout"[^>]* hidden/);
+  assert.match(renderPrototypeShell("point"), /id="measurementReadout"[^>]* hidden/);
 });
 
 test("export profiles are grouped in a categorized pick list", () => {

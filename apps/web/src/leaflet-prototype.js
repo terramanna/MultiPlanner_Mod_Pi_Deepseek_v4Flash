@@ -10,13 +10,16 @@ import { createPointProbe } from "./leaflet-point-probe.js";
 import { createNetworkOverlay } from "./leaflet-network-overlay.js";
 import { createLeafletLinkProfile } from "./leaflet-link-profile.js";
 import { createLod2Layer } from "./leaflet-bb-lod2.js";
-import { leafletViewFromSearch, searchWithPlanningModeViewport } from "./leaflet-map-viewport.js";
+import { leafletViewFromSearch } from "./leaflet-map-viewport.js";
+import { safeMeasurementText } from "./leaflet-measurement.js";
+import { changePlanningMode } from "./leaflet-planning-mode.js";
+import { planningSelectionMarkers, planningSelectionReadout } from "./leaflet-planning-state.js";
 import { clearLeafletSelection } from "./leaflet-selection.js";
 import { requestLeafletSubset } from "./leaflet-subset-request.js";
 import { bindPersistedInput } from "./persisted-input.js";
 import { renderPrototypeShell } from "./leaflet-prototype-shell.js";
 import { createCoverageOverlay } from "./leaflet-coverage-overlay.js";
-import { addAreaDrawingControls } from "./leaflet-drawing-controls.js";
+import { updateAreaDrawingControls } from "./leaflet-drawing-controls.js";
 import { addLeafletLayerControl } from "./leaflet-layer-control.js";
 import { applySearchCandidateToState } from "./leaflet-search-results.js";
 import { bindUniversalSearch } from "./leaflet-universal-search.js";
@@ -53,7 +56,7 @@ const providerCoverage = {
 };
 const variants = ["corridor", "area", "point"];
 const params = new URLSearchParams(window.location.search);
-const variant = variants.includes(params.get("variant")) ? params.get("variant") : "corridor";
+let variant = variants.includes(params.get("variant")) ? params.get("variant") : "corridor";
 const app = document.getElementById("app");
 
 app.innerHTML = renderPrototypeShell(variant);
@@ -76,7 +79,7 @@ zoomLevelControl.onAdd = function (m) {
   return div;
 };
 zoomLevelControl.addTo(map);
-addAreaDrawingControls(map, variant);
+updateAreaDrawingControls(map, variant);
 
 const state = {
   activeSite: null,
@@ -106,6 +109,7 @@ const bootstrapAbortController = new AbortController();
 const providerSelectionMonitor = window.setInterval(monitorProviderSelection, 250);
 
 const placementActions = document.getElementById("placementActions");
+const planningModeHeading = document.getElementById("planningModeHeading");
 const searchInput = document.getElementById("searchInput");
 const searchButton = document.getElementById("searchButton");
 const searchTypeSelect = document.getElementById("searchTypeSelect");
@@ -274,12 +278,10 @@ function redrawGeometry() {
   state.markers = [];
   if (state.line) map.removeLayer(state.line);
   state.line = null;
-  if (variant === "corridor") {
-    if (state.siteA) state.markers.push(circle(state.siteA, "#00c7ff", "A"));
-    if (state.siteB) state.markers.push(circle(state.siteB, "#ff9f43", "B"));
-    if (state.siteA && state.siteB) state.line = L.polyline([[state.siteA.lat, state.siteA.lon], [state.siteB.lat, state.siteB.lon]], { color: "#7dff8c", weight: 4 }).on("click", openSiteLinkActions).addTo(map);
+  for (const marker of planningSelectionMarkers(state)) {
+    state.markers.push(circle(marker.sample, marker.color, marker.label));
   }
-  if (variant === "point" && state.point) state.markers.push(circle(state.point, "#ffdd57", "P"));
+  if (state.siteA && state.siteB) state.line = L.polyline([[state.siteA.lat, state.siteA.lon], [state.siteB.lat, state.siteB.lon]], { color: "#7dff8c", weight: 4 }).on("click", openSiteLinkActions).addTo(map);
 }
 
 function circle(sample, color, label) {
@@ -300,18 +302,8 @@ function currentGeometry() {
 
 function refreshReadout() {
   autoSelectProvider();
-  if (state.manualGeometry) {
-    selectionReadout.textContent = `Manual ${state.manualGeometry.kind} selection\nDraw tools override the site/corridor selection.`;
-    return;
-  }
-  if (variant === "corridor") {
-    selectionReadout.textContent = `Active: ${state.activeSite ? `Site ${state.activeSite}` : "none"}\nA: ${sampleText(state.siteA)}\nB: ${sampleText(state.siteB)}`;
-    updateSiteToggleButtons();
-  } else if (variant === "area") {
-    selectionReadout.textContent = state.rectangle ? `${state.rectangle.getBounds().toBBoxString()}\nW, S, E, N` : "Click two rectangle corners.";
-  } else {
-    selectionReadout.textContent = sampleText(state.point);
-  }
+  selectionReadout.textContent = planningSelectionReadout(state, variant, sampleText);
+  updateSiteToggleButtons();
 }
 
 function toggleActiveSite(site) {
@@ -497,13 +489,14 @@ function setManualGeometry(layer) {
 }
 
 function watchMeasurement(layer) {
+  if (!layer) return;
   updateMeasurement(layer);
   layer.on("pm:change", () => updateMeasurement(layer));
   layer.on("pm:edit", () => updateMeasurement(layer));
 }
 
 function updateMeasurement(layer) {
-  measurementReadout.textContent = formatMeasurement(layer);
+  measurementReadout.textContent = safeMeasurementText(layer, formatMeasurement);
 }
 
 function formatMeasurement(layer) {
@@ -513,6 +506,7 @@ function formatMeasurement(layer) {
   }
   if (layer instanceof L.Rectangle) {
     const bounds = layer.getBounds();
+    if (!bounds.isValid()) return "Drawing selection...";
     const width = map.distance(bounds.getNorthWest(), bounds.getNorthEast());
     const height = map.distance(bounds.getNorthWest(), bounds.getSouthWest());
     return `${formatMeters(width)} x ${formatMeters(height)} - Area ${formatArea(width * height)}`;
@@ -549,9 +543,15 @@ async function openDownloadedOutputFolder(outputDir) {
 }
 
 function switchVariant(next) {
-  window.location.search = searchWithPlanningModeViewport(
-    window.location.search, next, map.getCenter(), map.getZoom()
-  );
+  const changed = changePlanningMode({
+    next, search: window.location.search,
+    setVariant: (value) => { variant = value; },
+    heading: planningModeHeading, select: document.getElementById("variantSelect"),
+    measurement: measurementReadout, configure: configureVariant,
+    updateDrawingControls: (value) => updateAreaDrawingControls(map, value),
+    history: window.history,
+  });
+  if (changed) updateSiteToggleButtons();
 }
 
 function releaseCurrentSelection() {

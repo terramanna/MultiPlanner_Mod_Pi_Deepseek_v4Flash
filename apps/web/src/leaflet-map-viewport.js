@@ -11,15 +11,6 @@ export function leafletViewFromSearch(search) {
   return view;
 }
 
-export function searchWithPlanningModeViewport(search, variant, center, zoom) {
-  const params = new URLSearchParams(search);
-  params.set("variant", variant);
-  params.set("mapLat", center.lat.toFixed(6));
-  params.set("mapLon", center.lng.toFixed(6));
-  params.set("mapZoom", String(zoom));
-  return `?${params.toString()}`;
-}
-
 function numberParameter(params, name) {
   const value = params.get(name);
   return value === null ? Number.NaN : Number(value);

@@ -18,3 +18,14 @@ export function addAreaDrawingControls(map, variant) {
   });
   return true;
 }
+
+export function updateAreaDrawingControls(map, variant) {
+  disableActiveDraw(map);
+  map.pm.removeControls();
+  return addAreaDrawingControls(map, variant);
+}
+
+function disableActiveDraw(map) {
+  const activeShape = map.pm.Draw?.getActiveShape?.();
+  if (activeShape) map.pm.disableDraw(activeShape);
+}

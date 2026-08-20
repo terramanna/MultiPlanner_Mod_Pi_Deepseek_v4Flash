@@ -13,7 +13,8 @@ Current scaffold:
   Links, and Places filters provide focused results
 - corridor, rectangular-area, and single-point planning modes in the side panel
 - area drawing controls shown only in area mode
-- planning-mode changes preserve the current Leaflet centre and zoom
+- in-place planning-mode changes preserve the visible map, overlays, searches, selections, centre, and zoom
+- leaving area mode safely cancels an unfinished drawing while keeping completed drawings on the map
 - geometry-aware provider detection with manual-provider override
 - blank-map release for search-selected sites and links, including provider reset
 - optional Cesium and MapLibre comparison renderers through query parameters
