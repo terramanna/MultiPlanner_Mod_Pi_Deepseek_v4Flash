@@ -10,6 +10,7 @@ import { createPointProbe } from "./leaflet-point-probe.js";
 import { createNetworkOverlay } from "./leaflet-network-overlay.js";
 import { createLeafletLinkProfile } from "./leaflet-link-profile.js";
 import { createLod2Layer } from "./leaflet-bb-lod2.js";
+import { leafletViewFromSearch, searchWithPlanningModeViewport } from "./leaflet-map-viewport.js";
 import { clearLeafletSelection } from "./leaflet-selection.js";
 import { requestLeafletSubset } from "./leaflet-subset-request.js";
 import { bindPersistedInput } from "./persisted-input.js";
@@ -57,7 +58,10 @@ const app = document.getElementById("app");
 
 app.innerHTML = renderPrototypeShell(variant);
 
-const map = L.map("leafletMap", { zoomControl: true }).setView([51.1657, 10.4515], 6);
+const initialMapView = leafletViewFromSearch(window.location.search);
+const map = L.map("leafletMap", { zoomControl: true }).setView(
+  [initialMapView.lat, initialMapView.lon], initialMapView.zoom
+);
 map.getContainer().classList.add("is-site-placement");
 const bbLod2Layer = createLod2Layer(map);
 addLeafletLayerControl(L, map, bbLod2Layer);
@@ -545,8 +549,9 @@ async function openDownloadedOutputFolder(outputDir) {
 }
 
 function switchVariant(next) {
-  params.set("variant", next);
-  window.location.search = params.toString();
+  window.location.search = searchWithPlanningModeViewport(
+    window.location.search, next, map.getCenter(), map.getZoom()
+  );
 }
 
 function releaseCurrentSelection() {
