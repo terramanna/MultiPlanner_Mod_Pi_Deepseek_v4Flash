@@ -21,8 +21,11 @@ Grid `.grd` files plus MapInfo `.TAB` sidecars, and imagery layers as GeoTIFF
 With `export_profile: "ellipse_mapinfo_tab"`, it also attempts a per-dataset
 GeoTIFF merge, reprojects it to WGS 84 / UTM zone 32N (`EPSG:32632`), and
 writes the GeoTIFF plus MapInfo `.TAB` sidecar to `<selection>/utm32/`.
-These Northwood/GeoTIFF + TAB packages are MapInfo intermediates: use MapInfo
-for the final conversion/import step before loading the result in Ellipse.
+The Northwood GRD + TAB and plain GeoTIFF + TAB profiles are MapInfo
+intermediates and require an operator-run final conversion. The GeoTIFF + TAB +
+pyramids profile completes the conversion automatically and is ready for
+Ellipse import without operator intervention. The semantic building/tree
+profiles are likewise automatic, finished Ellipse bundles.
 The `ellipse_grd` path uses GDAL's `NWT_GRD` driver for the `DGM1` and `DOM1`
 `.grd` outputs. Ellipse rejected the ASCII `.grd` variant in manual import
 tests.

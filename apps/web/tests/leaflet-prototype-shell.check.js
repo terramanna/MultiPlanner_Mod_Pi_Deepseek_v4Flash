@@ -35,14 +35,16 @@ test("export profiles are grouped in a categorized pick list", () => {
 
   assert.match(html, /id="prototypeDownloadExportProfile"/);
   assert.match(html, /<optgroup label="Source files">/);
-  assert.match(html, /<optgroup label="MapInfo intermediate terrain\/surface">/);
-  assert.match(html, /<optgroup label="Ellipse building\/tree bundle \+ MapInfo terrain">/);
-  assert.match(html, /MapInfo step required/);
-  assert.match(html, /final MapInfo conversion\/import step before use in Ellipse/);
+  assert.match(html, /<optgroup label="Operator intervention - MapInfo final conversion">/);
+  assert.match(html, /<optgroup label="Automatic - Ellipse-ready \(no operator intervention\)">/);
+  assert.match(html, /Operator MapInfo conversion required/);
+  assert.match(html, /Automatic; ready for Ellipse/);
+  assert.match(html, /Automatic formats complete conversion and are ready to import into Ellipse/);
   assert.match(html, /value="source_tiles"/);
   assert.match(html, /value="ellipse_grd" selected/);
+  assert.match(html, /value="ellipse_mapinfo_tab_pyramids"/);
   assert.match(html, /value="ellipse_semantic_grc"/);
-  assert.match(html, /building\/tree heights \(2 m\)/);
-  assert.match(html, /building\/tree heights \(1 m comparison\)/);
+  assert.match(html, /building\/tree heights \(2 m, automatic\)/);
+  assert.match(html, /building\/tree heights \(1 m comparison, automatic\)/);
   assert.match(html, />Download \+ export</);
 });

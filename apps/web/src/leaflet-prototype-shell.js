@@ -150,17 +150,17 @@ function renderExportOptions() {
         <optgroup label="Source files">
           <option value="source_tiles">Original provider files (no conversion)</option>
         </optgroup>
-        <optgroup label="MapInfo intermediate terrain/surface">
-          <option value="ellipse_grd" selected>Northwood GRD + TAB (MapInfo step required)</option>
-          <option value="ellipse_mapinfo_tab">UTM32N GeoTIFF + TAB (MapInfo step required)</option>
-          <option value="ellipse_mapinfo_tab_pyramids">UTM32N GeoTIFF + TAB + pyramids (MapInfo step required)</option>
+        <optgroup label="Operator intervention - MapInfo final conversion">
+          <option value="ellipse_grd" selected>Northwood GRD + TAB (Operator MapInfo conversion required)</option>
+          <option value="ellipse_mapinfo_tab">UTM32N GeoTIFF + TAB (Operator MapInfo conversion required)</option>
         </optgroup>
-        <optgroup label="Ellipse building/tree bundle + MapInfo terrain">
-          <option value="ellipse_semantic_grc">DGM + DOM + building/tree heights (2 m)</option>
-          <option value="ellipse_semantic_grc_1m">DGM + DOM + building/tree heights (1 m comparison)</option>
+        <optgroup label="Automatic - Ellipse-ready (no operator intervention)">
+          <option value="ellipse_mapinfo_tab_pyramids">UTM32N GeoTIFF + TAB + pyramids (Automatic; ready for Ellipse)</option>
+          <option value="ellipse_semantic_grc">DGM + DOM + building/tree heights (2 m, automatic)</option>
+          <option value="ellipse_semantic_grc_1m">DGM + DOM + building/tree heights (1 m comparison, automatic)</option>
         </optgroup>
       </select>
-      <small>MapInfo intermediate files require a final MapInfo conversion/import step before use in Ellipse.</small>
+      <small>Operator-intervention formats stop before final MapInfo conversion. Automatic formats complete conversion and are ready to import into Ellipse.</small>
     </label>`;
 }
 

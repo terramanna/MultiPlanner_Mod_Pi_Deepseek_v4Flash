@@ -23,12 +23,13 @@ Current scaffold:
 - corridor subset preview against the API
 - keep selected subset tiles through the API
 - Bayern and Schleswig-Holstein Ellipse bundles containing DGM, DOM, building GRC, and tree GRC
-- categorized export picker for source-only, MapInfo-intermediate terrain/surface,
-  and semantic height bundles
+- categorized export picker for source-only, operator-completed MapInfo
+  conversion, and automatic Ellipse-ready exports
 
-The Northwood GRD + TAB and UTM32N GeoTIFF + TAB choices are MapInfo
-intermediates. They still require a final MapInfo conversion/import step before
-the terrain or surface can be used in Ellipse; the picker labels this explicitly.
+Northwood GRD + TAB and plain UTM32N GeoTIFF + TAB stop before the final MapInfo
+conversion and require operator intervention. UTM32N GeoTIFF + TAB + pyramids
+and both building/tree bundles complete the conversion automatically and are
+ready for Ellipse import without an operator-run MapInfo phase.
 
 Run locally:
 
