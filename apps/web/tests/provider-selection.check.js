@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { applyProviderSelection, coverageShouldShow, providerDatasets, sortProviders } from "../src/provider-selection.js";
 
 const providers = [
-  { name: "auto", label: "Auto (split by provider)", datasets: ["dgm1", "dom1", "dop20"] },
+  { name: "auto", label: "Auto (split by provider)", datasets: ["dgm", "dgm1", "dom", "dom1", "dop20"] },
   { name: "lgln-ni", label: "LGLN Lower Saxony", datasets: ["dgm1", "dom1", "dop20"] },
   { name: "geobasis-nrw", label: "Geobasis NRW", datasets: ["dgm1", "dom1"] },
 ];
@@ -11,6 +11,7 @@ assert.equal(coverageShouldShow("auto", "lgln-ni", true), true);
 assert.equal(coverageShouldShow("geobasis-nrw", "lgln-ni", true), false);
 assert.equal(coverageShouldShow("geobasis-nrw", "geobasis-nrw", true), true);
 assert.equal(coverageShouldShow("geobasis-nrw", "geobasis-nrw", false), false);
+assert.deepEqual(providerDatasets(providers, "auto"), ["dgm1", "dom1", "dop20"]);
 assert.deepEqual(providerDatasets(providers, "geobasis-nrw"), ["dgm1", "dom1"]);
 assert.deepEqual(
   sortProviders([

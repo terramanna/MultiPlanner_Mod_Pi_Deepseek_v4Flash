@@ -14,10 +14,26 @@ from multiplanner_api.ellipse_exports import (
     _export_for_ellipse,
     _export_grd,
     _export_grd_elevation,
+    _prepare_export_source,
     _translate_to_grd,
     _warp_vrt,
     _write_mapinfo_tab,
 )
+
+
+def test_sh_downloaded_ascii_source_uses_utm32_crs(monkeypatch, tmp_path) -> None:
+    source = tmp_path / "sh_dgm1_325935953.xyz"
+    source.write_text("593000 5953000 75\n", encoding="ascii")
+    commands = []
+
+    def fake_run_gdal(command, _environment):
+        commands.append(command)
+        Path(command[-1]).write_bytes(b"tif")
+
+    monkeypatch.setattr("multiplanner_api.ellipse_exports._run_gdal", fake_run_gdal)
+    _prepare_export_source(source, tmp_path / "gdal_translate.exe", {})
+
+    assert commands[0][commands[0].index("-a_srs") + 1] == "EPSG:25832"
 
 
 def test_warp_reprojects_the_ellipse_tiff_to_wgs84_utm32(monkeypatch, tmp_path) -> None:

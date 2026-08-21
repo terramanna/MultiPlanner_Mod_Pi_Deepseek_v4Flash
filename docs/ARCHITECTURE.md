@@ -75,10 +75,10 @@ patterns are in use:
 |---------|--------|-------|
 | **INSPIRE WCS 2.0.1** | HE, ST, SL, MV | `GetCoverage` per 1 km cell; axis labels vary (e/n vs x/y vs E/N) |
 | **Metalink4 index** | NRW, RP | Fetch XML tile manifest; parse (x_km, y_km) → URL; 24 h cache |
-| **GeoJSON index** | SH, BB, HH | Fetch tile-index GeoJSON; spatial filter by geometry; cache |
+| **GeoJSON index** | SH, BB, HH | Fetch tile-index GeoJSON; spatial filter by geometry; cache. SH maps its bDOM product into the generic DOM surface slot. |
 | **DAV / direct download** | SN (GeoSN), BY, BW | Pre-signed DAV or Metalink URL per file; polygon-based selection |
 | **Bulk ZIPs** | ST (LoD2), HB (LoD2) | Fixed set of state-wide ZIPs returned regardless of geometry |
-| **ATOM index** | SH (dom1), BE, TH | Parse INSPIRE ATOM feed to build tile index |
+| **ATOM index** | BE, TH | Parse INSPIRE ATOM feed to build tile index |
 | **OGC API Features** | HH | BBox query against a features endpoint |
 
 ### Current provider inventory (2026-06-27)
@@ -94,13 +94,19 @@ patterns are in use:
 | `lgl-bw` | Baden-Württemberg | `bw.py` | dgm1, dom1, dop20, bdom | Grid ZIP |
 | `ldbv-by` | Bayern | `by.py` | dgm1, dom1, dop20, bdom | Metalink |
 | `lgv-hh` | Hamburg | `hh.py` | dgm1, bdom, lod2 | OGC API Features |
-| `lvermgeo-sh` | Schleswig-Holstein | `sh.py` | dgm1, dom1, dop20, lod2 | GeoJSON index |
+| `lvermgeo-sh` | Schleswig-Holstein | `sh.py` | dgm1, dom1 (bDOM source), dop20, lod2 | GeoJSON index |
 | `laiv-mv` | Mecklenburg-Vorpommern | `mv.py` | dgm1, dom1 | INSPIRE WCS |
 | `lginf-hb` | Bremen | `hb.py` | dgm1, dom1, lod2 | Bulk ZIPs |
 | `gdi-be` | Berlin | `be.py` | dgm1, dom1, bdom | ATOM index |
 | `tlbg-th` | Thüringen | `th.py` | dgm, dom, lod2 | ATOM index |
 | `lvgl-sl` | Saarland | `sl.py` | dgm1 | INSPIRE WCS |
 | `lvermgeo-rp` | Rheinland-Pfalz | `rp.py` | dgm1 | Metalink4 index |
+
+Path profiles expose a normal JSON route and a streaming route. The Leaflet
+client previews tile counts and provider-aware source-size estimates before a
+large calculation, then consumes progress events as samples complete.
+Per-target download locks prevent parallel samples from writing the same cache
+file concurrently.
 
 States without a backend adapter yet: **NI** (ArcGIS FS, no custom module).
 States with WMS-only coverage (no download backend): **RP** (dop20 WMS only),

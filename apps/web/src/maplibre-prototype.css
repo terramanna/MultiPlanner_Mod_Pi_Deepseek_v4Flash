@@ -88,11 +88,26 @@ html, body, #app, .maplibre-prototype-shell, #maplibreMap {
 }
 
 .prototype-download-options {
+  display: grid;
+  gap: 6px;
   margin-top: 16px;
   padding: 10px;
   border: 1px solid #d1dde5;
   border-radius: 6px;
   background: white;
+}
+
+.prototype-download-options span {
+  font-weight: 700;
+}
+
+.prototype-download-options select {
+  width: 100%;
+}
+
+.prototype-download-options small {
+  color: #4d6170;
+  line-height: 1.35;
 }
 
 .prototype-inline-options {

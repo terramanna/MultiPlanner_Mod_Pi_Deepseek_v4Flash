@@ -13,6 +13,8 @@ Current scaffold:
   Links, and Places filters provide focused results
 - corridor, rectangular-area, and single-point planning modes in the side panel
 - area drawing controls shown only in area mode
+- in-place planning-mode changes preserve the visible map, overlays, searches, selections, centre, and zoom
+- leaving area mode safely cancels an unfinished drawing while keeping completed drawings on the map
 - geometry-aware provider detection with manual-provider override
 - blank-map release for search-selected sites and links, including provider reset
 - optional Cesium and MapLibre comparison renderers through query parameters
@@ -22,7 +24,14 @@ Current scaffold:
 - API bootstrap against the local FastAPI backend
 - corridor subset preview against the API
 - keep selected subset tiles through the API
-- Bayern Ellipse bundle export containing DGM, DOM, building GRC, and tree GRC
+- Bayern and Schleswig-Holstein Ellipse bundles containing DGM, DOM, building GRC, and tree GRC
+- categorized export picker for source-only, operator-completed MapInfo
+  conversion, and automatic Ellipse-ready exports
+
+Northwood GRD + TAB and plain UTM32N GeoTIFF + TAB stop before the final MapInfo
+conversion and require operator intervention. UTM32N GeoTIFF + TAB + pyramids
+and both building/tree bundles complete the conversion automatically and are
+ready for Ellipse import without an operator-run MapInfo phase.
 
 Run locally:
 
@@ -35,11 +44,13 @@ The Vite development server proxies `/api` to `http://127.0.0.1:8000`. This
 keeps universal search on the frontend origin and avoids a separate browser CORS
 hop. Start the FastAPI backend before using search or provider operations.
 
-For a Bayern selection, choose the 2 m or 1 m comparison
-`Bayern DGM + DOM + building/tree heights` profile.
-The planner automatically requests DGM, DOM, and LoD2/BDOM even if one of those
-dataset boxes was not selected. The export is deliberately rejected for other
-providers until their building and vegetation sources are validated.
+For a Bayern or Schleswig-Holstein selection, choose the 2 m or 1 m
+`DGM + DOM + building/tree heights` profile under **Ellipse building and tree
+heights**. The planner automatically requests DGM, DOM, and the provider's LoD2
+dataset even if one of those dataset boxes was not selected. Bayern uses the
+logical `bdom` LoD2 slot; Schleswig-Holstein uses `lod2` plus the official
+Basis-DLM forest and woodland WFS. Other providers remain rejected until their
+building and vegetation sources are validated.
 
 Each semantic bundle contains a height-classified building GRC, a
 height-classified forest GRC, exact continuous AGL-height MRRs, and `.vse`
@@ -47,6 +58,12 @@ tables. Matching Height Definition `.xml` files populate Ellipse's numeric
 height column for each GRC class. Ground Type XML files assign `average_ground`
 to building classes and `tree_foliage_medium` to forest classes. The 2 m profile is the practical default; the 1 m profile uses roughly
 four times as many semantic cells for the same area.
+
+The link-profile popup does not start raster downloads when it opens. Press
+**Calculate profile** to preview the required source-tile count and estimated
+first-run size. Large profiles require confirmation, then show streamed sample
+progress while uncached DGM/DOM tiles download. Later calculations reuse the
+local tile and height cache.
 
 Renderer routes:
 

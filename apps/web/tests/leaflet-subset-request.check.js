@@ -287,3 +287,8 @@ assert.deepEqual(
   datasetsForExport(["dom1"], "ellipse_semantic_grc_1m", "ldbv-by"),
   ["dom1", "dgm1", "bdom"],
 );
+assert.deepEqual(
+  datasetsForExport(["dgm1"], "ellipse_semantic_grc", "lvermgeo-sh"),
+  ["dgm1", "dom1", "lod2"],
+  "the SH semantic bundle must include DGM, bDOM, and LoD2 source data",
+);

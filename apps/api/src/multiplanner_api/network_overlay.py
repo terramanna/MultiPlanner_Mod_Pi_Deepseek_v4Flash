@@ -5,7 +5,7 @@ Only Primary and Nominal links are included. The result is cached by DB
 mtime so repeated requests are instant. The cache is invalidated automatically
 when the DB file changes (e.g. after a fresh import in the NSP tool).
 
-Configure the DB path via MULTIPLANNER_NETWORK_DB_PATH env var.
+Configure the DB path via MULTIPLANNER_NETWORK_DB_PATH env var. Connectivity is read from the resolved ellipse_link_resolved_current projection; the retired ellipse_link_current projection is not supported.
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ _SITE_SQL = """
       AND s.longitude BETWEEN -180 AND 180
       AND s.site_status GLOB '[0-8]*'
       AND EXISTS (
-          SELECT 1 FROM ellipse_link_current l
+          SELECT 1 FROM ellipse_link_resolved_current l
           WHERE l.is_active = 1
             AND l.link_state IN ('30_Primary', '20_Nominal')
             AND (l.site_a_name = s.site_name OR l.site_b_name = s.site_name)
@@ -49,7 +49,7 @@ _LINK_SQL = """
         st_a.project_id, st_a.project_status, st_a.customer,
         st_a.site_status  AS tracker_status_a,
         st_b.site_status  AS tracker_status_b
-    FROM ellipse_link_current l
+    FROM ellipse_link_resolved_current l
     JOIN ellipse_site_current sa ON sa.site_name = l.site_a_name
     JOIN ellipse_site_current sb ON sb.site_name = l.site_b_name
     LEFT JOIN site_tracker_current st_a

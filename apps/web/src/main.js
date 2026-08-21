@@ -9,6 +9,7 @@ import { createCorridorFlow } from "./corridor-flow.js";
 import { requestLeafletSubset } from "./leaflet-subset-request.js";
 import { renderDatasetChoices } from "./leaflet-prototype-utils.js";
 import { createLinkProfileWindow } from "./link-profile-window.js";
+import { providerDatasets } from "./provider-selection.js";
 
 window.CESIUM_BASE_URL = "/node_modules/cesium/Build/Cesium";
 
@@ -348,8 +349,7 @@ function selectedExportProfile() {
 
 function updateProviderSelection() {
   state.provider = providerSelect.value;
-  const provider = state.providers.find((candidate) => candidate.name === state.provider);
-  renderDatasetChoices(provider?.datasets || []);
+  renderDatasetChoices(providerDatasets(state.providers, state.provider));
 }
 
 function formatSample(sample) {

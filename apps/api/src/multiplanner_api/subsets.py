@@ -27,9 +27,17 @@ SOURCE_BYTES_PER_TILE = {
     "dom1": 3_000_000,
     "dop20": 80_000_000,
 }
+PROVIDER_SOURCE_BYTES_PER_TILE = {
+    ("lvermgeo-sh", "dgm1"): 28_000_000,
+    ("lvermgeo-sh", "dom1"): 105_000_000,
+    ("lvermgeo-sh", "lod2"): 5_000_000,
+}
 ELLIPSE_BYTES_PER_TILE = {
     "dgm1": 4_000_000,
     "dom1": 4_000_000,
+}
+PROVIDER_ELLIPSE_BYTES_PER_TILE = {
+    ("lvermgeo-sh", "dom1"): 105_000_000,
 }
 SUMMARY_FIELDS = {"provider", "dataset", "tile_id", "updated", "primary_url"}
 
@@ -112,8 +120,8 @@ def _build_dataset_subset_result(
         dataset=dataset,
         match_count=len(tiles),
         tiles=tiles,
-        estimated_source_bytes=_estimated_source_bytes(dataset, len(tiles)),
-        estimated_ellipse_bytes=_estimated_ellipse_bytes(dataset, len(tiles)),
+        estimated_source_bytes=_estimated_source_bytes(provider, dataset, len(tiles)),
+        estimated_ellipse_bytes=_estimated_ellipse_bytes(provider, dataset, len(tiles)),
     )
 
 
@@ -147,12 +155,18 @@ def _build_locate_response(
     )
 
 
-def _estimated_source_bytes(dataset: str, tile_count: int) -> int:
-    return tile_count * SOURCE_BYTES_PER_TILE.get(dataset, 5_000_000)
+def _estimated_source_bytes(provider: str, dataset: str, tile_count: int) -> int:
+    bytes_per_tile = PROVIDER_SOURCE_BYTES_PER_TILE.get(
+        (provider, dataset), SOURCE_BYTES_PER_TILE.get(dataset, 5_000_000)
+    )
+    return tile_count * bytes_per_tile
 
 
-def _estimated_ellipse_bytes(dataset: str, tile_count: int) -> int:
-    return tile_count * ELLIPSE_BYTES_PER_TILE.get(dataset, 0)
+def _estimated_ellipse_bytes(provider: str, dataset: str, tile_count: int) -> int:
+    bytes_per_tile = PROVIDER_ELLIPSE_BYTES_PER_TILE.get(
+        (provider, dataset), ELLIPSE_BYTES_PER_TILE.get(dataset, 0)
+    )
+    return tile_count * bytes_per_tile
 
 
 def _optional_string(value: object) -> str | None:

@@ -1,3 +1,5 @@
+import { PLANNING_MODE_LABELS as labels } from "./leaflet-planning-mode.js";
+
 const defaultProviders = [
   { name: "auto", label: "Auto (split by provider)" },
   { name: "lgln-ni", label: "Niedersachsen LGLN" },
@@ -10,12 +12,6 @@ const defaultProviders = [
   { name: "ldbv-by", label: "Bayern LDBV" },
   { name: "lgv-hh", label: "Hamburg LGV" },
 ];
-
-const labels = {
-  corridor: "A - Two sites / corridor",
-  area: "B - Draw rectangular area",
-  point: "C - Single point",
-};
 
 export function renderPrototypeShell(variant) {
   return `<main class="leaflet-prototype-shell">
@@ -39,7 +35,7 @@ function renderIntro(variant) {
       <div class="prototype-kicker">PROTOTYPE - 2D local planning</div>
       <div id="searchStatus" class="prototype-api-status">API: starting</div>
     </div>
-    <h1>${labels[variant]}</h1>
+    <h1 id="planningModeHeading">${labels[variant]}</h1>
     ${renderModeSelector(variant)}
     <p id="modeHelp" class="prototype-help"></p>
     <div class="prototype-actions" id="placementActions"></div>`;
@@ -144,24 +140,32 @@ function renderDownloadControls() {
 }
 
 function renderExportOptions() {
-  return `<fieldset class="prototype-download-options">
-      <legend>Export format</legend>
-      <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_grd" checked /> GRD</label>
-      <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_mapinfo_tab" /> UTM32N GeoTIFF + TAB</label>
-      <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_mapinfo_tab_pyramids" /> UTM32N GeoTIFF + TAB + pyramids</label>
-      <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_semantic_grc" /> Bayern DGM + DOM + building/tree heights (2 m)</label>
-      <label><input type="radio" name="prototypeDownloadExportProfile" value="ellipse_semantic_grc_1m" /> Bayern DGM + DOM + building/tree heights (1 m comparison)</label>
-    </fieldset>`;
+  return `<label class="prototype-download-options" for="prototypeDownloadExportProfile">
+      <span>Export format</span>
+      <select id="prototypeDownloadExportProfile">
+        <optgroup label="Source files">
+          <option value="source_tiles">Original provider files (no conversion)</option>
+        </optgroup>
+        <optgroup label="Operator intervention - MapInfo final conversion">
+          <option value="ellipse_grd" selected>Northwood GRD + TAB (Operator MapInfo conversion required)</option>
+          <option value="ellipse_mapinfo_tab">UTM32N GeoTIFF + TAB (Operator MapInfo conversion required)</option>
+        </optgroup>
+        <optgroup label="Automatic - Ellipse-ready (no operator intervention)">
+          <option value="ellipse_mapinfo_tab_pyramids">UTM32N GeoTIFF + TAB + pyramids (Automatic; ready for Ellipse)</option>
+          <option value="ellipse_semantic_grc">DGM + DOM + building/tree heights (2 m, automatic)</option>
+          <option value="ellipse_semantic_grc_1m">DGM + DOM + building/tree heights (1 m comparison, automatic)</option>
+        </optgroup>
+      </select>
+      <small>Operator-intervention formats stop before final MapInfo conversion. Automatic formats complete conversion and are ready to import into Ellipse.</small>
+    </label>`;
 }
 
 function renderMapSection(variant) {
-  const measurement = variant === "area"
-    ? `<div id="measurementReadout" class="prototype-measurement">Draw a circle, rectangle, or polygon to see dimensions.</div>`
-    : "";
+  const measurementHidden = variant === "area" ? "" : " hidden";
   return `<section class="leaflet-prototype-map-wrap">
     <div id="leafletMap"></div>
     ${renderSearch()}
-    ${measurement}
+    <div id="measurementReadout" class="prototype-measurement"${measurementHidden}>Draw a circle, rectangle, or polygon to see dimensions.</div>
   </section>`;
 }
 

@@ -112,6 +112,27 @@ def profile_remote_path(request: PathProfileRequest) -> PathProfileResponse:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@app.post("/api/v1/profile/path-stream")
+async def profile_remote_path_stream(request: PathProfileRequest) -> StreamingResponse:
+    q: queue_module.SimpleQueue = queue_module.SimpleQueue()
+
+    def emit(dataset: str, current: int, total: int, success: bool) -> None:
+        q.put({
+            "type": "progress", "dataset": dataset, "current": current,
+            "total": total, "success": success,
+        })
+
+    def run_profile() -> None:
+        try:
+            result = build_path_profile(request, on_progress=emit)
+            q.put({"type": "done", "result": result.model_dump()})
+        except Exception as exc:
+            q.put({"type": "error", "message": str(exc)})
+
+    threading.Thread(target=run_profile, daemon=True).start()
+    return _queue_stream_response(q)
+
+
 @app.post("/api/v1/probe/tile-preview", response_model=TilePreviewResponse)
 def preview_remote_tile(request: TilePreviewRequest) -> TilePreviewResponse:
     try:
@@ -185,21 +206,26 @@ async def download_remote_subset_stream(request: DownloadSubsetRequest) -> Strea
 
     threading.Thread(target=run_download, daemon=True).start()
 
-    async def generate():
-        while True:
-            try:
-                event = q.get_nowait()
-                yield f"data: {json.dumps(event)}\n\n"
-                if event["type"] in ("done", "error"):
-                    break
-            except queue_module.Empty:
-                await asyncio.sleep(0.1)
+    return _queue_stream_response(q)
 
+
+def _queue_stream_response(q: queue_module.SimpleQueue) -> StreamingResponse:
     return StreamingResponse(
-        generate(),
+        _generate_queue_events(q),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+async def _generate_queue_events(q: queue_module.SimpleQueue):
+    while True:
+        try:
+            event = q.get_nowait()
+            yield f"data: {json.dumps(event)}\n\n"
+            if event["type"] in ("done", "error"):
+                break
+        except queue_module.Empty:
+            await asyncio.sleep(0.1)
 
 
 @app.get("/api/v1/subsets/file")

@@ -67,6 +67,17 @@ def test_path_profile_route_uses_service(monkeypatch) -> None:
     assert body["samples"][0]["distance_m"] == 0
 
 
+def test_path_profile_stream_reports_progress_and_result(monkeypatch) -> None:
+    monkeypatch.setattr(path_profile, "_probe_height", lambda *_args: 88.0)
+
+    response = client.post("/api/v1/profile/path-stream", json=request_payload())
+
+    assert response.status_code == 200
+    assert '"type": "progress"' in response.text
+    assert '"current": 10' in response.text
+    assert '"type": "done"' in response.text
+
+
 def test_zero_endpoint_heights_use_sampled_ground(monkeypatch) -> None:
     def fake_probe(_provider, _dataset, lon, _lat):
         return 100.0 + round((lon - 7.0) * 1000)
@@ -125,6 +136,24 @@ def test_path_profile_probes_samples_concurrently(monkeypatch) -> None:
 
     assert len(result.samples) == 5
     assert maximum_active > 1
+
+
+def test_path_profile_reports_each_completed_probe(monkeypatch) -> None:
+    progress = []
+    monkeypatch.setattr(path_profile, "_probe_height", lambda *_args: 100.0)
+
+    result = path_profile.build_path_profile(
+        PathProfileRequest(**request_payload()),
+        on_progress=lambda dataset, current, total, success: progress.append(
+            (dataset, current, total, success)
+        ),
+    )
+
+    assert len(result.samples) == 5
+    assert len(progress) == 10
+    assert [entry[1] for entry in progress] == list(range(1, 11))
+    assert {entry[2] for entry in progress} == {10}
+    assert all(entry[3] for entry in progress)
 
 
 def test_profile_height_cache_reuses_identical_sample(monkeypatch) -> None:

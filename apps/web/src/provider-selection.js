@@ -9,7 +9,13 @@ export function selectedProviderFromSelect(providerSelect, providers, fallbackPr
 }
 
 export function providerDatasets(providers, providerName) {
-  return providers.find((provider) => provider.name === providerName)?.datasets || [];
+  const datasets = providers.find((provider) => provider.name === providerName)?.datasets || [];
+  return datasets.filter((dataset) => !isRedundantDatasetAlias(dataset, datasets));
+}
+
+function isRedundantDatasetAlias(dataset, datasets) {
+  return (dataset === "dgm" && datasets.includes("dgm1"))
+    || (dataset === "dom" && datasets.includes("dom1"));
 }
 
 export function sortProviders(providers, direction) {

@@ -14,6 +14,7 @@ ORTHO_DATASETS = frozenset({"dop20"})
 GRD_DRIVER = "NWT_GRD"
 PYRAMID_LEVELS = ("2", "4", "8", "16", "32")
 ASCII_SOURCE_CRS_BY_TOKEN = {
+    "sh_dgm": "EPSG:25832",
     "_bw": "EPSG:25832",
     "_hh": "EPSG:25832",
     "_hb": "EPSG:25832",

@@ -7,6 +7,7 @@ import pytest
 
 from multiplanner_api.sh import (
     _cache_path,
+    _geojson_url,
     _load_index,
     _parse_geojson,
     _tile_shape,
@@ -92,6 +93,10 @@ def _mock_geojson_response(features):
 
 def test_lvermgeo_sh_provider_lists_dgm1_dom1_dop20_lod2() -> None:
     assert provider_dataset_names("lvermgeo-sh") == ("dgm1", "dom1", "dop20", "lod2")
+
+
+def test_sh_dom1_surface_slot_uses_official_bdom_index() -> None:
+    assert "file=bDOM_SH_Massendownload.geojson" in _geojson_url("dom1")
 
 
 # --- _parse_geojson ---
@@ -235,14 +240,14 @@ def test_summarize_tiles_has_correct_provider_and_dataset(monkeypatch) -> None:
 
 def test_locate_tiles_returns_matching_dom1_tile(monkeypatch) -> None:
     dom1_tile = {**SAMPLE_TILE,
-                 "link_data": "https://geodaten.schleswig-holstein.de/gaialight-sh/_apps/dladownload/massen.php?file=dom1_32_424_6002_1_sh_2024.tif&id=9"}
+                 "link_data": "https://geodaten.schleswig-holstein.de/gaialight-sh/_apps/dladownload/massen.php?file=bdom20nc_32_424_6002_1_sh_2024.tif&id=6"}
     monkeypatch.setattr("multiplanner_api.sh._load_index", lambda dataset, *, timeout: [dom1_tile])
     config = SERVICE_PROVIDERS["lvermgeo-sh"]["datasets"]["dom1"]
     tiles = locate_tiles("dom1", config=config, geometry=SH_ENVELOPE,
                          geometry_type="esriGeometryEnvelope", timeout=5)
     assert len(tiles) == 1
     assert tiles[0]["tile_id"] == "sh_dom1_324246002"
-    assert "dom1_32_424_6002" in tiles[0]["primary_url"]
+    assert "bdom20nc_32_424_6002" in tiles[0]["primary_url"]
 
 
 def test_summarize_tiles_dop20_has_correct_dataset(monkeypatch) -> None:

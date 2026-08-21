@@ -1,15 +1,17 @@
 from pathlib import Path
 from types import SimpleNamespace
+from threading import Lock, Thread
+from time import sleep
 import zipfile
 
 import requests
 from fastapi.testclient import TestClient
 
 from multiplanner_api import downloads, ellipse_exports
-from multiplanner_api.downloads import _download_file, download_subset
+from multiplanner_api.downloads import _download_file, _target_filename, download_subset
 from multiplanner_api.main import app
 from multiplanner_api.models import BboxGeometryInput, CorridorGeometryInput, DownloadSubsetRequest, LocateSubsetRequest
-from multiplanner_api.subsets import locate_subsets
+from multiplanner_api.subsets import _estimated_ellipse_bytes, _estimated_source_bytes, locate_subsets
 
 
 client = TestClient(app)
@@ -67,6 +69,59 @@ def fake_download_response(request) -> dict[str, object]:
 def patch_download_settings(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr("multiplanner_api.downloads.load_settings", lambda: SimpleNamespace(cache_root=str(tmp_path / "cache"), output_dir="", ellipse_gdal_dir="unused"))
     monkeypatch.setattr("multiplanner_api.downloads.locate_subsets", lambda request: single_tile_response())
+
+
+def test_target_filename_uses_file_query_suffix_for_sh_download() -> None:
+    url = (
+        "https://geodaten.schleswig-holstein.de/gaialight-sh/_apps/dladownload/massen.php"
+        "?file=dgm1_32_593_5953_1_sh_2022.xyz&id=2&live=2022&km=32590_5950"
+    )
+
+    assert _target_filename(url, "sh_dgm1_325935953") == "sh_dgm1_325935953.xyz"
+
+
+def test_cached_sh_text_download_strips_appended_portal_html(tmp_path) -> None:
+    target = tmp_path / "sh_lod2_325935953.xml"
+    target.write_bytes(b"<CityModel/>\n<!DOCTYPE html>\n<html>portal</html>\n")
+    url = (
+        "https://geodaten.schleswig-holstein.de/gaialight-sh/_apps/dladownload/massen.php"
+        "?file=LoD2_32_593_5953_1_SH.xml&id=4"
+    )
+
+    _download_file(url, target)
+
+    assert target.read_bytes() == b"<CityModel/>\n"
+
+
+def test_parallel_downloads_for_same_target_are_serialized(monkeypatch, tmp_path) -> None:
+    active = 0
+    maximum_active = 0
+    counter_lock = Lock()
+
+    def fake_download(_url, _target):
+        nonlocal active, maximum_active
+        with counter_lock:
+            active += 1
+            maximum_active = max(maximum_active, active)
+        sleep(0.03)
+        with counter_lock:
+            active -= 1
+
+    monkeypatch.setattr("multiplanner_api.downloads._download_file_once", fake_download)
+    target = tmp_path / "tile.tif"
+    threads = [Thread(target=_download_file, args=("https://example.invalid/tile.tif", target)) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert maximum_active == 1
+
+
+def test_sh_estimates_reflect_large_bdom_tiles() -> None:
+    assert _estimated_source_bytes("lvermgeo-sh", "dgm1", 23) == 644_000_000
+    assert _estimated_source_bytes("lvermgeo-sh", "dom1", 23) == 2_415_000_000
+    assert _estimated_ellipse_bytes("lvermgeo-sh", "dom1", 23) == 2_415_000_000
 
 
 def test_list_providers() -> None:
@@ -401,6 +456,7 @@ def test_semantic_grc_profile_uses_bayern_geometry_and_lod2(monkeypatch, tmp_pat
         ".tif", ".TAB", ".tif", ".TAB", ".grc", ".grc", ".vse", ".vse", ".mrr", ".mrr",
     ]
     assert captured["geometry"] == request.geometry
+    assert captured["provider"] == "ldbv-by"
     assert captured["lod2_paths"] == [source]
     assert captured["dgm_paths"] == [tmp_path / "dgm.tif"]
     assert captured["dom_paths"] == [tmp_path / "dom.tif"]
@@ -425,16 +481,35 @@ def test_one_metre_semantic_profile_selects_one_metre_export(monkeypatch, tmp_pa
     assert captured["resolution_m"] == 1
 
 
-def test_semantic_grc_profile_rejects_non_bayern_provider(tmp_path) -> None:
+def test_semantic_grc_profile_rejects_unsupported_provider(tmp_path) -> None:
     request = DownloadSubsetRequest(**point_payload(), export_profile="ellipse_semantic_grc")
 
     exports, warnings = downloads._export_or_skip(request, {}, [], tmp_path, "gdal-dir")
 
     assert exports == []
-    assert warnings == ["Buildings + trees GRC export currently supports Bayern LDBV selections only."]
+    assert warnings == ["Buildings + trees GRC export supports Bayern and Schleswig-Holstein selections only."]
 
 
+def test_semantic_grc_profile_uses_sh_lod2_dataset(monkeypatch, tmp_path) -> None:
+    request = DownloadSubsetRequest(
+        provider="lvermgeo-sh", datasets=["dgm1", "dom1", "lod2"],
+        export_profile="ellipse_semantic_grc",
+        geometry=BboxGeometryInput(kind="bbox", west=10.28, south=53.51, east=10.40, north=53.62),
+    )
+    captured = {}
+    monkeypatch.setattr("multiplanner_api.downloads._export_for_ellipse", lambda *_a, **_k: ([], []))
+    monkeypatch.setattr(
+        "multiplanner_api.downloads.export_semantic_grc",
+        lambda **kwargs: (captured.update(kwargs) or [], []),
+    )
+    sources = {"dgm1": [tmp_path / "dgm.xyz"], "dom1": [tmp_path / "dom.tif"], "lod2": [tmp_path / "lod2.xml"]}
 
+    exports, warnings = downloads._export_or_skip(request, sources, [], tmp_path, "gdal")
+
+    assert exports == []
+    assert warnings == []
+    assert captured["provider"] == "lvermgeo-sh"
+    assert captured["lod2_paths"] == [tmp_path / "lod2.xml"]
 
 def fake_retrying_session(
     calls: list[bool],

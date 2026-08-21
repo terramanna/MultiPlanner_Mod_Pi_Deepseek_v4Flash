@@ -52,14 +52,20 @@ function buildSubsetRequestBody(context, download, geometry, datasets, exportPro
 }
 
 function exportProfileError(exportProfile, provider) {
-  if (!isSemanticProfile(exportProfile) || provider === "ldbv-by") return "";
-  return "Buildings + trees GRC currently requires the Bayern LDBV provider.";
+  if (!isSemanticProfile(exportProfile) || semanticDatasets(provider)) return "";
+  return "Buildings + trees GRC currently supports Bayern and Schleswig-Holstein.";
 }
 
 export function datasetsForExport(datasets, exportProfile, provider) {
-  if (!isSemanticProfile(exportProfile) || provider !== "ldbv-by") return datasets;
-  const required = ["dgm1", "dom1", "bdom"];
+  const required = isSemanticProfile(exportProfile) ? semanticDatasets(provider) : null;
+  if (!required) return datasets;
   return [...datasets, ...required.filter((dataset) => !datasets.includes(dataset))];
+}
+
+function semanticDatasets(provider) {
+  if (provider === "ldbv-by") return ["dgm1", "dom1", "bdom"];
+  if (provider === "lvermgeo-sh") return ["dgm1", "dom1", "lod2"];
+  return null;
 }
 
 function isSemanticProfile(exportProfile) {

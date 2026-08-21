@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
-import { buildLeafletPathProfileRequest, gigahertzToMegahertz, resolveProfileProvider } from "../src/leaflet-link-profile.js";
+import {
+  buildLeafletPathProfileRequest,
+  buildLeafletProfilePreviewRequest,
+  gigahertzToMegahertz,
+  profilePreflightMessage,
+  resolveProfileProvider,
+} from "../src/leaflet-link-profile.js";
 
 assert.equal(gigahertzToMegahertz(6), 6000);
 assert.equal(gigahertzToMegahertz(13), 13000);
@@ -41,3 +47,29 @@ assert.equal(
   }, "auto"),
   "lgl-bw",
 );
+
+const shLink = {
+  siteA: { lat: 53.510621, lon: 10.283063 },
+  siteB: { lat: 53.616739, lon: 10.394272 },
+};
+const previewRequest = buildLeafletProfilePreviewRequest(
+  shLink,
+  { source: "dgm1_dom1" },
+  "lvermgeo-sh",
+);
+
+assert.deepEqual(previewRequest.datasets, ["dgm1", "dom1"]);
+assert.equal(previewRequest.geometry.kind, "corridor");
+assert.equal(previewRequest.geometry.from_lon, 10.283063);
+assert.equal(previewRequest.geometry.to_lat, 53.616739);
+
+assert.match(
+  profilePreflightMessage({
+    results: [
+      { dataset: "dgm1", match_count: 23, estimated_source_bytes: 644_000_000 },
+      { dataset: "dom1", match_count: 23, estimated_source_bytes: 2_415_000_000 },
+    ],
+  }),
+  /46 source tiles.*3\.1 GB/s,
+);
+assert.equal(profilePreflightMessage({ results: [] }), "");

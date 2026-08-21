@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { addAreaDrawingControls } from "../src/leaflet-drawing-controls.js";
+import { addAreaDrawingControls, updateAreaDrawingControls } from "../src/leaflet-drawing-controls.js";
 
 test("drawing controls are not installed for corridor or point modes", () => {
   const map = fakeMap();
@@ -19,7 +19,33 @@ test("area mode installs only area drawing controls", () => {
   assert.equal(map.calls[0].drawMarker, false);
 });
 
+test("planning mode changes replace drawing controls without touching map layers", () => {
+  const map = fakeMap();
+  map.layers = [{ id: "selected-link" }, { id: "network" }];
+  map.activeShape = "Rectangle";
+
+  updateAreaDrawingControls(map, "area");
+  updateAreaDrawingControls(map, "point");
+
+  assert.equal(map.removedControls, 2);
+  assert.deepEqual(map.disabledShapes, ["Rectangle"]);
+  assert.deepEqual(map.layers, [{ id: "selected-link" }, { id: "network" }]);
+});
+
 function fakeMap() {
   const calls = [];
-  return { calls, pm: { addControls: (options) => calls.push(options) } };
+  const map = {
+    calls,
+    disabledShapes: [],
+    removedControls: 0,
+    pm: {},
+  };
+  map.pm.addControls = (options) => calls.push(options);
+  map.pm.removeControls = () => { map.removedControls += 1; };
+  map.pm.Draw = { getActiveShape: () => map.activeShape };
+  map.pm.disableDraw = (shape) => {
+    map.disabledShapes.push(shape);
+    map.activeShape = null;
+  };
+  return map;
 }

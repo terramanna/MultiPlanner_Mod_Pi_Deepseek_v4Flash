@@ -3,7 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from multiplanner_api import point_probe
-from multiplanner_api.models import MultiProbeRequest, PointProbeResponse
+from multiplanner_api.models import MultiProbeRequest, PointProbeRequest, PointProbeResponse, TileSummary
 
 
 def test_sample_height_calls_gdallocationinfo(monkeypatch, tmp_path):
@@ -136,7 +136,7 @@ def test_xyz_to_geotiff_calls_gdal_translate(monkeypatch, tmp_path):
 
 
 def test_provider_xyz_crs_covers_known_xyz_providers():
-    for provider in ("lgl-bw", "lgv-hh", "lginf-hb", "gdi-be"):
+    for provider in ("lgl-bw", "lgv-hh", "lginf-hb", "gdi-be", "lvermgeo-sh"):
         assert provider in point_probe._PROVIDER_XYZ_CRS
 
 
@@ -146,6 +146,32 @@ def test_bw_crs_is_utm32():
 
 def test_hh_crs_is_utm32():
     assert point_probe._PROVIDER_XYZ_CRS["lgv-hh"] == "EPSG:25832"
+
+
+def test_sh_crs_is_utm32():
+    assert point_probe._PROVIDER_XYZ_CRS["lvermgeo-sh"] == "EPSG:25832"
+
+
+def test_prepare_sample_path_revalidates_cached_download(monkeypatch, tmp_path):
+    target = tmp_path / "sh_dgm1_tile.xyz"
+    target.write_text("cached", encoding="ascii")
+    calls = []
+    tile = TileSummary(
+        provider="lvermgeo-sh", dataset="dgm1", tile_id="sh_dgm1_tile",
+        primary_url="https://geodaten.schleswig-holstein.de/massen.php?file=tile.xyz",
+    )
+    monkeypatch.setattr(point_probe, "_shared_source_cache_dir", lambda *_args: tmp_path)
+    monkeypatch.setattr(point_probe, "_target_filename", lambda *_args: target.name)
+    monkeypatch.setattr(point_probe, "_download_file", lambda url, path: calls.append((url, path)))
+    monkeypatch.setattr(point_probe, "_expanded_download_paths", lambda *_args: [target])
+    monkeypatch.setattr(point_probe, "_resolve_sample_path", lambda paths, *_args, **_kwargs: paths[0])
+
+    result = point_probe._prepare_sample_path(
+        PointProbeRequest(provider="lvermgeo-sh", dataset="dgm1", lon=10.4, lat=53.7), tile,
+    )
+
+    assert result == target
+    assert calls == [(tile.primary_url, target)]
 
 
 def test_be_crs_is_utm33():

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from functools import lru_cache
 import math
+from typing import Callable
 
 from multiplanner_api.models import (
     CorridorGeometryInput,
@@ -18,16 +19,20 @@ from multiplanner_api.subsets import locate_subsets
 LIGHT_SPEED_MPS = 299_792_458
 EARTH_RADIUS_M = 6_371_000
 MAX_PARALLEL_PROBES = 8
+ProfileProgressCallback = Callable[[str, int, int, bool], None]
 
 
-def build_path_profile(request: PathProfileRequest) -> PathProfileResponse:
+def build_path_profile(
+    request: PathProfileRequest,
+    on_progress: ProfileProgressCallback | None = None,
+) -> PathProfileResponse:
     sample_count = _sample_count(request.sample_count)
     distance_m = max(1.0, _distance_m(request.site_a.lat, request.site_a.lon, request.site_b.lat, request.site_b.lon))
     warnings: list[str] = []
     provider = _resolve_profile_provider(request, warnings)
     request = request.model_copy(update={"provider": provider})
     samples = [_profile_sample(request, index, sample_count, distance_m) for index in range(sample_count)]
-    _apply_sample_heights(samples, request, warnings)
+    _apply_sample_heights(samples, request, warnings, on_progress)
     _apply_los(samples, request)
     return PathProfileResponse(
         provider=provider,
@@ -72,15 +77,21 @@ def _profile_sample(
     return sample
 
 
-def _apply_sample_heights(samples: list[PathProfileSample], request: PathProfileRequest, warnings: list[str]) -> None:
+def _apply_sample_heights(
+    samples: list[PathProfileSample], request: PathProfileRequest, warnings: list[str],
+    on_progress: ProfileProgressCallback | None,
+) -> None:
     tasks = [(sample, dataset) for sample in samples for dataset in _profile_datasets(request.source)]
     with ThreadPoolExecutor(max_workers=min(MAX_PARALLEL_PROBES, len(tasks))) as executor:
         futures = {
             executor.submit(_probe_height, request.provider, dataset, sample.lon, sample.lat): (sample, dataset)
             for sample, dataset in tasks
         }
-        for future, (sample, dataset) in futures.items():
-            _apply_probe_result(sample, dataset, future, request.source, warnings)
+        for current, future in enumerate(as_completed(futures), start=1):
+            sample, dataset = futures[future]
+            success = _apply_probe_result(sample, dataset, future, request.source, warnings)
+            if on_progress:
+                on_progress(dataset, current, len(tasks), success)
 
 
 def _apply_probe_result(
@@ -89,7 +100,7 @@ def _apply_probe_result(
     future: Future[float],
     source: str,
     warnings: list[str],
-) -> None:
+) -> bool:
     try:
         value = future.result()
         if dataset == "dgm1":
@@ -99,7 +110,11 @@ def _apply_probe_result(
     except Exception as exc:
         sample.error = str(exc)
         warnings.append(sample.error)
+        success = False
+    else:
+        success = True
     sample.selected_height_m = _selected_height(sample, source)
+    return success
 
 
 def _apply_los(samples: list[PathProfileSample], request: PathProfileRequest) -> None:
