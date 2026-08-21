@@ -15,7 +15,7 @@ Leaflet map of microwave sites and links. Their concerns diverge sharply from
 that point:
 
 | Concern | MultiPlanner | NSP_UBT |
-|---|---|---|
+| --- | --- | --- |
 | Primary purpose | Terrain / LOS planning, DEM/DSM download | Multi-source inventory reconciliation |
 | Map role | Download area selection, point probe, terrain tiles | Network inventory visualisation, multi-source inspector |
 | Data novelty | German state elevation rasters (16 providers) | Cross-DB reconciliation (Ellipse, NSP, UBT, BNetzA, Site Tracker) |
@@ -44,7 +44,7 @@ FastAPI server is the terrain tile and probe backend for NSP_UBT.
 
 **Architecture:**
 
-```
+```text
 cli.py  →  gui/app.py  →  UnifiedShellWindow (shell.py)
                                ├── Dashboard
                                ├── Map  ← QWebEngineView + QWebChannel
@@ -62,10 +62,10 @@ cli.py  →  gui/app.py  →  UnifiedShellWindow (shell.py)
 
 **Map data path:**
 
-```
+```text
 hybrid_inventory.db
   ellipse_site_current  →  site Point features
-  ellipse_link_current  →  link LineString features
+  ellipse_link_resolved_current → link LineString features
   site_tracker_current  →  cross-reference flags
   nsp_asset_current     →  NE presence flag
   bnetza_license_current→  license presence flag
@@ -79,6 +79,7 @@ hybrid_inventory.db
 ```
 
 **Existing map display capabilities (all inherited for free in the overlay approach):**
+
 - 11 overlay toggles: ellipse_links, ellipse_sites, partner_sites, pop_sites,
   backbone_sites, nsp_nes, site_tracker, lagerbestand, bnetza, rifu_repeaters,
   diff_highlights
@@ -97,7 +98,7 @@ hybrid_inventory.db
 
 **Architecture:**
 
-```
+```text
 FastAPI (main.py)
   ├── GET /api/v1/network/geojson         ← network_overlay.py (reads hybrid_inventory.db)
   ├── POST /api/v1/probe/multi            ← point_probe.py (gdallocationinfo on GeoTIFFs)
@@ -118,7 +119,7 @@ Web frontend (apps/web/src/)
 
 **Tile rendering pipeline (raster_tiles.py):**
 
-```
+```text
 XYZ tile request (z/x/y)
   → locate_subsets() → find provider tile URLs covering this mercator tile
   → _download_tile_sources() → download GeoTIFF to cache_root/raster_tile_sources/
@@ -130,7 +131,7 @@ XYZ tile request (z/x/y)
 
 **Point probe pipeline (point_probe.py):**
 
-```
+```text
 POST /api/v1/probe/multi {lon, lat, provider}
   → probe_point(dgm1) → locate_subsets() → download tile if not cached
                        → gdallocationinfo -wgs84 -valonly → float
@@ -169,7 +170,7 @@ is a layer visibility checkbox in the existing LayersPanel, not a page switch.
 
 MultiPlanner's tile endpoint produces standard XYZ PNG tiles:
 
-```
+```text
 GET http://localhost:8765/api/v1/tiles/{provider}/{dataset}/{z}/{x}/{y}.png
 ```
 
@@ -201,7 +202,7 @@ The point probe is similarly a direct `fetch()` from map.js to
 
 ### 3.3 What the toggle actually is
 
-```
+```text
 NSP_UBT Layers Panel (map_layers_panel.py)
   Existing overlay toggles:
     [✓] Ellipse links      [✓] Ellipse sites
@@ -223,7 +224,7 @@ navigation, no tab switch.
 
 ### 3.4 Full architecture diagram
 
-```
+```text
 NSP_UBT UnifiedShellWindow
   [Map page — unchanged]
     ┌─ LayersPanel ──┬── QWebEngineView (map.html) ──┬─ InspectorPanel ──┐
@@ -255,6 +256,7 @@ NSP_UBT UnifiedShellWindow
 ### 3.5 Why the download UI still needs a separate view
 
 The download workflow in MultiPlanner involves:
+
 - Drawing a rectangle/corridor/circle on the map
 - Choosing provider and dataset
 - SSE streaming progress bar with tile-by-tile updates
@@ -274,7 +276,7 @@ The terrain tile overlays in the main map are.
 ### 4.1 What goes where
 
 | Data | Storage | Reason |
-|---|---|---|
+| --- | --- | --- |
 | Raw GeoTIFF tile (e.g. dgm1_32350_5700_1_nw.tif) | Filesystem: `cache_root/raster_tile_sources/{provider}/{dataset}/` | GDAL tools require filesystem paths; files can be hundreds of MB |
 | Rendered tile PNG (256×256, Web Mercator) | Filesystem: `cache_root/raster_tiles/{provider}/{dataset}/{z}/{x}/{y}.png` | Served directly as HTTP response by FastAPI; already cached by MultiPlanner |
 | Exported GRD / GeoTIFF + TAB | Filesystem: `cache_root/{job_name}/` (output folder) | User deliverable; opened in Ellipse / mapping software |
@@ -302,6 +304,7 @@ CREATE TABLE IF NOT EXISTS terrain_cache (
 ```
 
 MultiPlanner writes a row here after a successful download. NSP_UBT reads it to:
+
 1. Show a "terrain data available" badge on sites within the bbox.
 2. Auto-select the provider for the probe endpoint (site is covered by this bbox
    → use this job's provider).
@@ -328,7 +331,7 @@ Because terrain tiles are added to NSP_UBT's existing Leaflet map as
 changes:
 
 | Existing capability | Works with terrain tiles? |
-|---|---|
+| --- | --- |
 | Link state colouring (Primary blue, Nominal brown, etc.) | Yes — site/link layers are separate from terrain tiles |
 | Operator view switching | Yes — only affects site/link GeoJSON layer styles |
 | Site status categories | Yes |
@@ -347,7 +350,7 @@ determines how much the terrain texture bleeds through the network overlay.
 
 ### 5.1 Recommended z-order
 
-```
+```text
 Layer order (bottom to top):
   1. Basemap tile layer (OSM, Esri, etc.)
   2. DGM hillshade tile layer        ← terrain, semi-transparent
@@ -435,7 +438,7 @@ Recommend: default to "auto", expose override in the Layers Panel for power user
 A new "Terrain" section in NSP_UBT's `map_inspector.py` shows elevation values
 when a site is selected. This is a Phase 2 enhancement.
 
-```
+```text
 Inspector (site selected: "WZO-MW-001")
   ── Ellipse  [4 links]
   ── NSP  [2 NEs]
@@ -476,7 +479,7 @@ site click. The result is cached per site per session (dict keyed by site_name).
 ### 8.1 NSP_UBT changes (all additive)
 
 | File | Change |
-|---|---|
+| --- | --- |
 | `gui/map_layers_panel.py` | Add "Terrain" collapsible group: provider dropdown, DGM/DOM/nDSM checkboxes, opacity slider, probe mode button |
 | `gui/map_bridge.py` | Add `terrain_api_url()` method returning configured URL; add `terrain_config_changed` signal; add `is_terrain_available()` (calls /healthz) |
 | `gui/_map_assets/map.js` | Add `initTerrainLayers(config)` function; add probe mode click handler; manage tile layer lifecycle on checkbox change; show probe popup |
@@ -495,7 +498,7 @@ other existing map module.
 ### 8.2 MultiPlanner changes (all additive)
 
 | File | Change |
-|---|---|
+| --- | --- |
 | `downloads.py` | After successful download, write metadata row to `terrain_cache` table in `hybrid_inventory.db` (requires `MULTIPLANNER_NETWORK_DB_PATH` to be set) |
 | `config.py` | No change needed — `MULTIPLANNER_NETWORK_DB_PATH` already exposed |
 | `main.py` | No change needed |
@@ -513,7 +516,7 @@ needs to point Leaflet at them.
 
 ### Flow 1: Toggling terrain on the network map (core use case)
 
-```
+```text
 User in NSP_UBT Map page
   → Layers panel → expand "Terrain" section
   → Select provider "geobasis-nrw"
@@ -525,7 +528,7 @@ User in NSP_UBT Map page
 
 ### Flow 2: Point probe on a site
 
-```
+```text
 User in NSP_UBT Map page with terrain visible
   → Click "Probe mode" button in Terrain section
   → Cursor changes to crosshair
@@ -537,7 +540,7 @@ User in NSP_UBT Map page with terrain visible
 
 ### Flow 3: Download terrain data for a corridor
 
-```
+```text
 User in NSP_UBT
   → File menu / toolbar → "Terrain Download" (opens download panel)
   → QWebEngineView loads http://localhost:8765 (MultiPlanner download UI)
@@ -548,7 +551,7 @@ User in NSP_UBT
 
 ### Flow 4: Standalone MultiPlanner use
 
-```
+```text
 User opens MultiPlanner tray app directly (without NSP_UBT)
   Works exactly as today
   Network overlay shows Primary/Nominal sites/links (if MULTIPLANNER_NETWORK_DB_PATH set)
@@ -557,7 +560,7 @@ User opens MultiPlanner tray app directly (without NSP_UBT)
 
 ### Flow 5: NSP_UBT without MultiPlanner installed
 
-```
+```text
 User opens NSP_UBT on a machine without MultiPlanner
   Map page loads normally — all site/link layers, filters, inspector work
   Terrain section in Layers Panel is present but shows:
@@ -571,7 +574,7 @@ User opens NSP_UBT on a machine without MultiPlanner
 ## 10. What Stays Independent
 
 | Guarantee | How enforced |
-|---|---|
+| --- | --- |
 | NSP_UBT works without MultiPlanner | Terrain fetch errors are caught; existing map is unaffected |
 | MultiPlanner works without NSP_UBT | No import dependency; just optional env var for network overlay |
 | No DB write conflicts | MultiPlanner writes only to `terrain_cache` table; NSP_UBT reads it but doesn't write it via the terrain path |
@@ -637,7 +640,7 @@ in inspector alongside NSP/BNetzA data.*
 ### NSP_UBT side
 
 | File | Why |
-|---|---|
+| --- | --- |
 | `gui/map_layers_panel.py` | Existing toggle pattern to follow for terrain group |
 | `gui/map_style.py` | MapStyle dataclass — add terrain fields here |
 | `gui/_map_assets/map.js` | Tile layer API and existing layer management patterns |
@@ -649,7 +652,7 @@ in inspector alongside NSP/BNetzA data.*
 ### MultiPlanner side
 
 | File | Why |
-|---|---|
+| --- | --- |
 | `apps/api/src/multiplanner_api/raster_tiles.py` | Tile URL format, cache paths |
 | `apps/api/src/multiplanner_api/point_probe.py` | Probe request/response shape |
 | `apps/api/src/multiplanner_api/downloads.py` | Where to add `terrain_cache` write |
@@ -688,6 +691,7 @@ The current recommendation is that MultiPlanner runs independently (tray app
 or manually started). NSP_UBT calls it but does not manage its process.
 
 If the user wants NSP_UBT to auto-start MultiPlanner:
+
 - NSP_UBT checks `/healthz` on startup.
 - If unreachable and a MultiPlanner executable/script path is configured, spawn it.
 - On NSP_UBT close, terminate it only if NSP_UBT spawned it.
@@ -713,7 +717,7 @@ No change to MultiPlanner's existing read-only posture toward the main DB.
 ## 14. Summary
 
 | Integration surface | Approach | Code change |
-|---|---|---|
+| --- | --- | --- |
 | Terrain tiles in NSP_UBT map | `L.tileLayer` pointing at localhost:8765 | NSP_UBT map.js + layers panel |
 | Point probe | `fetch()` from map.js to probe/multi endpoint | NSP_UBT map.js |
 | Site inspector elevation | httpx call in map_bridge.py on section expand | NSP_UBT inspector |

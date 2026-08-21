@@ -4,48 +4,77 @@ const LINK_COLORS = {
   "30_Primary": "#1d4ed8",
   "20_Nominal": "#8b4513",
 };
+const OTHER_LINK_COLOR = "#6b7280";
 
 const _SEARCH_FIELDS = ["name", "name2", "site_a", "site_b", "s_number", "s_number_a", "s_number_b"];
 
 // createNetworkOverlay — manages site + link GeoJSON layers on the Leaflet map.
+// Two independent groups can be toggled, mirroring NSP_UBT: "primary_nominal"
+// (Primary/Nominal links) and "other" (every other active link state).
 // callbacks: { onSiteA(props), onSiteB(props), onCorridor(props) }
 export function createNetworkOverlay(map, apiBaseUrl, callbacks) {
-  let allFeatures = [];
-  let sitesLayer = null;
-  let linksLayer = null;
-  let loaded = false;
+  const state = {
+    allFeatures: [],
+    sitesLayer: null,
+    linksLayer: null,
+    loaded: false,
+    loadingPromise: null,
+    lastQuery: "",
+    enabledGroups: new Set(),
+  };
 
-  async function enable() {
-    if (!loaded) {
-      const fc = await _fetchGeoJSON(apiBaseUrl);
-      allFeatures = fc.features ?? [];
-      loaded = true;
-    }
-    _render(allFeatures);
+  async function enable(group) {
+    state.enabledGroups.add(group);
+    await _ensureLoaded(state, apiBaseUrl);
+    _render(map, state, callbacks);
   }
 
-  function disable() {
-    sitesLayer?.remove();
-    linksLayer?.remove();
+  function disable(group) {
+    state.enabledGroups.delete(group);
+    if (state.enabledGroups.size === 0) {
+      state.sitesLayer?.remove();
+      state.linksLayer?.remove();
+      return;
+    }
+    _render(map, state, callbacks);
   }
 
   function filter(query) {
-    if (!loaded) return;
-    const q = query.trim().toLowerCase();
-    const visible = q ? allFeatures.filter((f) => _matches(f, q)) : allFeatures;
-    _render(visible);
-  }
-
-  function _render(features) {
-    sitesLayer?.remove();
-    linksLayer?.remove();
-    const sites = features.filter((f) => f.properties.layer === "site");
-    const links = features.filter((f) => f.properties.layer === "link");
-    linksLayer = _buildLinksLayer(links, callbacks).addTo(map);
-    sitesLayer = _buildSitesLayer(sites, callbacks).addTo(map);
+    state.lastQuery = query;
+    if (state.loaded) _render(map, state, callbacks);
   }
 
   return { enable, disable, filter };
+}
+
+async function _ensureLoaded(state, apiBaseUrl) {
+  if (state.loaded) return;
+  state.loadingPromise ??= _fetchGeoJSON(apiBaseUrl).then((fc) => {
+    state.allFeatures = fc.features ?? [];
+    state.loaded = true;
+  });
+  await state.loadingPromise;
+}
+
+function _render(map, state, callbacks) {
+  state.sitesLayer?.remove();
+  state.linksLayer?.remove();
+  const q = state.lastQuery.trim().toLowerCase();
+  const links = state.allFeatures.filter(
+    (f) => f.properties.layer === "link" && state.enabledGroups.has(f.properties.group) && (!q || _matches(f, q))
+  );
+  const sites = state.allFeatures.filter(
+    (f) => f.properties.layer === "site" && _siteGroupVisible(state.enabledGroups, f.properties) && (!q || _matches(f, q))
+  );
+  state.linksLayer = _buildLinksLayer(links, callbacks).addTo(map);
+  state.sitesLayer = _buildSitesLayer(sites, callbacks).addTo(map);
+}
+
+function _siteGroupVisible(enabledGroups, props) {
+  return (
+    (enabledGroups.has("primary_nominal") && props.has_primary_nominal) ||
+    (enabledGroups.has("other") && props.has_other)
+  );
 }
 
 function _matches(feature, q) {
@@ -61,7 +90,7 @@ async function _fetchGeoJSON(apiBaseUrl) {
 function _buildLinksLayer(features, callbacks) {
   return L.geoJSON(features, {
     style: (f) => ({
-      color: LINK_COLORS[f.properties.state] ?? "#6b7280",
+      color: LINK_COLORS[f.properties.state] ?? OTHER_LINK_COLOR,
       weight: 2,
       opacity: 0.85,
     }),

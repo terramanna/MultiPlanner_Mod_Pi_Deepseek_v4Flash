@@ -1,5 +1,32 @@
 from dataclasses import dataclass
 import os
+from pathlib import Path
+
+# apps/api/src/multiplanner_api/config.py -> repo root is four levels up.
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+
+
+def _load_env_file(path: Path) -> None:
+    """Populate os.environ from a local, untracked KEY=VALUE file.
+
+    Lets each machine (server, laptop, ...) keep its own MULTIPLANNER_*
+    paths in a gitignored .env instead of requiring identical paths or
+    a system environment variable set before every launch. Real
+    environment variables always win over the file.
+    """
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        os.environ.setdefault(key, value)
+
+
+_load_env_file(_REPO_ROOT / ".env")
 
 
 @dataclass(frozen=True)
