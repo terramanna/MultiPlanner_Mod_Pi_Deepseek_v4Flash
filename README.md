@@ -125,6 +125,17 @@ Default local URLs:
 - web: `http://127.0.0.1:5173`
 - api: `http://127.0.0.1:8000`
 
+Network overlay (site/link inventory from `hybrid_inventory.db`) requires a
+per-machine database path. Copy `.env.example` to `.env` at the repo root and
+set `MULTIPLANNER_NETWORK_DB_PATH` to this machine's absolute path — `.env` is
+gitignored, so the server and every laptop can point at their own local copy
+without touching code or matching each other's paths:
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+```
+
 Optional Windows-first Ellipse export setting:
 
 ```powershell
