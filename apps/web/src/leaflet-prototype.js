@@ -195,11 +195,19 @@ providerSelect.addEventListener("change", handleProviderSelection);
 providerSortSelect.addEventListener("input", handleProviderSortChange);
 coverageToggle.addEventListener("change", updateCoverageOverlay);
 const networkToggle = document.getElementById("networkToggle");
+const networkOtherToggle = document.getElementById("networkOtherToggle");
 const networkFilterWrap = document.getElementById("networkFilterWrap");
 const networkFilter = document.getElementById("networkFilter");
+function updateNetworkFilterVisibility() {
+  networkFilterWrap.hidden = !networkToggle.checked && !networkOtherToggle.checked;
+}
 networkToggle.addEventListener("change", async () => {
-  networkFilterWrap.hidden = !networkToggle.checked;
-  if (networkToggle.checked) { await networkOverlay.enable(); } else { networkOverlay.disable(); }
+  updateNetworkFilterVisibility();
+  if (networkToggle.checked) { await networkOverlay.enable("primary_nominal"); } else { networkOverlay.disable("primary_nominal"); }
+});
+networkOtherToggle.addEventListener("change", async () => {
+  updateNetworkFilterVisibility();
+  if (networkOtherToggle.checked) { await networkOverlay.enable("other"); } else { networkOverlay.disable("other"); }
 });
 networkFilter.addEventListener("input", () => networkOverlay.filter(networkFilter.value));
 const probeEnable = document.getElementById("probeEnable");

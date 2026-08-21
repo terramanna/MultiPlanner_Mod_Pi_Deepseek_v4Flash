@@ -1,9 +1,13 @@
 """Read-only network overlay: queries the NSP/Ellipse inventory DB and returns
 a GeoJSON FeatureCollection of sites (Points) and links (LineStrings).
 
-Only Primary and Nominal links are included. The result is cached by DB
-mtime so repeated requests are instant. The cache is invalidated automatically
-when the DB file changes (e.g. after a fresh import in the NSP tool).
+All active links are included. Each link is tagged with a "group" property —
+"primary_nominal" or "other" — so the frontend can offer independent
+Primary/Nominal and all-other-links toggles, mirroring NSP_UBT's overlay
+selection. Each site is tagged with "has_primary_nominal" / "has_other" flags
+reflecting which kinds of links touch it. The result is cached by DB mtime so
+repeated requests are instant. The cache is invalidated automatically when the
+DB file changes (e.g. after a fresh import in the NSP tool).
 
 Configure the DB path via MULTIPLANNER_NETWORK_DB_PATH env var. Connectivity is read from the resolved ellipse_link_resolved_current projection; the retired ellipse_link_current projection is not supported.
 """
@@ -18,7 +22,19 @@ _ACTIVE_STATES = ("30_Primary", "20_Nominal")
 
 _SITE_SQL = """
     SELECT s.site_name, s.site_name_2, s.latitude, s.longitude,
-           s.site_type, s.site_status, s.s_number, s.flags_csv
+           s.site_type, s.site_status, s.s_number, s.flags_csv,
+           EXISTS (
+               SELECT 1 FROM ellipse_link_resolved_current l
+               WHERE l.is_active = 1
+                 AND l.link_state IN ('30_Primary', '20_Nominal')
+                 AND (l.site_a_name = s.site_name OR l.site_b_name = s.site_name)
+           ) AS has_primary_nominal,
+           EXISTS (
+               SELECT 1 FROM ellipse_link_resolved_current l
+               WHERE l.is_active = 1
+                 AND l.link_state NOT IN ('30_Primary', '20_Nominal')
+                 AND (l.site_a_name = s.site_name OR l.site_b_name = s.site_name)
+           ) AS has_other
     FROM ellipse_site_current s
     WHERE s.is_active = 1
       AND s.latitude  BETWEEN -90  AND 90
@@ -27,7 +43,6 @@ _SITE_SQL = """
       AND EXISTS (
           SELECT 1 FROM ellipse_link_resolved_current l
           WHERE l.is_active = 1
-            AND l.link_state IN ('30_Primary', '20_Nominal')
             AND (l.site_a_name = s.site_name OR l.site_b_name = s.site_name)
       )
 """
@@ -57,7 +72,6 @@ _LINK_SQL = """
     LEFT JOIN site_tracker_current st_b
            ON st_b.link_name = l.link_name AND st_b.side = 'B' AND st_b.is_active = 1
     WHERE l.is_active = 1
-      AND l.link_state IN ('30_Primary', '20_Nominal')
       AND sa.latitude BETWEEN -90 AND 90
       AND sb.latitude BETWEEN -90 AND 90
 """
@@ -120,6 +134,8 @@ def _site_feature(row: sqlite3.Row) -> dict:
             "site_status": row["site_status"] or "",
             "s_number": row["s_number"] or "",
             "flags": row["flags_csv"] or "",
+            "has_primary_nominal": bool(row["has_primary_nominal"]),
+            "has_other": bool(row["has_other"]),
             "lat": row["latitude"],
             "lon": row["longitude"],
         },
@@ -138,6 +154,7 @@ def _link_feature(row: sqlite3.Row) -> dict:
         },
         "properties": {
             "layer": "link",
+            "group": "primary_nominal" if row["link_state"] in _ACTIVE_STATES else "other",
             "name": row["link_name"],
             "state": row["link_state"],
             "status": row["link_status"] or "",
