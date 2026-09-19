@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildSelectionName } from "../src/leaflet-prototype-utils.js";
+import { buildSelectionName } from "../src/utils.js";
 
 // buildSelectionName generates the default download/file name. A typed job name
 // always wins and is slugged; otherwise the name is built from the geometry kind

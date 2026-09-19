@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { currentGeometryFrom, resolveCorridorBuffer } from "../src/leaflet-prototype-utils.js";
+import { currentGeometryFrom, resolveCorridorBuffer } from "../src/utils.js";
 
 // currentGeometryFrom is the pure seam behind leaflet-prototype.js currentGeometry():
 // it maps placement state + the active variant to the API geometry payload.

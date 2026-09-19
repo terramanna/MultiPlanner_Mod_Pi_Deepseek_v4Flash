@@ -7,7 +7,7 @@ import {
   renderTiles,
   selectedDatasets,
   slugName,
-} from "./leaflet-prototype-utils.js";
+} from "./utils.js";
 
 export async function requestLeafletSubset(context, download) {
   const geometry = context.currentGeometry();

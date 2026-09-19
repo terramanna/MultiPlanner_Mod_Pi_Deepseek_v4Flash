@@ -15,6 +15,7 @@ The logical ``dom1`` surface slot uses SH's official image-based bDOM product.
 """
 
 from __future__ import annotations
+from multiplanner_api.geometry_io import request_geometry
 
 import json
 import time
@@ -112,16 +113,6 @@ def summarize_tiles(
     ]
 
 
-def request_geometry(geometry: str, geometry_type: str):
-    if geometry_type == "esriGeometryPoint":
-        lon, lat = (float(v) for v in geometry.split(",", maxsplit=1))
-        return Point(lon, lat)
-    payload = json.loads(geometry)
-    if geometry_type == "esriGeometryEnvelope":
-        return box(payload["xmin"], payload["ymin"], payload["xmax"], payload["ymax"])
-    if geometry_type == "esriGeometryPolygon":
-        return Polygon(payload["rings"][0])
-    raise ValueError(f"Unsupported Schleswig-Holstein geometry type: {geometry_type}")
 
 
 def _to_utm32(geometry):
