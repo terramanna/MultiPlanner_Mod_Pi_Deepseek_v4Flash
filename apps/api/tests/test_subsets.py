@@ -31,18 +31,18 @@ def corridor_download_request(selection_name: str) -> DownloadSubsetRequest:
 
 
 def tile_dict(provider: str, dataset: str) -> dict[str, object]:
-    return {"provider": provider, "dataset": dataset, "tile_id": f"{provider}-{dataset}", "updated": None, "primary_url": f"https://example.invalid/{provider}/{dataset}.tif"}
+    return {"provider": provider, "dataset": dataset, "tile_id": f"{provider}-{dataset}", "updated": None, "primary_url": f"https://www.opengeodata.nrw.de/{provider}/{dataset}.tif"}
 
 
 def single_tile_response() -> SimpleNamespace:
-    tile = SimpleNamespace(tile_id="tile-a", primary_url="https://example.invalid/tile-a.tif")
+    tile = SimpleNamespace(tile_id="tile-a", primary_url="https://www.opengeodata.nrw.de/tile-a.tif")
     return SimpleNamespace(results=[SimpleNamespace(dataset="dgm1", tiles=[tile])])
 
 
 def two_tile_response() -> SimpleNamespace:
     tiles = [
-        SimpleNamespace(tile_id="tile-a", primary_url="https://example.invalid/tile-a.tif"),
-        SimpleNamespace(tile_id="tile-b", primary_url="https://example.invalid/tile-b.tif"),
+        SimpleNamespace(tile_id="tile-a", primary_url="https://www.opengeodata.nrw.de/tile-a.tif"),
+        SimpleNamespace(tile_id="tile-b", primary_url="https://www.opengeodata.nrw.de/tile-b.tif"),
     ]
     return SimpleNamespace(results=[SimpleNamespace(dataset="dgm1", tiles=tiles)])
 
@@ -187,7 +187,7 @@ def test_download_route_uses_service(monkeypatch) -> None:
 def test_open_folder_route_opens_cache_folder(monkeypatch, tmp_path) -> None:
     opened = []
     monkeypatch.setattr("multiplanner_api.main.settings", SimpleNamespace(cache_root=str(tmp_path / "cache")))
-    monkeypatch.setattr("multiplanner_api.main.os.startfile", lambda path: opened.append(Path(path)))  # type: ignore[attr-defined]
+    monkeypatch.setattr("webbrowser.open", lambda path: opened.append(Path(path)))
     folder = tmp_path / "cache" / "saved_subsets" / "demo"
     folder.mkdir(parents=True)
     response = client.post("/api/v1/subsets/open-folder", json={"path": str(folder)})
@@ -245,7 +245,7 @@ def test_cached_file_endpoint_serves_files_within_cache_root(monkeypatch, tmp_pa
 
 def test_download_subset_returns_absolute_saved_paths(monkeypatch, tmp_path) -> None:
     patch_download_settings(monkeypatch, tmp_path)
-    monkeypatch.setattr("multiplanner_api.downloads._download_file", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr("multiplanner_api.downloads._download_file", lambda _url, path: path.write_bytes(b"tile"))
     response = download_subset(corridor_download_request("abs-paths"))
     assert Path(response.files[0].saved_path).is_absolute()
     assert not response.exports or all(Path(path).is_absolute() for path in response.exports)

@@ -172,7 +172,7 @@ def test_request_geometry_polygon() -> None:
 
 
 def test_request_geometry_unsupported_type() -> None:
-    with pytest.raises(ValueError, match="Unsupported Schleswig-Holstein"):
+    with pytest.raises(ValueError, match="Unsupported geometry type"):
         request_geometry("{}", "esriGeometryMultipoint")
 
 

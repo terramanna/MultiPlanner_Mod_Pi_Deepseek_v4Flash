@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import pytest
 from types import SimpleNamespace
 from time import sleep
 
@@ -40,19 +41,15 @@ def test_path_profile_samples_dgm_and_dom(monkeypatch) -> None:
     assert {call[1] for call in calls} == {"dgm1", "dom1"}
 
 
-def test_path_profile_clamps_sample_count(monkeypatch) -> None:
-    monkeypatch.setattr(path_profile, "_probe_height", lambda *_args: 10.0)
-    request = PathProfileRequest(
-        provider="lgl-bw",
-        source="dgm1",
-        site_a=ProfileEndpointInput(lon=7.0, lat=52.0),
-        site_b=ProfileEndpointInput(lon=7.1, lat=52.0),
-        sample_count=1,
-    )
-
-    result = path_profile.build_path_profile(request)
-
-    assert len(result.samples) == 3
+def test_path_profile_rejects_too_few_samples() -> None:
+    with pytest.raises(ValueError, match="greater than or equal to 3"):
+        PathProfileRequest(
+            provider="lgl-bw",
+            source="dgm1",
+            site_a=ProfileEndpointInput(lon=7.0, lat=52.0),
+            site_b=ProfileEndpointInput(lon=7.1, lat=52.0),
+            sample_count=1,
+        )
 
 
 def test_path_profile_route_uses_service(monkeypatch) -> None:

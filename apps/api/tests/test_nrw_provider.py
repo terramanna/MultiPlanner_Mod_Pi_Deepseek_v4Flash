@@ -36,7 +36,7 @@ def test_catalogue_index_is_cached_until_its_refresh_is_due(monkeypatch, tmp_pat
     requests = []
 
     monkeypatch.setenv("MULTIPLANNER_CACHE_ROOT", str(tmp_path))
-    monkeypatch.setattr("multiplanner_api.nrw.requests.Session", fake_catalog_session(requests))
+    monkeypatch.setattr("multiplanner_api.nrw.get_verified", lambda *_args, **_kwargs: requests.append(1) or SimpleNamespace(text=CATALOG, raise_for_status=lambda: None))
     config = SERVICE_PROVIDERS["geobasis-nrw"]["datasets"]["dgm1"]
 
     first = load_index("dgm1", config, timeout=1)
@@ -46,29 +46,29 @@ def test_catalogue_index_is_cached_until_its_refresh_is_due(monkeypatch, tmp_pat
     assert len(requests) == 1
 
 
-def test_catalogue_index_retries_without_ssl_verification(monkeypatch, tmp_path) -> None:
-    verify_values = []
+def test_catalogue_index_uses_verified_tls(monkeypatch, tmp_path) -> None:
+    calls = []
 
     monkeypatch.setenv("MULTIPLANNER_CACHE_ROOT", str(tmp_path))
-    monkeypatch.setattr("multiplanner_api.nrw.requests.Session", fake_catalog_session(verify_values, fail_first=True))
+    monkeypatch.setattr("multiplanner_api.nrw.get_verified", lambda *_args, **_kwargs: calls.append(1) or SimpleNamespace(text=CATALOG, raise_for_status=lambda: None))
     config = SERVICE_PROVIDERS["geobasis-nrw"]["datasets"]["dgm1"]
 
     index = load_index("dgm1", config, timeout=1)
 
-    assert verify_values == [True, False]
+    assert calls == [1]
     assert index[(395, 5798)]["version"] == "2024"
 
 
-def test_catalogue_index_ignores_environment_proxies(monkeypatch, tmp_path) -> None:
-    trust_env_values = []
+def test_catalogue_index_uses_verified_tls_helper(monkeypatch, tmp_path) -> None:
+    calls = []
     monkeypatch.setenv("MULTIPLANNER_CACHE_ROOT", str(tmp_path))
-    monkeypatch.setattr("multiplanner_api.nrw.requests.Session", fake_catalog_session([], trust_env_values=trust_env_values))
+    monkeypatch.setattr("multiplanner_api.nrw.get_verified", lambda *_args, **_kwargs: calls.append(1) or SimpleNamespace(text=CATALOG, raise_for_status=lambda: None))
     config = SERVICE_PROVIDERS["geobasis-nrw"]["datasets"]["dgm1"]
 
     index = load_index("dgm1", config, timeout=1)
 
     assert index[(395, 5798)]["version"] == "2024"
-    assert trust_env_values == [False]
+    assert calls == [1]
 
 
 def fake_catalog_session(calls: list[bool], trust_env_values: list[bool] | None = None, *, fail_first: bool = False):

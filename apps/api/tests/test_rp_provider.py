@@ -120,7 +120,7 @@ def test_parse_meta4_dop20_includes_all_valid_tiles() -> None:
 def test_load_index_dgm1_is_cached_on_second_call(monkeypatch, tmp_path) -> None:
     calls: list[bool] = []
     monkeypatch.setenv("MULTIPLANNER_CACHE_ROOT", str(tmp_path))
-    monkeypatch.setattr("multiplanner_api.rp.requests.Session", _fake_session(calls, meta4=DGM1_META4))
+    monkeypatch.setattr("multiplanner_api.rp.get_verified", lambda *_args, **_kwargs: calls.append(True) or SimpleNamespace(text=DGM1_META4))
 
     first = _load_index("dgm1", timeout=1)
     second = _load_index("dgm1", timeout=1)
@@ -132,7 +132,7 @@ def test_load_index_dgm1_is_cached_on_second_call(monkeypatch, tmp_path) -> None
 def test_load_index_dop20_is_cached_on_second_call(monkeypatch, tmp_path) -> None:
     calls: list[bool] = []
     monkeypatch.setenv("MULTIPLANNER_CACHE_ROOT", str(tmp_path))
-    monkeypatch.setattr("multiplanner_api.rp.requests.Session", _fake_session(calls, meta4=DOP20_META4))
+    monkeypatch.setattr("multiplanner_api.rp.get_verified", lambda *_args, **_kwargs: calls.append(True) or SimpleNamespace(text=DOP20_META4))
 
     first = _load_index("dop20", timeout=1)
     second = _load_index("dop20", timeout=1)
@@ -141,31 +141,25 @@ def test_load_index_dop20_is_cached_on_second_call(monkeypatch, tmp_path) -> Non
     assert len(calls) == 1
 
 
-def test_load_index_retries_without_ssl_verification(monkeypatch, tmp_path) -> None:
-    verify_values: list[bool] = []
+def test_load_index_uses_verified_tls(monkeypatch, tmp_path) -> None:
+    calls: list[bool] = []
     monkeypatch.setenv("MULTIPLANNER_CACHE_ROOT", str(tmp_path))
-    monkeypatch.setattr(
-        "multiplanner_api.rp.requests.Session",
-        _fake_session(verify_values, meta4=DGM1_META4, fail_first=True),
-    )
+    monkeypatch.setattr("multiplanner_api.rp.get_verified", lambda *_args, **_kwargs: calls.append(True) or SimpleNamespace(text=DGM1_META4))
 
     index = _load_index("dgm1", timeout=1)
 
-    assert verify_values == [True, False]
+    assert calls == [True]
     assert (390, 5510) in index
 
 
-def test_load_index_ignores_environment_proxies(monkeypatch, tmp_path) -> None:
-    trust_env_values: list[bool] = []
+def test_load_index_uses_verified_tls_helper(monkeypatch, tmp_path) -> None:
+    calls: list[bool] = []
     monkeypatch.setenv("MULTIPLANNER_CACHE_ROOT", str(tmp_path))
-    monkeypatch.setattr(
-        "multiplanner_api.rp.requests.Session",
-        _fake_session([], meta4=DGM1_META4, trust_env_values=trust_env_values),
-    )
+    monkeypatch.setattr("multiplanner_api.rp.get_verified", lambda *_args, **_kwargs: calls.append(True) or SimpleNamespace(text=DGM1_META4))
 
     _load_index("dgm1", timeout=1)
 
-    assert trust_env_values == [False]
+    assert calls == [True]
 
 
 def _fake_session(
