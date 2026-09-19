@@ -10,7 +10,7 @@ lod2-de_hh_2016-11-22_21283_snap_1.GML
 """
 
 from __future__ import annotations
-from multiplanner_api.geometry_io import request_geometry
+from multiplanner_shared.geometry_io import request_geometry
 
 import json
 from typing import Any

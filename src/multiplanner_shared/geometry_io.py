@@ -23,6 +23,8 @@ _T_UTM32 = Transformer.from_crs(WGS84, ETRS89_UTM32, always_xy=True)
 _T_UTM33 = Transformer.from_crs(WGS84, ETRS89_UTM33, always_xy=True)
 
 
+def request_geometry(geometry: str, geometry_type: str):
+    """Parse incoming geometry into a shapely geometry object.
 
     Accepts the same esriGeometry* strings that provider endpoints return.
     """

@@ -12,7 +12,7 @@ WCS GetCoverage example (from HVBG official guide, 2025-05):
 """
 
 from __future__ import annotations
-from multiplanner_api.geometry_io import request_geometry
+from multiplanner_shared.geometry_io import request_geometry
 
 import json
 import math

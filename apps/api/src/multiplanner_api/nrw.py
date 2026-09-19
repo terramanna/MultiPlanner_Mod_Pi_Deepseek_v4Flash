@@ -1,7 +1,7 @@
 """Cached tile-index adapter for Geobasis NRW 1 km GeoTIFF products."""
 
 from __future__ import annotations
-from multiplanner_api.geometry_io import request_geometry
+from multiplanner_shared.geometry_io import request_geometry
 
 import json
 import math

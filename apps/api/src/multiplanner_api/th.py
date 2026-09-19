@@ -17,7 +17,7 @@ License: Datenlizenz Deutschland – Namensnennung – Version 2.0 (dl-de/by-2-0
 """
 
 from __future__ import annotations
-from multiplanner_api.geometry_io import request_geometry
+from multiplanner_shared.geometry_io import request_geometry
 
 import json
 import time

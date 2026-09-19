@@ -42,7 +42,7 @@ Branch: `main`
 - [x] Consolidate SSL fallback to `http_client.py` only
 - [x] Rename `leaflet-prototype-utils.js` → `utils.js` and prune Leaflet-specific exports
 - [x] Replace 23-chain test command with a small discover script
-- [x] Choose renderer — default to Cesium; archive MapLibre/Leaflet prototypes
+- [x] Choose renderer — default to Leaflet; Cesium remains opt-in
 
 ## Phase 3 — Correctness & robustness (~4h)
 
@@ -51,15 +51,14 @@ Branch: `main`
 - [x] Fix cross-platform `open-folder` — use `webbrowser.open` or `subprocess` for both OS
 - [x] Fix `tkinter`-dependent tests or guard them with platform skip
 - [x] Add rate limiting / concurrency cap to streaming endpoints
-- [ ] Add download checksum verification (SHA256 of downloaded tile) — deferred, ~2h work
-- [ ] Set up `src/` shared module properly (move reusable logic out of `apps/api`) — deferred
+- [x] Add SHA256 cache-integrity verification for downloaded tiles
+- [x] Set up `src/` shared module and move reusable geometry parsing out of `apps/api`
 
 ## Phase 4 — Future value (nice to have)
 
 Not scheduled. Do when needed.
 
-- [ ] Checksum verification on downloaded tiles
-- [ ] Shared `src/` module population
+- [ ] Verify downloads against provider-published SHA256 hashes, when available
 - [ ] Local project persistence (Phase 2 of roadmap)
 - [ ] Authentication for hosted deployment
 - [ ] Provider covered gap: NI adapter module, SL DOM1, etc.

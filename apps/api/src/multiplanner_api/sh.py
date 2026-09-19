@@ -15,7 +15,7 @@ The logical ``dom1`` surface slot uses SH's official image-based bDOM product.
 """
 
 from __future__ import annotations
-from multiplanner_api.geometry_io import request_geometry
+from multiplanner_shared.geometry_io import request_geometry
 
 import json
 import time

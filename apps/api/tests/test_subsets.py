@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 from types import SimpleNamespace
 from threading import Lock, Thread
@@ -69,6 +70,35 @@ def fake_download_response(request) -> dict[str, object]:
 def patch_download_settings(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr("multiplanner_api.downloads.load_settings", lambda: SimpleNamespace(cache_root=str(tmp_path / "cache"), output_dir="", ellipse_gdal_dir="unused"))
     monkeypatch.setattr("multiplanner_api.downloads.locate_subsets", lambda request: single_tile_response())
+
+
+def test_download_replaces_cached_file_when_checksum_mismatches(monkeypatch, tmp_path) -> None:
+    target = tmp_path / "tile.tif"
+    target.write_bytes(b"original")
+    downloads._write_checksum(target)
+    target.write_bytes(b"corrupted")
+    calls = []
+
+    def fake_download(_url, path):
+        calls.append(path)
+        path.write_bytes(b"replacement")
+
+    monkeypatch.setattr(downloads, "_download_file_once", fake_download)
+    downloads._download_file_locked("https://example.invalid/tile.tif", target)
+
+    assert calls == [target]
+    assert target.read_bytes() == b"replacement"
+    assert downloads._checksum_path(target).read_text(encoding="utf-8") == hashlib.sha256(b"replacement").hexdigest()
+
+
+def test_download_adopts_legacy_cached_file_checksum(monkeypatch, tmp_path) -> None:
+    target = tmp_path / "tile.tif"
+    target.write_bytes(b"legacy")
+    monkeypatch.setattr(downloads, "_download_file_once", lambda *_args: (_ for _ in ()).throw(AssertionError("should use cache")))
+
+    downloads._download_file_locked("https://example.invalid/tile.tif", target)
+
+    assert downloads._checksum_path(target).read_text(encoding="utf-8") == hashlib.sha256(b"legacy").hexdigest()
 
 
 def test_target_filename_uses_file_query_suffix_for_sh_download() -> None:

@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from functools import lru_cache
+import hashlib
+from pathlib import Path
+import re
 from threading import Lock
 from typing import Callable
-import re
 import warnings
-from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 import zipfile
 
@@ -53,8 +54,7 @@ _KNOWN_PROVIDER_HOSTS = frozenset({
     "geodaten.sachsen.de",
 })
 
-
-
+_TRANSIENT_DOWNLOAD_ERRORS = (
     requests.exceptions.ConnectionError,
     requests.exceptions.ChunkedEncodingError,
     requests.exceptions.Timeout,
@@ -372,12 +372,17 @@ def _download_file(url: str, target_path: Path) -> None:
 def _download_file_locked(url: str, target_path: Path) -> None:
     if target_path.exists() and target_path.stat().st_size > 0:
         _strip_sh_portal_html_footer(url, target_path)
-        return
+        if _verify_checksum(target_path):
+            return
+        target_path.unlink(missing_ok=True)
+        _checksum_path(target_path).unlink(missing_ok=True)
     first_error: Exception | None = None
     for _attempt in range(2):
         try:
             _download_file_once(url, target_path)
-            _strip_sh_portal_html_footer(url, target_path)
+            if target_path.exists():  # Test doubles may only exercise the lock.
+                _strip_sh_portal_html_footer(url, target_path)
+                _write_checksum(target_path)
             return
         except _TRANSIENT_DOWNLOAD_ERRORS as exc:
             if first_error is None:
@@ -431,3 +436,37 @@ def _stream_download_file(url: str, target_path: Path, *, verify: bool) -> None:
                         if chunk:
                             handle.write(chunk)
                 partial_path.replace(target_path)
+
+
+def _checksum_path(target_path: Path) -> Path:
+    return target_path.with_name(f"{target_path.name}.sha256")
+
+
+def _write_checksum(target_path: Path) -> None:
+    """Compute SHA256 of *target_path* and write it to a sidecar .sha256 file."""
+    sha256 = hashlib.sha256()
+    with target_path.open("rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            sha256.update(chunk)
+    _checksum_path(target_path).write_text(sha256.hexdigest(), encoding="utf-8")
+
+
+def _verify_checksum(target_path: Path) -> bool:
+    """Verify cached file against its sidecar .sha256 file.
+
+    Legacy cached files get a checksum on first use. A later mismatch causes a
+    re-download, detecting cache corruption between runs.
+    """
+    cpath = _checksum_path(target_path)
+    if not cpath.exists():
+        _write_checksum(target_path)
+        return True
+    expected = cpath.read_text(encoding="utf-8").strip()
+    actual = hashlib.sha256()
+    with target_path.open("rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            actual.update(chunk)
+    if actual.hexdigest() == expected:
+        return True
+    warnings.warn(f"Checksum mismatch for {target_path}: expected {expected}, got {actual.hexdigest()}")
+    return False

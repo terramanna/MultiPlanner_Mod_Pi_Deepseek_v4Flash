@@ -29,3 +29,5 @@ data/tmp/
 .tools/
 archive/video/*.mp4
 apps/web/public/network.geojson
+
+*.egg-info/
