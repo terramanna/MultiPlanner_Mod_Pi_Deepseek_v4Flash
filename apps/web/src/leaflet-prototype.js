@@ -34,7 +34,8 @@ import {
   geometryFromLayer,
   polygonAreaM2,
   renderDatasetChoices,
-} from "./leaflet-prototype-utils.js";
+<<<<<<< HEAD
+} from "./utils.js";
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? window.location.origin).trim();
 const providerCoverage = {
   "lgln-ni": { stateCode: "NI", color: "#3b82f6", label: "Niedersachsen LGLN" },

@@ -10,6 +10,7 @@ Both indexes are fetched once and cached for 24 h.
 """
 
 from __future__ import annotations
+from multiplanner_api.geometry_io import request_geometry
 
 import json
 import math
@@ -156,16 +157,6 @@ def _decode_index(raw: dict[str, dict[str, str]]) -> dict[tuple[int, int], dict[
     return {tuple(int(v) for v in k.split(":", 1)): tile for k, tile in raw.items()}
 
 
-def request_geometry(geometry: str, geometry_type: str):
-    if geometry_type == "esriGeometryPoint":
-        lon, lat = (float(v) for v in geometry.split(",", maxsplit=1))
-        return Point(lon, lat)
-    payload = json.loads(geometry)
-    if geometry_type == "esriGeometryEnvelope":
-        return box(payload["xmin"], payload["ymin"], payload["xmax"], payload["ymax"])
-    if geometry_type == "esriGeometryPolygon":
-        return Polygon(payload["rings"][0])
-    raise ValueError(f"Unsupported Rheinland-Pfalz geometry type: {geometry_type}")
 
 
 def _to_utm32(geometry):

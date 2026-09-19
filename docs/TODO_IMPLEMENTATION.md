@@ -51,13 +51,15 @@ Branch: `main`
 - [x] Fix cross-platform `open-folder` — use `webbrowser.open` or `subprocess` for both OS
 - [x] Fix `tkinter`-dependent tests or guard them with platform skip
 - [x] Add rate limiting / concurrency cap to streaming endpoints
-- [x] Add download checksum verification (SHA256 of downloaded tile)
-- [x] Set up `src/` shared module properly (move reusable logic out of `apps/api`)
+- [ ] Add download checksum verification (SHA256 of downloaded tile) — deferred, ~2h work
+- [ ] Set up `src/` shared module properly (move reusable logic out of `apps/api`) — deferred
 
 ## Phase 4 — Future value (nice to have)
 
 Not scheduled. Do when needed.
 
+- [ ] Checksum verification on downloaded tiles
+- [ ] Shared `src/` module population
 - [ ] Local project persistence (Phase 2 of roadmap)
 - [ ] Authentication for hosted deployment
 - [ ] Provider covered gap: NI adapter module, SL DOM1, etc.

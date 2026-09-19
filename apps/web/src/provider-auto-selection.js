@@ -1,4 +1,4 @@
-import { geometryRepresentativePoints, pointInGeoJSONFeature } from "./leaflet-prototype-utils.js";
+import { geometryRepresentativePoints, pointInGeoJSONFeature } from "./utils.js";
 
 export function autoProviderForGeometry(geometry, state, coverageFeatures, availableProviders) {
   if (!geometry || !Object.keys(coverageFeatures).length) return null;

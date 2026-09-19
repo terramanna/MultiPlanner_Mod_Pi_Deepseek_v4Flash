@@ -7,7 +7,7 @@ import { distanceMeters } from "./cesium-geometry.js";
 import { renderCesiumShell } from "./cesium-shell.js";
 import { createCorridorFlow } from "./corridor-flow.js";
 import { requestLeafletSubset } from "./leaflet-subset-request.js";
-import { renderDatasetChoices } from "./leaflet-prototype-utils.js";
+import { renderDatasetChoices } from "./utils.js";
 import { createLinkProfileWindow } from "./link-profile-window.js";
 import { providerDatasets } from "./provider-selection.js";
 
