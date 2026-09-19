@@ -1,5 +1,21 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Literal
+
+
+class _FloatCoord(float):
+    """A float that must be finite (not NaN, not infinity)."""
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        if not isinstance(v, float):
+            v = float(v)
+        import math
+        if not math.isfinite(v):
+            raise ValueError(f"Value must be a finite float, got {v}")
+        return v
 
 
 class HealthResponse(BaseModel):
@@ -45,8 +61,8 @@ class SearchPlacesResponse(BaseModel):
 class PointProbeRequest(BaseModel):
     provider: str = "geobasis-nrw"
     dataset: Literal["dgm1", "dom1", "ndsm"] = "dgm1"
-    lon: float
-    lat: float
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
 
 
 class PointProbeResponse(BaseModel):
@@ -62,8 +78,8 @@ class PointProbeResponse(BaseModel):
 class TilePreviewRequest(BaseModel):
     provider: str = "geobasis-nrw"
     dataset: Literal["dgm1", "dom1", "ndsm"] = "dgm1"
-    lon: float
-    lat: float
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
 
 
 class TilePreviewResponse(BaseModel):
@@ -79,16 +95,16 @@ class TilePreviewResponse(BaseModel):
 
 class PointGeometryInput(BaseModel):
     kind: Literal["point"]
-    lon: float
-    lat: float
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
 
 
 class BboxGeometryInput(BaseModel):
     kind: Literal["bbox"]
-    west: float
-    south: float
-    east: float
-    north: float
+    west: float = Field(ge=-180, le=180)
+    south: float = Field(ge=-90, le=90)
+    east: float = Field(ge=-180, le=180)
+    north: float = Field(ge=-90, le=90)
 
 
 class PolygonGeometryInput(BaseModel):
@@ -98,11 +114,11 @@ class PolygonGeometryInput(BaseModel):
 
 class CorridorGeometryInput(BaseModel):
     kind: Literal["corridor"]
-    from_lon: float
-    from_lat: float
-    to_lon: float
-    to_lat: float
-    buffer_m: float = 150.0
+    from_lon: float = Field(ge=-180, le=180)
+    from_lat: float = Field(ge=-90, le=90)
+    to_lon: float = Field(ge=-180, le=180)
+    to_lat: float = Field(ge=-90, le=90)
+    buffer_m: float = Field(default=150.0, ge=1, le=5000)
 
 
 class LocateSubsetRequest(BaseModel):
@@ -176,8 +192,8 @@ class DownloadSubsetResponse(BaseModel):
 
 class MultiProbeRequest(BaseModel):
     provider: str = "geobasis-nrw"
-    lon: float
-    lat: float
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
 
 
 class MultiProbeResponse(BaseModel):
@@ -192,9 +208,9 @@ class MultiProbeResponse(BaseModel):
 
 
 class ProfileEndpointInput(BaseModel):
-    lon: float
-    lat: float
-    height_m: float = 0.0
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
+    height_m: float = Field(default=0.0, ge=-100, le=10000)
 
 
 class PathProfileRequest(BaseModel):
@@ -202,12 +218,12 @@ class PathProfileRequest(BaseModel):
     source: Literal["dgm1", "dom1", "dgm1_dom1"] = "dgm1_dom1"
     site_a: ProfileEndpointInput
     site_b: ProfileEndpointInput
-    antenna_height_m: float = 30.0
+    antenna_height_m: float = Field(default=30.0, ge=0, le=500)
     antenna_a_height_m: float | None = None
     antenna_b_height_m: float | None = None
-    frequency_mhz: float = 6000.0
-    fresnel_zone: int = 1
-    sample_count: int = 33
+    frequency_mhz: float = Field(default=6000.0, ge=1, le=100000)
+    fresnel_zone: int = Field(default=1, ge=1, le=20)
+    sample_count: int = Field(default=33, ge=3, le=101)
 
 
 class PathProfileSample(BaseModel):

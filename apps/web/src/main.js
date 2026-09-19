@@ -13,7 +13,7 @@ import { providerDatasets } from "./provider-selection.js";
 
 window.CESIUM_BASE_URL = "/node_modules/cesium/Build/Cesium";
 
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").trim();
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? window.location.origin).trim();
 const cesiumIonToken = (import.meta.env.VITE_CESIUM_ION_TOKEN || "").trim();
 const useWorldTerrain = (import.meta.env.VITE_USE_WORLD_TERRAIN || "false").trim().toLowerCase() === "true";
 

@@ -8,16 +8,14 @@ from pathlib import Path
 import re
 import time
 from typing import Any
-import warnings
 from xml.etree import ElementTree
 
-import requests
 from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box
 from shapely.ops import transform
-from urllib3.exceptions import InsecureRequestWarning
 
 from multiplanner_api.config import load_settings
+from multiplanner_api.http_client import get_verified
 
 WGS84 = "EPSG:4326"
 ETRS89_UTM32 = "EPSG:25832"
@@ -77,22 +75,7 @@ def load_index(dataset: str, config: dict[str, Any], *, timeout: int) -> dict[tu
 
 
 def _get_catalog(url: str, timeout: int):
-    try:
-        return _catalog_request(url, timeout, verify=True)
-    except requests.exceptions.SSLError:
-        warnings.warn(
-            f"SSL verification failed for {url}; retrying without certificate verification.",
-            stacklevel=2,
-        )
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", InsecureRequestWarning)
-            return _catalog_request(url, timeout, verify=False)
-
-
-def _catalog_request(url: str, timeout: int, *, verify: bool):
-    with requests.Session() as session:
-        session.trust_env = False
-        return session.get(url, timeout=timeout, verify=verify)
+    return get_verified(url, timeout=timeout)
 
 
 def index_path(dataset: str) -> Path:

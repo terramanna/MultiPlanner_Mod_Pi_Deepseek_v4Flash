@@ -1,8 +1,6 @@
 import asyncio
 import json
-import os
 import queue as queue_module
-import subprocess
 import threading
 from typing import Literal
 
@@ -38,6 +36,21 @@ from multiplanner_api.providers import SERVICE_PROVIDERS
 from multiplanner_api.raster_tiles import render_cached_tile
 from multiplanner_api.search import search_places
 from multiplanner_api.subsets import locate_subsets
+
+
+def _validate_path_inside_cache(candidate: Path, cache_root: Path) -> None:
+    """Reject paths outside the cache root or symlinks pointing outside."""
+    resolved = candidate.resolve()
+    if cache_root not in resolved.parents:
+        raise HTTPException(status_code=400, detail="Path is outside the cache root.")
+    # Additional check: if the file itself is a symlink pointing outside,
+    # resolve() alone may still be under cache_root but the symlink target
+    # isn't.
+    if candidate.is_symlink():
+        link_target = candidate.resolve()
+        if cache_root not in link_target.parents:
+            raise HTTPException(status_code=400, detail="Symlink target is outside the cache root.")
+
 
 settings = load_settings()
 
@@ -232,14 +245,9 @@ async def _generate_queue_events(q: queue_module.SimpleQueue):
 def read_downloaded_subset_file(path: str) -> FileResponse:
     cache_root = Path(settings.cache_root).resolve()
     candidate = Path(path).resolve()
-    try:
-        candidate.relative_to(cache_root)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="File is outside the cache root.") from exc
-
+    _validate_path_inside_cache(candidate, cache_root)
     if not candidate.is_file():
         raise HTTPException(status_code=404, detail="File not found.")
-
     return FileResponse(candidate, filename=candidate.name)
 
 
@@ -256,20 +264,12 @@ def read_cached_raster_tile(provider: str, dataset: str, z: int, x: int, y: int)
 def open_downloaded_subset_folder(request: OpenFolderRequest) -> dict[str, str]:
     cache_root = Path(settings.cache_root).resolve()
     candidate = Path(request.path).resolve()
-    try:
-        candidate.relative_to(cache_root)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Folder is outside the cache root.") from exc
-
+    _validate_path_inside_cache(candidate, cache_root)
     if not candidate.is_dir():
         raise HTTPException(status_code=404, detail="Folder not found.")
-
     try:
-        if os.name == "nt":
-            os.startfile(candidate)  # type: ignore[attr-defined]
-        else:
-            subprocess.Popen(["xdg-open", str(candidate)])
+        import webbrowser
+        webbrowser.open(str(candidate))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to open folder: {exc}") from exc
-
     return {"status": "opened", "path": str(candidate)}

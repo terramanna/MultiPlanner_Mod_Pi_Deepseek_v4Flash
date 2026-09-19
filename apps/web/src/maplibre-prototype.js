@@ -4,7 +4,7 @@ import "./maplibre-prototype.css";
 import { renderMapLibreShell } from "./maplibre-prototype-shell.js";
 import { mapStyle } from "./maplibre-prototype-style.js";
 
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").trim();
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? window.location.origin).trim();
 const params = new URLSearchParams(window.location.search);
 const variant = params.get("variant") || "corridor";
 const baseLayerIds = [

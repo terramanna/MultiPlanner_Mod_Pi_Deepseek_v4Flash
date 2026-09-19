@@ -6,7 +6,7 @@ import "leaflet/dist/leaflet.css";
 import "./leaflet-nrw-probe.css";
 import { renderNrwProbeShell, panelRefs } from "./leaflet-nrw-probe-panel.js";
 
-const API = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").trim();
+const API = (import.meta.env.VITE_API_BASE_URL ?? window.location.origin).trim();
 const PROVIDER = "geobasis-nrw";
 const NRW_CENTER = [51.43, 7.66];
 const NRW_ZOOM = 13;

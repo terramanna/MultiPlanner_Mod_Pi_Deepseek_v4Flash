@@ -15,6 +15,11 @@ def post_with_ssl_fallback(url: str, **kwargs: Any) -> requests.Response:
     return request_with_ssl_fallback("POST", url, **kwargs)
 
 
+def get_verified(url: str, **kwargs: Any) -> requests.Response:
+    """Fetch with mandatory TLS verification. No fallback to verify=False."""
+    return _request("GET", url, verify=True, **kwargs)
+
+
 def request_with_ssl_fallback(method: str, url: str, **kwargs: Any) -> requests.Response:
     try:
         return _request(method, url, verify=True, **kwargs)

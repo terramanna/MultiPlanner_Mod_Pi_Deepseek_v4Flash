@@ -17,16 +17,14 @@ import re
 import time
 from pathlib import Path
 from typing import Any
-import warnings
 from xml.etree import ElementTree
 
-import requests
 from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box
 from shapely.ops import transform
-from urllib3.exceptions import InsecureRequestWarning
 
 from multiplanner_api.config import load_settings
+from multiplanner_api.http_client import get_verified
 
 WGS84 = "EPSG:4326"
 ETRS89_UTM32 = "EPSG:25832"
@@ -123,24 +121,8 @@ def _load_index(dataset: str, *, timeout: int) -> dict[tuple[int, int], dict[str
 
 
 def _fetch_meta4(url: str, timeout: int) -> str:
-    try:
-        return _http_get(url, timeout, verify=True)
-    except requests.exceptions.SSLError:
-        warnings.warn(
-            f"SSL verification failed for {url}; retrying without certificate verification.",
-            stacklevel=2,
-        )
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", InsecureRequestWarning)
-            return _http_get(url, timeout, verify=False)
-
-
-def _http_get(url: str, timeout: int, *, verify: bool) -> str:
-    with requests.Session() as session:
-        session.trust_env = False
-        r = session.get(url, timeout=timeout, verify=verify)
-        r.raise_for_status()
-        return r.text
+    response = get_verified(url, timeout=timeout)
+    return response.text
 
 
 def _parse_meta4(

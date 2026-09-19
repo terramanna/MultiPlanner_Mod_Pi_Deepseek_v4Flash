@@ -26,7 +26,35 @@ from multiplanner_api.models import (
 )
 from multiplanner_api.subsets import locate_subsets
 
-_TRANSIENT_DOWNLOAD_ERRORS = (
+# Provider hosts that are allowed for downloads.
+# Each is a validated, known geodata provider. If a provider index
+# ever returns a URL pointing elsewhere, the download is rejected.
+_KNOWN_PROVIDER_HOSTS = frozenset({
+    "www.opengeodata.nrw.de",
+    "geocloud.landesvermessung.sachsen.de",
+    "inspirehessen.de",
+    "geodaten.bayern.de",
+    "geoservices.bayern.de",
+    "opengeodata.lgl-bw.de",
+    "isk.geobasis-bb.de",
+    "data.geobasis-bb.de",
+    "geodaten.schleswig-holstein.de",
+    "www.geodaten-mv.de",
+    "gdi2.geo.bremen.de",
+    "gdi.berlin.de",
+    "geoportal.geoportal-th.de",
+    "geoportal.saarland.de",
+    "www.geodatenportal.sachsen-anhalt.de",
+    "geobasis-rlp.de",
+    "api.hamburg.de",
+    "daten-hamburg.de",
+    "archiv.transparenz.hamburg.de",
+    "services-eu1.arcgis.com",
+    "geodaten.sachsen.de",
+})
+
+
+
     requests.exceptions.ConnectionError,
     requests.exceptions.ChunkedEncodingError,
     requests.exceptions.Timeout,
@@ -138,6 +166,13 @@ def _download_result_files(
     for tile in result.tiles:
         if not tile.primary_url:
             failures.append(_download_failure(provider, result.dataset, tile, "Missing source URL."))
+            _notify_download_progress(on_progress, tile_counter, provider, result.dataset, tile.tile_id, total_tiles, False)
+            continue
+
+        # SSRF guard: only allow known geodata provider hosts.
+        parsed = urlparse(tile.primary_url)
+        if parsed.hostname not in _KNOWN_PROVIDER_HOSTS:
+            failures.append(_download_failure(provider, result.dataset, tile, f"Blocked download from unknown host: {parsed.hostname}"))
             _notify_download_progress(on_progress, tile_counter, provider, result.dataset, tile.tile_id, total_tiles, False)
             continue
         target_path = dataset_dir / _target_filename(tile.primary_url, tile.tile_id)
