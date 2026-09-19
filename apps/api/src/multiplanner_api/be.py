@@ -13,7 +13,7 @@ Coordinates in filenames are in km (integer):
 """
 
 from __future__ import annotations
-from multiplanner_shared.geometry_io import request_geometry
+from multiplanner_shared.geometry_io import request_geometry, to_utm33
 
 import json
 import math
@@ -22,15 +22,11 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box
-from shapely.ops import transform
 
 from multiplanner_api.config import load_settings
 from multiplanner_api.http_client import get_with_ssl_fallback
 
-WGS84 = "EPSG:4326"
-ETRS89_UTM33 = "EPSG:25833"
 TILE_SIZE_M = 2000
 MAX_TILES_PER_DATASET = 200
 PROVIDER_ID = "gdi-be"
@@ -67,7 +63,7 @@ def locate_tiles(
     timeout: int,
 ) -> list[dict[str, str]]:
     ds_cfg = _dataset_config(dataset)
-    geom_33 = _to_utm33(request_geometry(geometry, geometry_type))
+    geom_33 = to_utm33(request_geometry(geometry, geometry_type))
     index = _load_index(dataset, ds_cfg, timeout=timeout)
     matching = _intersecting_tiles(dataset, geom_33, index)
     if len(matching) > MAX_TILES_PER_DATASET:
@@ -111,11 +107,6 @@ def _dataset_config(dataset: str) -> dict[str, str]:
     if dataset not in _DATASET_CONFIG:
         raise ValueError(f"Unknown Berlin dataset: {dataset!r}. Valid: {list(_DATASET_CONFIG)}")
     return _DATASET_CONFIG[dataset]
-
-
-def _to_utm33(geometry):
-    transformer = Transformer.from_crs(WGS84, ETRS89_UTM33, always_xy=True)
-    return transform(transformer.transform, geometry)
 
 
 def _intersecting_tiles(

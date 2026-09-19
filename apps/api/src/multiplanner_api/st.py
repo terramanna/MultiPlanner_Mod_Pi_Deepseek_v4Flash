@@ -11,18 +11,14 @@ Tile size: 1 km × 1 km (consistent with NRW/HE tile granularity).
 """
 
 from __future__ import annotations
-from multiplanner_shared.geometry_io import request_geometry
+from multiplanner_shared.geometry_io import request_geometry, to_utm32
 
 import json
 import math
 from typing import Any
 
-from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box
-from shapely.ops import transform
 
-WGS84 = "EPSG:4326"
-ETRS89_UTM32 = "EPSG:25832"
 WCS_TILE_SIZE_M = 1000
 DOP20_TILE_SIZE_M = 2000
 MAX_TILES_PER_DATASET = 200
@@ -48,7 +44,7 @@ def locate_tiles(
     geom_wgs84 = request_geometry(geometry, geometry_type)
     if not geom_wgs84.intersects(box(*_SAXONY_ANHALT_BBOX)):
         return []
-    geom_32 = _to_utm32(geom_wgs84)
+    geom_32 = to_utm32(geom_wgs84)
     if dataset == "lod2":
         return [
             {"tile_id": f"st_lod2_{i + 1}", "primary_url": url}
@@ -96,13 +92,6 @@ def summarize_tiles(
             timeout=timeout,
         )
     ]
-
-
-
-
-def _to_utm32(geometry):
-    transformer = Transformer.from_crs(WGS84, ETRS89_UTM32, always_xy=True)
-    return transform(transformer.transform, geometry)
 
 
 _ST_LOD2_URLS = [

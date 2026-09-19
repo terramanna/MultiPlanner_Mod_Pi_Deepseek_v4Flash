@@ -7,18 +7,14 @@ CRS:     EPSG:25833  (ETRS89 / UTM zone 33N)
 """
 
 from __future__ import annotations
-from multiplanner_shared.geometry_io import request_geometry
+from multiplanner_shared.geometry_io import request_geometry, to_utm33
 
 import json
 import math
 from typing import Any
 
-from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box
-from shapely.ops import transform
 
-WGS84 = "EPSG:4326"
-ETRS89_UTM33 = "EPSG:25833"
 TILE_KM = 2
 MAX_TILES_PER_DATASET = 100
 PROVIDER_ID = "geosn-sn"
@@ -40,7 +36,7 @@ def locate_tiles(
     geom_wgs84 = request_geometry(geometry, geometry_type)
     if not geom_wgs84.intersects(box(*_SAXONY_BBOX)):
         return []
-    geom_33 = _to_utm33(geom_wgs84)
+    geom_33 = to_utm33(geom_wgs84)
     candidates = tile_coordinates(geom_33)
     if len(candidates) > MAX_TILES_PER_DATASET:
         raise ValueError(
@@ -75,13 +71,6 @@ def summarize_tiles(
             timeout=timeout,
         )
     ]
-
-
-
-
-def _to_utm33(geometry):
-    transformer = Transformer.from_crs(WGS84, ETRS89_UTM33, always_xy=True)
-    return transform(transformer.transform, geometry)
 
 
 def tile_coordinates(geometry) -> list[tuple[int, int]]:

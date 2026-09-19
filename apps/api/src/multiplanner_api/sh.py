@@ -15,22 +15,18 @@ The logical ``dom1`` surface slot uses SH's official image-based bDOM product.
 """
 
 from __future__ import annotations
-from multiplanner_shared.geometry_io import request_geometry
+from multiplanner_shared.geometry_io import request_geometry, to_utm32
 
 import json
 import time
 from pathlib import Path
 from typing import Any
 
-from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box, shape
-from shapely.ops import transform
 
 from multiplanner_api.config import load_settings
 from multiplanner_api.http_client import get_with_ssl_fallback
 
-WGS84 = "EPSG:4326"
-ETRS89_UTM32 = "EPSG:25832"
 PROVIDER_ID = "lvermgeo-sh"
 MAX_TILES_PER_DATASET = 200
 CACHE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
@@ -70,7 +66,7 @@ def locate_tiles(
     timeout: int,
 ) -> list[dict[str, str]]:
     cfg = _DATASET_CONFIG[dataset]
-    geom_utm32 = _to_utm32(request_geometry(geometry, geometry_type))
+    geom_utm32 = to_utm32(request_geometry(geometry, geometry_type))
     tiles = _load_index(dataset, timeout=timeout)
     matching = [t for t in tiles if _tile_shape(t).intersects(geom_utm32)]
     if len(matching) > MAX_TILES_PER_DATASET:
@@ -111,13 +107,6 @@ def summarize_tiles(
             timeout=timeout,
         )
     ]
-
-
-
-
-def _to_utm32(geometry):
-    transformer = Transformer.from_crs(WGS84, ETRS89_UTM32, always_xy=True)
-    return transform(transformer.transform, geometry)
 
 
 def _load_index(dataset: str, *, timeout: int) -> list[dict]:

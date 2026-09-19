@@ -34,7 +34,6 @@ import {
   geometryFromLayer,
   polygonAreaM2,
   renderDatasetChoices,
-<<<<<<< HEAD
 } from "./utils.js";
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? window.location.origin).trim();
 const providerCoverage = {

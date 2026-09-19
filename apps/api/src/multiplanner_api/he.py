@@ -12,18 +12,14 @@ WCS GetCoverage example (from HVBG official guide, 2025-05):
 """
 
 from __future__ import annotations
-from multiplanner_shared.geometry_io import request_geometry
+from multiplanner_shared.geometry_io import request_geometry, to_utm32
 
 import json
 import math
 from typing import Any
 
-from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box
-from shapely.ops import transform
 
-WGS84 = "EPSG:4326"
-ETRS89_UTM32 = "EPSG:25832"
 TILE_SIZE_M = 1000
 MAX_TILES_PER_DATASET = 200
 PROVIDER_ID = "hvbg-he"
@@ -44,7 +40,7 @@ def locate_tiles(
     geom_wgs84 = request_geometry(geometry, geometry_type)
     if not geom_wgs84.intersects(box(*_HESSEN_BBOX)):
         return []
-    geom_32 = _to_utm32(geom_wgs84)
+    geom_32 = to_utm32(geom_wgs84)
     cells = _tile_cells(geom_32)
     if len(cells) > MAX_TILES_PER_DATASET:
         raise ValueError(
@@ -81,13 +77,6 @@ def summarize_tiles(
             timeout=timeout,
         )
     ]
-
-
-
-
-def _to_utm32(geometry):
-    transformer = Transformer.from_crs(WGS84, ETRS89_UTM32, always_xy=True)
-    return transform(transformer.transform, geometry)
 
 
 def _tile_cells(geometry) -> list[tuple[int, int]]:

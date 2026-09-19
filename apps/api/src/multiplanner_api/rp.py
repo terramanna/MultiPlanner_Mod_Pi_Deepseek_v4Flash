@@ -10,7 +10,7 @@ Both indexes are fetched once and cached for 24 h.
 """
 
 from __future__ import annotations
-from multiplanner_shared.geometry_io import request_geometry
+from multiplanner_shared.geometry_io import request_geometry, to_utm32
 
 import json
 import math
@@ -20,15 +20,11 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
 
-from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box
-from shapely.ops import transform
 
 from multiplanner_api.config import load_settings
 from multiplanner_api.http_client import get_verified
 
-WGS84 = "EPSG:4326"
-ETRS89_UTM32 = "EPSG:25832"
 MAX_TILES_PER_DATASET = 200
 CACHE_MAX_AGE_SECONDS = 24 * 60 * 60
 PROVIDER_ID = "lvermgeo-rp"
@@ -65,7 +61,7 @@ def locate_tiles(
     timeout: int,
 ) -> list[dict[str, str]]:
     ds = _dataset_config(dataset)
-    geom = _to_utm32(request_geometry(geometry, geometry_type))
+    geom = to_utm32(request_geometry(geometry, geometry_type))
     candidates = _tile_coordinates(geom, ds["tile_size_m"])
     if len(candidates) > MAX_TILES_PER_DATASET:
         raise ValueError(
@@ -155,13 +151,6 @@ def _encode_index(index: dict[tuple[int, int], dict[str, str]]) -> dict[str, dic
 
 def _decode_index(raw: dict[str, dict[str, str]]) -> dict[tuple[int, int], dict[str, str]]:
     return {tuple(int(v) for v in k.split(":", 1)): tile for k, tile in raw.items()}
-
-
-
-
-def _to_utm32(geometry):
-    transformer = Transformer.from_crs(WGS84, ETRS89_UTM32, always_xy=True)
-    return transform(transformer.transform, geometry)
 
 
 def _tile_coordinates(geometry, tile_size_m: int) -> list[tuple[int, int]]:

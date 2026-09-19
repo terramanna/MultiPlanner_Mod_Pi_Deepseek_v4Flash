@@ -11,18 +11,14 @@ LOD2 filename: lod2_33{easting_km:03d}-{northing_km:04d}.zip
 """
 
 from __future__ import annotations
-from multiplanner_shared.geometry_io import request_geometry
+from multiplanner_shared.geometry_io import request_geometry, to_utm33
 
 import json
 import math
 from typing import Any
 
-from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box
-from shapely.ops import transform
 
-WGS84 = "EPSG:4326"
-ETRS89_UTM33 = "EPSG:25833"
 TILE_SIZE_M = 1000
 MAX_TILES_PER_DATASET = 200
 PROVIDER_ID = "geobasis-bb"
@@ -56,7 +52,7 @@ def locate_tiles(
     geom_wgs84 = request_geometry(geometry, geometry_type)
     if not geom_wgs84.intersects(box(*_BRANDENBURG_BBOX)):
         return []
-    geom_33 = _to_utm33(geom_wgs84)
+    geom_33 = to_utm33(geom_wgs84)
     cells = _tile_cells(geom_33)
     if len(cells) > MAX_TILES_PER_DATASET:
         raise ValueError(
@@ -96,13 +92,6 @@ def summarize_tiles(
             timeout=timeout,
         )
     ]
-
-
-
-
-def _to_utm33(geometry):
-    transformer = Transformer.from_crs(WGS84, ETRS89_UTM33, always_xy=True)
-    return transform(transformer.transform, geometry)
 
 
 def _tile_cells(geometry) -> list[tuple[int, int]]:

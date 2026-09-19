@@ -214,7 +214,7 @@ def test_locate_tiles_raises_for_oversized_area(monkeypatch) -> None:
     ]
     monkeypatch.setattr("multiplanner_api.sh._load_index", lambda dataset, *, timeout: big_index)
     # Bypass CRS transform so UTM32 envelope coords can be used directly
-    monkeypatch.setattr("multiplanner_api.sh._to_utm32", lambda g: g)
+    monkeypatch.setattr("multiplanner_api.sh.to_utm32", lambda g: g)
     big_utm_envelope = json.dumps({"xmin": 399000.0, "ymin": 5999000.0, "xmax": 602000.0, "ymax": 6002000.0})
     config = SERVICE_PROVIDERS["lvermgeo-sh"]["datasets"]["dgm1"]
     with pytest.raises(ValueError, match="201 1 km tiles"):

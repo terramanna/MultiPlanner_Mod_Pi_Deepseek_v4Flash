@@ -1,7 +1,6 @@
 # Web app
 
-This app hosts the Leaflet planner and the experimental Cesium and MapLibre
-comparison renderers.
+This app hosts the Leaflet planner and an experimental Cesium comparison renderer.
 
 Current scaffold:
 
@@ -17,7 +16,7 @@ Current scaffold:
 - leaving area mode safely cancels an unfinished drawing while keeping completed drawings on the map
 - geometry-aware provider detection with manual-provider override
 - blank-map release for search-selected sites and links, including provider reset
-- optional Cesium and MapLibre comparison renderers through query parameters
+- optional Cesium comparison renderer through a query parameter
 - optional Cesium world terrain mode through env
 - click-to-place Site A and Site B
 - simple link visualization
@@ -69,7 +68,6 @@ Renderer routes:
 
 - Leaflet planner: `/`
 - Cesium comparison: `/?renderer=cesium`
-- MapLibre comparison: `/?renderer=maplibre`
 
 Optional environment variables:
 

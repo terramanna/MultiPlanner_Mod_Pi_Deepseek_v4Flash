@@ -8,7 +8,6 @@ only the tile-index matching differs.
 from __future__ import annotations
 
 import json
-import math
 
 from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box
@@ -45,21 +44,3 @@ def to_utm32(geometry):
 
 def to_utm33(geometry):
     return transform(_T_UTM33.transform, geometry)
-
-
-def tile_cells_for_geometry(geometry, tile_size_m: int = 1000) -> list[tuple[int, int]]:
-    """Return (x_m, y_m) SW-corner metre origins for cells intersecting *geometry*.
-
-    geometry must already be in the target UTM CRS.
-    """
-    west, south, east, north = geometry.bounds
-    x_start = math.floor(west / tile_size_m) * tile_size_m
-    x_end = math.floor(east / tile_size_m) * tile_size_m
-    y_start = math.floor(south / tile_size_m) * tile_size_m
-    y_end = math.floor(north / tile_size_m) * tile_size_m
-    return [
-        (x, y)
-        for x in range(x_start, x_end + tile_size_m, tile_size_m)
-        for y in range(y_start, y_end + tile_size_m, tile_size_m)
-        if geometry.intersects(box(x, y, x + tile_size_m, y + tile_size_m))
-    ]

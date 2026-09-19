@@ -60,3 +60,4 @@ jobs:
             npm install
           fi
           npm test
+          npm run build

@@ -1,7 +1,7 @@
 """Cached tile-index adapter for Geobasis NRW 1 km GeoTIFF products."""
 
 from __future__ import annotations
-from multiplanner_shared.geometry_io import request_geometry
+from multiplanner_shared.geometry_io import request_geometry, to_utm32
 
 import json
 import math
@@ -11,15 +11,11 @@ import time
 from typing import Any
 from xml.etree import ElementTree
 
-from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box
-from shapely.ops import transform
 
 from multiplanner_api.config import load_settings
 from multiplanner_api.http_client import get_verified
 
-WGS84 = "EPSG:4326"
-ETRS89_UTM32 = "EPSG:25832"
 TILE_SIZE_M = 1000
 MAX_TILES_PER_DATASET = 200
 CACHE_MAX_AGE_SECONDS = 24 * 60 * 60
@@ -35,7 +31,7 @@ def locate_tiles(
     geometry_type: str,
     timeout: int,
 ) -> list[dict[str, str]]:
-    candidates = tile_coordinates(_to_utm32(request_geometry(geometry, geometry_type)))
+    candidates = tile_coordinates(to_utm32(request_geometry(geometry, geometry_type)))
     if len(candidates) > MAX_TILES_PER_DATASET:
         raise ValueError(f"NRW selection resolves to {len(candidates)} 1 km tiles. Limit the area to {MAX_TILES_PER_DATASET} tiles per dataset.")
     index = load_index(dataset, config, timeout=timeout)
@@ -113,13 +109,6 @@ def encode_index(index: dict[tuple[int, int], dict[str, str]]) -> dict[str, dict
 
 def decode_index(index: dict[str, dict[str, str]]) -> dict[tuple[int, int], dict[str, str]]:
     return {tuple(int(value) for value in key.split(":", maxsplit=1)): tile for key, tile in index.items()}
-
-
-
-
-def _to_utm32(geometry):
-    transformer = Transformer.from_crs(WGS84, ETRS89_UTM32, always_xy=True)
-    return transform(transformer.transform, geometry)
 
 
 def tile_coordinates(geometry) -> list[tuple[int, int]]:

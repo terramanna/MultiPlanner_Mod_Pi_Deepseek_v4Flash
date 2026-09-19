@@ -1,21 +1,17 @@
 """Bavaria raster adapter via the official poly2metalink polygon service."""
 
 from __future__ import annotations
-from multiplanner_shared.geometry_io import request_geometry
+from multiplanner_shared.geometry_io import request_geometry, to_utm32
 
 import json
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
 
-from pyproj import Transformer
 from shapely.geometry import Point, Polygon, box
-from shapely.ops import transform
 
 from multiplanner_api.http_client import post_with_ssl_fallback
 
-WGS84 = "EPSG:4326"
-ETRS89_UTM32 = "EPSG:25832"
 PROVIDER_ID = "ldbv-by"
 METALINK_NS = {"m": "urn:ietf:params:xml:ns:metalink"}
 
@@ -28,7 +24,7 @@ def locate_tiles(
     geometry_type: str,
     timeout: int,
 ) -> list[dict[str, str]]:
-    geom_32 = _to_utm32(request_geometry(geometry, geometry_type))
+    geom_32 = to_utm32(request_geometry(geometry, geometry_type))
     response = post_with_ssl_fallback(
         config["metalink_url"],
         data=_request_body(geom_32),
@@ -68,13 +64,6 @@ def summarize_tiles(
             timeout=timeout,
         )
     ]
-
-
-
-
-def _to_utm32(geometry):
-    transformer = Transformer.from_crs(WGS84, ETRS89_UTM32, always_xy=True)
-    return transform(transformer.transform, geometry)
 
 
 def _request_body(geometry) -> str:

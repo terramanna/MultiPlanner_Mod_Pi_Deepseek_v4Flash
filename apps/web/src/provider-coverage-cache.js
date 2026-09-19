@@ -15,11 +15,7 @@ export function saveProviderCoverageCache(featuresByProvider, storage = globalTh
   try {
     storage.setItem(
       CACHE_KEY,
-      JSON.stringify({
-        version: 1,
-        fetchedAt: new Date().toISOString(),
-        featuresByProvider,
-      })
+      JSON.stringify({ version: 1, featuresByProvider })
     );
   } catch {
     // Ignore storage failures; the live fetch still works.
