@@ -4,8 +4,9 @@ Project-wide instructions for every coding agent.
 
 ## Repository identity
 
-- Repository: `terramanna/MultiPlanner`
-- Canonical remote: `https://github.com/terramanna/MultiPlanner.git`
+- Repository: `terramanna/MultiPlanner_Mod_Pi_Deepseek_v4Flash`
+- Canonical remote: `https://github.com/terramanna/MultiPlanner_Mod_Pi_Deepseek_v4Flash.git`
+- Upstream repo: `https://github.com/terramanna/MultiPlanner.git`
 - Primary branch: `main`
 - Issue tracker: GitHub Issues
 
