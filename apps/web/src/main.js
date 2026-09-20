@@ -1,4 +1,4 @@
-import "cesium/Build/Cesium/Widgets/widgets.css";
+import "@cesium/widgets/Source/widgets.css";
 import "./style.css";
 import * as Cesium from "cesium";
 import { retryUntilReady } from "./bootstrap-retry.js";

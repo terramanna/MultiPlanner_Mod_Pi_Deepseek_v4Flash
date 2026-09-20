@@ -10,9 +10,10 @@
     "preview": "vite preview --host 127.0.0.1 --port 4173"
   },
   "dependencies": {
-    "@geoman-io/leaflet-geoman-free": "^2.20.0",
-    "cesium": "^1.127.0",
-    "leaflet": "^1.9.4"
+    "@cesium/widgets": "16.2.0",
+    "@geoman-io/leaflet-geoman-free": "2.20.1",
+    "cesium": "1.145.0",
+    "leaflet": "1.9.4"
   },
   "devDependencies": {
     "vite": "^7.0.0"
