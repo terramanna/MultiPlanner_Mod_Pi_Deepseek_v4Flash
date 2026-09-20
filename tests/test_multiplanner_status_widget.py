@@ -4,6 +4,12 @@ from importlib import util
 from pathlib import Path
 import sys
 from types import SimpleNamespace
+import pytest
+
+
+# These tests require tkinter (only available with display/GUI).
+# Skip silently on headless or tkinter-less environments.
+tkinter = pytest.importorskip("tkinter", reason="tkinter not available on this system")
 
 
 def load_widget_module():

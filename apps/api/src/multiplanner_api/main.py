@@ -36,6 +36,7 @@ from multiplanner_api.providers import SERVICE_PROVIDERS
 from multiplanner_api.raster_tiles import render_cached_tile
 from multiplanner_api.search import search_places
 from multiplanner_api.subsets import locate_subsets
+from multiplanner_api.rate_limiter import add_rate_limiter
 
 
 def _validate_path_inside_cache(candidate: Path, cache_root: Path) -> None:
@@ -59,6 +60,8 @@ app = FastAPI(
     version="0.1.0",
     summary="Local-first terrain and LOS backend scaffold",
 )
+
+add_rate_limiter(app, requests_per_minute=60)
 
 app.add_middleware(
     CORSMiddleware,
