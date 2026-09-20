@@ -24,12 +24,30 @@ function Invoke-Checked {
     }
 }
 
+function Assert-Python311 {
+    param(
+        [string]$Executable,
+        [string]$Purpose
+    )
+    $Version = & $Executable -c "import sys; print('.'.join(map(str, sys.version_info[:3])))"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not determine the version of $Purpose at '$Executable'."
+    }
+    if (-not $Version.Trim().StartsWith("3.11.")) {
+        throw "$Purpose must use Python 3.11.x; found $($Version.Trim())."
+    }
+    Write-Host "${Purpose}: Python $($Version.Trim())"
+}
+
 Write-Host "Repo root: $RepoRoot"
+Assert-Python311 $PythonExe "Selected Python"
 
 if (-not (Test-Path $VenvPython)) {
     Write-Host "Creating virtual environment at $VenvPath"
     & $PythonExe -m venv $VenvPath
 }
+
+Assert-Python311 $VenvPython "Virtual environment"
 
 Write-Host "Upgrading pip"
 Invoke-Checked "pip upgrade" $VenvPython @("-m", "pip", "install", "--use-feature=truststore", "--upgrade", "pip")
